@@ -451,15 +451,11 @@ local Toggle = Tab:CreateToggle({
 --//////////////////////////////////////////////////////////////////////////////
 local Section = Tab:CreateSection("Bring")
 --//////////////////////////////////////////////////////////////////////////////
--- SAVED LOCATION SYSTEM
---//////////////////////////////////////////////////////////////////////////////
-
 local savedCF = nil
 local saveToggle = false
-
---//////////////////////////////////////////////////////////////////////////////
+---------------------------------------------------------------------
 -- DROPDOWN
---//////////////////////////////////////////////////////////////////////////////
+---------------------------------------------------------------------
 
 local selectedPlayers = {}
 local displayNameToPlayer = {}
@@ -500,9 +496,9 @@ end
 Players.PlayerAdded:Connect(refreshDropdown)
 Players.PlayerRemoving:Connect(refreshDropdown)
 
---//////////////////////////////////////////////////////////////////////////////
--- MOVE TOGGLE **BELOW DROPDOWN**
---//////////////////////////////////////////////////////////////////////////////
+---------------------------------------------------------------------
+-- TOGGLE (PLACED BELOW DROPDOWN)
+---------------------------------------------------------------------
 
 Tab:CreateToggle({
     Name = "Use Saved Location (V to Save)",
@@ -516,25 +512,26 @@ Tab:CreateToggle({
     end,
 })
 
---//////////////////////////////////////////////////////////////////////////////
--- V KEY SAVE (NOW PRINTS ONLY X Y Z)
---//////////////////////////////////////////////////////////////////////////////
+---------------------------------------------------------------------
+-- SAVE LOCATION (V KEY) - NOTIFY w/ ONLY X Y Z
+---------------------------------------------------------------------
 
-UIS.InputBegan:Connect(function(input, gpe)
+UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.V and saveToggle then
-        local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local root = myChar:FindFirstChild("HumanoidRootPart")
+        
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local root = char:FindFirstChild("HumanoidRootPart")
 
         if root then
             savedCF = root.CFrame
             local pos = savedCF.Position
 
-            local msg = string.format("%d %d %d", pos.X, pos.Y, pos.Z)
+            local formatted = string.format("%d %d %d", pos.X, pos.Y, pos.Z)
 
             Rayfield:Notify({
                 Title = "Saved Location",
-                Content = msg,
+                Content = formatted,
                 Duration = 6.5,
                 Image = 0,
             })
@@ -542,9 +539,10 @@ UIS.InputBegan:Connect(function(input, gpe)
     end
 end)
 
---//////////////////////////////////////////////////////////////////////////////
--- BRING FUNCTIONS
---//////////////////////////////////////////////////////////////////////////////
+---------------------------------------------------------------------
+-- BRING CORE FUNCTIONS
+---------------------------------------------------------------------
+
 local function findRoot(char)
     return char and (
         char:FindFirstChild("HumanoidRootPart")
@@ -605,9 +603,9 @@ local function bringOne(targetPlayer, targetCF)
     end)
 end
 
---//////////////////////////////////////////////////////////////////////////////
+---------------------------------------------------------------------
 -- BRING SELECTED
---//////////////////////////////////////////////////////////////////////////////
+---------------------------------------------------------------------
 
 Tab:CreateButton({
     Name = "Bring Selected",
@@ -626,16 +624,14 @@ Tab:CreateButton({
         end
 
         task.wait(0.05)
-        pcall(function()
-            local r = findRoot(LocalPlayer.Character)
-            if r then r.CFrame = returnCF end
-        end)
+        local r = findRoot(LocalPlayer.Character)
+        if r then r.CFrame = returnCF end
     end
 })
 
---//////////////////////////////////////////////////////////////////////////////
+---------------------------------------------------------------------
 -- BRING ALL
---//////////////////////////////////////////////////////////////////////////////
+---------------------------------------------------------------------
 
 Tab:CreateButton({
     Name = "Bring All",
@@ -656,10 +652,8 @@ Tab:CreateButton({
         end
 
         task.wait(0.05)
-        pcall(function()
-            local r = findRoot(LocalPlayer.Character)
-            if r then r.CFrame = returnCF end
-        end)
+        local r = findRoot(LocalPlayer.Character)
+        if r then r.CFrame = returnCF end
     end
 })
 --//////////////////////////////////////////////////////////////////////////////
