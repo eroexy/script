@@ -318,37 +318,28 @@ Tab:CreateToggle({
 --//////////////////////////////////////////////////////////////////////////////
 -- NO-CLIP GRAB
 --//////////////////////////////////////////////////////////////////////////////
--- SERVICES
---//////////////////////////////////////////////////////////////////////////////
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-
 local LocalPlayer = Players.LocalPlayer
 
---//////////////////////////////////////////////////////////////////////////////
--- VARIABLES
---//////////////////////////////////////////////////////////////////////////////
-local noclipGrabEnabled = false
+local toggleEnabled = false
 local lastModel = nil
-local modelCollides = {} -- store original CanCollide states
+local modelCollides = {} -- stores original CanCollide for each model
 
--- Blacklist models we don't want to noclip
 local blacklist = {
     workspace:WaitForChild("Slots"),
     workspace:WaitForChild("Plots"),
     workspace:WaitForChild("Map")
 }
 
---//////////////////////////////////////////////////////////////////////////////
--- HELPERS
---//////////////////////////////////////////////////////////////////////////////
 local function getModelFromPart(part)
+    if not part then return nil end
     local current = part
-    while current and current.Parent and not current:IsA("Model") do
+    while current.Parent and not current:IsA("Model") do
         current = current.Parent
     end
-    return current and current:IsA("Model") and current or nil
+    return current:IsA("Model") and current or nil
 end
 
 local function isBlacklisted(model)
@@ -360,70 +351,74 @@ local function isBlacklisted(model)
     return false
 end
 
+-- Toggle collisions for a model
 local function setCanCollide(model, value)
     if not model then return end
-    modelCollides[model] = modelCollides[model] or {}
+
+    -- Create table for this model if it doesn't exist
+    if not modelCollides[model] then
+        modelCollides[model] = {}
+    end
 
     for _, part in ipairs(model:GetDescendants()) do
         if part:IsA("BasePart") then
             if not value then
-                -- store original CanCollide state only once
+                -- Save original state only once
                 if modelCollides[model][part] == nil then
                     modelCollides[model][part] = part.CanCollide
                 end
                 part.CanCollide = false
             else
-                -- restore original CanCollide
+                -- Restore original state
                 if modelCollides[model][part] ~= nil then
                     part.CanCollide = modelCollides[model][part]
                     modelCollides[model][part] = nil
+                else
+                    part.CanCollide = true
                 end
             end
         end
     end
-
-    -- clean up table if empty
-    if value and next(modelCollides[model] or {}) == nil then
-        modelCollides[model] = nil
-    end
 end
 
--- safely clear the last grabbed model
-local function clearLastModel()
-    if lastModel then
+RunService.Heartbeat:Connect(function()
+    if not toggleEnabled then
+        if lastModel then
+            setCanCollide(lastModel, true)
+            local grabbed = lastModel:FindFirstChild("Grabbed")
+            if grabbed then grabbed:Destroy() end
+            lastModel = nil
+        end
+        return
+    end
+
+    local grabFolder = workspace:FindFirstChild("GrabParts")
+    if not grabFolder then
+        if lastModel then
+            setCanCollide(lastModel, true)
+            local grabbed = lastModel:FindFirstChild("Grabbed")
+            if grabbed then grabbed:Destroy() end
+            lastModel = nil
+        end
+        return
+    end
+
+    local grabPart = grabFolder:FindFirstChild("GrabPart")
+    if not grabPart then return end
+
+    local weld = grabPart:FindFirstChild("WeldConstraint")
+    if not weld then return end
+
+    local attached = weld.Part1
+    local currentModel = getModelFromPart(attached)
+
+    if lastModel and lastModel ~= currentModel then
         setCanCollide(lastModel, true)
         local grabbed = lastModel:FindFirstChild("Grabbed")
         if grabbed then grabbed:Destroy() end
         lastModel = nil
     end
-end
 
---//////////////////////////////////////////////////////////////////////////////
--- HEARTBEAT LOOP
---//////////////////////////////////////////////////////////////////////////////
-RunService.Heartbeat:Connect(function()
-    if not noclipGrabEnabled then
-        clearLastModel()
-        return
-    end
-
-    local grabFolder = Workspace:FindFirstChild("GrabParts")
-    if not grabFolder then return end
-    local grabPart = grabFolder:FindFirstChild("GrabPart")
-    if not grabPart then return end
-
-    local weld = grabPart:FindFirstChild("WeldConstraint")
-    if not weld or not weld.Part1 then return end
-
-    local attached = weld.Part1
-    local currentModel = getModelFromPart(attached)
-
-    -- restore collisions if switching models
-    if lastModel and lastModel ~= currentModel then
-        clearLastModel()
-    end
-
-    -- apply noclip to current model
     if currentModel and not isBlacklisted(currentModel) then
         local grabbed = currentModel:FindFirstChild("Grabbed")
         if not grabbed then
@@ -432,25 +427,28 @@ RunService.Heartbeat:Connect(function()
             grabbed.Parent = currentModel
         end
         grabbed.Value = LocalPlayer
+
         setCanCollide(currentModel, false)
         lastModel = currentModel
     end
 end)
 
---//////////////////////////////////////////////////////////////////////////////
--- TOGGLE
---//////////////////////////////////////////////////////////////////////////////
-Tab:CreateToggle({
+-- === TOGGLE ===
+local Toggle = Tab:CreateToggle({
     Name = "No-clip Grab",
     CurrentValue = false,
     Flag = "NoclipGrab",
     Callback = function(Value)
-        noclipGrabEnabled = Value
-        if not Value then
-            clearLastModel()
+        toggleEnabled = Value
+        if not Value and lastModel then
+            setCanCollide(lastModel, true)
+            local grabbed = lastModel:FindFirstChild("Grabbed")
+            if grabbed then grabbed:Destroy() end
+            lastModel = nil
         end
     end,
 })
+
 --//////////////////////////////////////////////////////////////////////////////
 -- BRING PLAYERS SYSTEM
 local Section = Tab:CreateSection("Bring")
@@ -586,10 +584,9 @@ Tab:CreateButton({
     end,
 })
 
-
-
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Defense", 0)
+local Section = Tab:CreateSection("Anti")
 --//////////////////////////////////////////////////////////////////////////////
 -- Services
 --//////////////////////////////////////////////////////////////////////////////
@@ -836,6 +833,7 @@ Tab:CreateToggle({
 
 --//////////////////////////////////////////////////////////////////////////////
 -- Other Players Protection & Auto-Attack
+local Section = Tab:CreateSection("Protect Others")
 --//////////////////////////////////////////////////////////////////////////////
 local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
 local CreateGrabLine = GrabEvents:WaitForChild("CreateGrabLine")
