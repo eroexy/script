@@ -448,7 +448,6 @@ local Toggle = Tab:CreateToggle({
         end
     end,
 })
-
 --//////////////////////////////////////////////////////////////////////////////
 local Section = Tab:CreateSection("Bring")
 --//////////////////////////////////////////////////////////////////////////////
@@ -506,9 +505,9 @@ Players.PlayerRemoving:Connect(refreshDropdown)
 --//////////////////////////////////////////////////////////////////////////////
 
 Tab:CreateToggle({
-    Name = "Bring Location (V)",
+    Name = "Use Saved Location (V to Save)",
     CurrentValue = false,
-    Flag = "SavedLocation",
+    Flag = "UseSavedLocation",
     Callback = function(val)
         saveToggle = val
         if not val then
@@ -536,7 +535,7 @@ UIS.InputBegan:Connect(function(input, gpe)
             Rayfield:Notify({
                 Title = "Saved Location",
                 Content = msg,
-                Duration = 4,
+                Duration = 6.5,
                 Image = 0,
             })
         end
@@ -546,7 +545,6 @@ end)
 --//////////////////////////////////////////////////////////////////////////////
 -- BRING FUNCTIONS
 --//////////////////////////////////////////////////////////////////////////////
-
 local function findRoot(char)
     return char and (
         char:FindFirstChild("HumanoidRootPart")
