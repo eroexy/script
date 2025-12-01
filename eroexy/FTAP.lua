@@ -450,57 +450,71 @@ local Toggle = Tab:CreateToggle({
 })
 
 --//////////////////////////////////////////////////////////////////////////////
--- BRING PLAYERS SYSTEM
-local Section = Tab:CreateSection("Bring")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "Fling things and people",
+    Icon = 0,
+    LoadingTitle = "Fling things and people",
+    LoadingSubtitle = "",
+    ShowText = "nil",
+    Theme = "Default",
+    ToggleUIKeybind = "M",
+    DisableRayfieldPrompts = true,
+    DisableBuildWarnings = false,
+
+    ConfigurationSaving = {
+        Enabled = false,
+        FolderName = true,
+        FileName = "eroexyFTAP"
+    },
+
+    Discord = {
+        Enabled = false,
+        Invite = "",
+        RememberJoins = true
+    },
+
+    KeySystem = false,
+    KeySettings = {
+        Title = "",
+        Subtitle = "Key System",
+        Note = "",
+        FileName = "",
+        SaveKey = true,
+        GrabKeyFromSite = false,
+        Key = {"Hello"}
+    }
+})
+
+local Tab = Window:CreateTab("Grab", 0)
+
 --//////////////////////////////////////////////////////////////////////////////
+-- BRING SYSTEM
+--//////////////////////////////////////////////////////////////////////////////
+local Section = Tab:CreateSection("Bring")
+
 local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
 local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
 local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
 
-local function findRoot(char)
-    return char and (char:FindFirstChild("HumanoidRootPart") 
-        or char:FindFirstChild("UpperTorso") 
-        or char:FindFirstChild("Torso"))
-end
+---------------------------------------------------------------------
+-- SAVED LOCATION SYSTEM
+---------------------------------------------------------------------
 
-local function tryClaimOwner(tRoot, attempts, interval)
-    attempts = attempts or 8
-    interval = interval or 0
-    for i = 1, attempts do
-        pcall(function() SetNetworkOwner:FireServer(tRoot, tRoot.CFrame) end)
-        local head = tRoot.Parent and tRoot.Parent:FindFirstChild("Head")
-        local owner = head and head:FindFirstChild("PartOwner")
-        if owner and owner.Value == LocalPlayer.Name then return true end
-        task.wait(interval)
-    end
-    return false
-end
+local savedCF = nil
+local saveToggle = false
 
-local function bringOne(targetPlayer, originalCF)
-    if not targetPlayer or targetPlayer == LocalPlayer then return end
-    local char = targetPlayer.Character
-    if not char then return end
+---------------------------------------------------------------------
+-- DROPDOWN
+---------------------------------------------------------------------
 
-    local tRoot = findRoot(char)
-    local head = char:FindFirstChild("Head")
-    local hum = char:FindFirstChild("Humanoid")
-    if not tRoot or not head or not hum or hum.Health <= 0 then return end
-
-    local near = tRoot.CFrame * CFrame.new(0, -3, -2)
-    local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local myRoot = findRoot(myChar)
-    if myRoot then pcall(function() myRoot.CFrame = near end) end
-
-    tryClaimOwner(tRoot, 14, 0.02)
-
-    if DestroyGrabLine then pcall(function() DestroyGrabLine:FireServer(tRoot) end) end
-    pcall(function()
-        tRoot.AssemblyLinearVelocity = Vector3.new(0,0,0)
-        tRoot.CFrame = originalCF
-    end)
-end
-
--- Dropdown UI
 local selectedPlayers = {}
 local displayNameToPlayer = {}
 
@@ -509,9 +523,8 @@ local function getDisplayNames()
     local names = {}
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
-            local displayName = plr.DisplayName
-            table.insert(names, displayName)
-            displayNameToPlayer[displayName] = plr
+            table.insert(names, plr.DisplayName)
+            displayNameToPlayer[plr.DisplayName] = plr
         end
     end
     return names
@@ -523,11 +536,13 @@ local PlayerDropdown = Tab:CreateDropdown({
     CurrentOption = {},
     MultipleOptions = true,
     Flag = "SelectedPlayers",
-    Callback = function(Options)
+    Callback = function(options)
         selectedPlayers = {}
-        for _, displayName in ipairs(Options) do
-            local plr = displayNameToPlayer[displayName]
-            if plr then table.insert(selectedPlayers, plr) end
+        for _, name in ipairs(options) do
+            local plr = displayNameToPlayer[name]
+            if plr then
+                table.insert(selectedPlayers, plr)
+            end
         end
     end,
 })
@@ -539,51 +554,169 @@ end
 Players.PlayerAdded:Connect(refreshDropdown)
 Players.PlayerRemoving:Connect(refreshDropdown)
 
--- Bring Selected
+---------------------------------------------------------------------
+-- MOVE TOGGLE **BELOW DROPDOWN**
+---------------------------------------------------------------------
+
+Tab:CreateToggle({
+    Name = "Bring Location (V)",
+    CurrentValue = false,
+    Flag = "SavedLocation",
+    Callback = function(val)
+        saveToggle = val
+        if not val then
+            savedCF = nil
+        end
+    end,
+})
+
+---------------------------------------------------------------------
+-- V KEY SAVE (NOW PRINTS ONLY X Y Z)
+---------------------------------------------------------------------
+
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.V and saveToggle then
+        local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local root = myChar:FindFirstChild("HumanoidRootPart")
+
+        if root then
+            savedCF = root.CFrame
+            local pos = savedCF.Position
+
+            local msg = string.format("%d %d %d", pos.X, pos.Y, pos.Z)
+
+            Rayfield:Notify({
+                Title = "Saved Location",
+                Content = msg,
+                Duration = 4,
+                Image = 0,
+            })
+        end
+    end
+end)
+
+---------------------------------------------------------------------
+-- BRING FUNCTIONS
+---------------------------------------------------------------------
+
+local function findRoot(char)
+    return char and (
+        char:FindFirstChild("HumanoidRootPart")
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("Torso")
+    )
+end
+
+local function tryClaimOwner(tRoot, attempts, interval)
+    attempts = attempts or 8
+    interval = interval or 0
+    for i = 1, attempts do
+        pcall(function()
+            SetNetworkOwner:FireServer(tRoot, tRoot.CFrame)
+        end)
+        local head = tRoot.Parent:FindFirstChild("Head")
+        local owner = head and head:FindFirstChild("PartOwner")
+        if owner and owner.Value == LocalPlayer.Name then
+            return true
+        end
+        task.wait(interval)
+    end
+    return false
+end
+
+local function bringOne(targetPlayer, targetCF)
+    if not targetPlayer or targetPlayer == LocalPlayer then return end
+
+    local char = targetPlayer.Character
+    if not char then return end
+
+    local tRoot = findRoot(char)
+    local head = char:FindFirstChild("Head")
+    local hum = char:FindFirstChild("Humanoid")
+
+    if not tRoot or not head or not hum or hum.Health <= 0 then return end
+
+    local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local myRoot = findRoot(myChar)
+
+    if myRoot then
+        pcall(function()
+            myRoot.CFrame = tRoot.CFrame * CFrame.new(0, -3, -2)
+        end)
+    end
+
+    tryClaimOwner(tRoot, 14, 0.02)
+
+    if DestroyGrabLine then
+        pcall(function()
+            DestroyGrabLine:FireServer(tRoot)
+        end)
+    end
+
+    pcall(function()
+        tRoot.AssemblyLinearVelocity = Vector3.new(0,0,0)
+        tRoot.CFrame = targetCF
+    end)
+end
+
+---------------------------------------------------------------------
+-- BRING SELECTED
+---------------------------------------------------------------------
+
 Tab:CreateButton({
     Name = "Bring Selected",
     Callback = function()
         local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
         local myRoot = findRoot(myChar)
         if not myRoot then return end
-        local originalCF = myRoot.CFrame
+
+        local returnCF = myRoot.CFrame
+        local targetCF = (saveToggle and savedCF) or returnCF
 
         for _, plr in ipairs(selectedPlayers) do
-            pcall(function() bringOne(plr, originalCF) end)
+            pcall(function()
+                bringOne(plr, targetCF)
+            end)
         end
 
-        -- Return to original
+        task.wait(0.05)
         pcall(function()
-            local myChar2 = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            local myRoot2 = findRoot(myChar2)
-            if myRoot2 then myRoot2.CFrame = originalCF end
+            local r = findRoot(LocalPlayer.Character)
+            if r then r.CFrame = returnCF end
         end)
-    end,
+    end
 })
 
--- Bring All
+---------------------------------------------------------------------
+-- BRING ALL
+---------------------------------------------------------------------
+
 Tab:CreateButton({
     Name = "Bring All",
     Callback = function()
         local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
         local myRoot = findRoot(myChar)
         if not myRoot then return end
-        local originalCF = myRoot.CFrame
+
+        local returnCF = myRoot.CFrame
+        local targetCF = (saveToggle and savedCF) or returnCF
 
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer then
-                pcall(function() bringOne(plr, originalCF) end)
+                pcall(function()
+                    bringOne(plr, targetCF)
+                end)
             end
         end
 
+        task.wait(0.05)
         pcall(function()
-            local myChar2 = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            local myRoot2 = findRoot(myChar2)
-            if myRoot2 then myRoot2.CFrame = originalCF end
+            local r = findRoot(LocalPlayer.Character)
+            if r then r.CFrame = returnCF end
         end)
-    end,
+    end
 })
-
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Defense", 0)
 local Section = Tab:CreateSection("Anti")
