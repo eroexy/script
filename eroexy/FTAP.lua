@@ -1061,3 +1061,208 @@ end)
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Aura", 0)
 --//////////////////////////////////////////////////////////////////////////////
+
+--//////////////////////////////////////////////////////////////////////////////
+--  AURA TAB
+--//////////////////////////////////////////////////////////////////////////////
+
+local Tab = Window:CreateTab("Aura", 0)
+
+--//////////////////////////////////////////////////////////////////////////////
+--  SERVICES
+--//////////////////////////////////////////////////////////////////////////////
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace         = game:GetService("Workspace")
+local RunService        = game:GetService("RunService")
+local Debris            = game:GetService("Debris")
+
+local localPlayer       = Players.LocalPlayer
+
+--//////////////////////////////////////////////////////////////////////////////
+--  GRAB EVENT REFERENCES
+--//////////////////////////////////////////////////////////////////////////////
+
+local grabEventsFolder  = ReplicatedStorage:WaitForChild("GrabEvents")
+local CreateGrabLine    = grabEventsFolder:WaitForChild("CreateGrabLine")
+local SetNetworkOwner   = grabEventsFolder:WaitForChild("SetNetworkOwner")
+local ExtendGrabLine    = grabEventsFolder:WaitForChild("ExtendGrabLine")
+local DestroyGrabLine   = grabEventsFolder:FindFirstChild("DestroyGrabLine")
+
+--//////////////////////////////////////////////////////////////////////////////
+--  HEAVEN AURA CONFIG
+--//////////////////////////////////////////////////////////////////////////////
+
+local MAX_REACH   = 30
+local LAUNCH_FORCE = 10000
+local auraEnabled  = false
+
+Tab:CreateToggle({
+    Name = "Heaven Aura",
+    CurrentValue = false,
+    Flag = "HeavenAura",
+    Callback = function(Value)
+        auraEnabled = Value
+    end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+--  HEAVEN AURA LOGIC
+--//////////////////////////////////////////////////////////////////////////////
+
+local function grabAndLaunch(player)
+    if not player.Character then return end
+
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    local myHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp or not myHRP then return end
+
+    local distance = (hrp.Position - myHRP.Position).Magnitude
+    if distance > MAX_REACH then return end
+
+    local offset = myHRP.CFrame
+
+    -- Fire invisible grab line
+    pcall(function() CreateGrabLine:FireServer(hrp, offset) end)
+    if DestroyGrabLine then
+        pcall(function() DestroyGrabLine:FireServer(hrp) end)
+    end
+    pcall(function() SetNetworkOwner:FireServer(hrp, offset) end)
+    pcall(function() ExtendGrabLine:FireServer(distance) end)
+
+    -- Launch upwards
+    local existingVelocity = hrp:FindFirstChild("LaunchVelocity")
+    if existingVelocity then existingVelocity:Destroy() end
+
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Name = "LaunchVelocity"
+    bodyVelocity.Velocity = Vector3.new(0, LAUNCH_FORCE, 0)
+    bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+    bodyVelocity.P = 1250
+    bodyVelocity.Parent = hrp
+
+    Debris:AddItem(bodyVelocity, 1)
+end
+
+RunService.Heartbeat:Connect(function()
+    if not auraEnabled then return end
+
+    local myHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= localPlayer then
+            grabAndLaunch(plr)
+        end
+    end
+end)
+
+--//////////////////////////////////////////////////////////////////////////////
+--  DEATH AURA CONFIG + SERVICES
+--//////////////////////////////////////////////////////////////////////////////
+
+local LocalPlayer  = localPlayer
+local GrabEvents   = grabEventsFolder
+local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
+local DestroyGrabLine = GrabEvents:WaitForChild("DestroyGrabLine")
+
+if not LocalPlayer.Character then
+    LocalPlayer.CharacterAdded:Wait()
+end
+
+local DeathAuraConnection = nil
+
+--//////////////////////////////////////////////////////////////////////////////
+--  DEATH AURA LOGIC
+--//////////////////////////////////////////////////////////////////////////////
+
+local function StartDeathAura()
+    DeathAuraConnection = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local enemy = plr.Character
+                local enemyRoot = enemy:FindFirstChild("HumanoidRootPart")
+                local enemyHead = enemy:FindFirstChild("Head")
+                local humanoid = enemy:FindFirstChildOfClass("Humanoid")
+
+                if enemyRoot and enemyHead and humanoid and humanoid.Health > 0 then
+                    if (enemyRoot.Position - root.Position).Magnitude <= 25 then
+
+                        pcall(function()
+                            SetNetworkOwner:FireServer(enemyRoot, enemyRoot.CFrame)
+                            task.wait(0.1)
+
+                            DestroyGrabLine:FireServer(enemyRoot)
+
+                            if enemyHead:FindFirstChild("PartOwner")
+                               and enemyHead.PartOwner.Value == LocalPlayer.Name then
+
+                                -- yeet enemy parts into the sun (twice)
+                                for _, part in ipairs(enemy:GetChildren()) do
+                                    if part:IsA("BasePart") then
+                                        part.CFrame = CFrame.new(-1e9, 1e9, -1e9)
+                                    end
+                                end
+                                task.wait()
+                                for _, part in ipairs(enemy:GetChildren()) do
+                                    if part:IsA("BasePart") then
+                                        part.CFrame = CFrame.new(-1e9, 1e9, -1e9)
+                                    end
+                                end
+
+                                -- downward delete-beam
+                                local bv = Instance.new("BodyVelocity")
+                                bv.Velocity = Vector3.new(0, -9999999, 0)
+                                bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                                bv.P = 100000075
+                                bv.Parent = enemyRoot
+
+                                humanoid.Sit = false
+                                humanoid.Jump = true
+                                humanoid.BreakJointsOnDeath = false
+                                humanoid:ChangeState(Enum.HumanoidStateType.Dead)
+
+                                task.delay(2, function()
+                                    if bv and bv.Parent then
+                                        bv:Destroy()
+                                    end
+                                end)
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function StopDeathAura()
+    if DeathAuraConnection then
+        DeathAuraConnection:Disconnect()
+        DeathAuraConnection = nil
+    end
+end
+
+--//////////////////////////////////////////////////////////////////////////////
+--  DEATH AURA TOGGLE
+--//////////////////////////////////////////////////////////////////////////////
+
+Tab:CreateToggle({
+    Name = "Death Aura",
+    CurrentValue = false,
+    Flag = "DeathAuraFTAP",
+    Callback = function(Value)
+        if Value then
+            StartDeathAura()
+        else
+            StopDeathAura()
+        end
+    end,
+})
