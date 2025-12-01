@@ -36,3 +36,515 @@ local Window = Rayfield:CreateWindow({
       Key = {"Hello"}
    }
 })
+
+--//////////////////////////////////////////////////////////////////////////////
+local Tab = Window:CreateTab("Grab", 0)
+--//////////////////////////////////////////////////////////////////////////////
+
+--//////////////////////////////////////////////////////////////////////////////
+-- SERVICES & LOCALS
+--//////////////////////////////////////////////////////////////////////////////
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+local lp = LocalPlayer
+
+-- Wait for LocalPlayer if not ready
+if not LocalPlayer then
+    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+    LocalPlayer = Players.LocalPlayer
+    lp = LocalPlayer
+end
+
+--//////////////////////////////////////////////////////////////////////////////
+-- FTAP THROW SYSTEM
+--//////////////////////////////////////////////////////////////////////////////
+_G.strength = 400 -- default throw power
+local throwEnabled = false
+
+local function ApplyStrength(part)
+    if not part or not part:IsA("BasePart") then return end
+    if not throwEnabled then return end
+
+    local velocity = Instance.new("BodyVelocity")
+    velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    velocity.Velocity = workspace.CurrentCamera.CFrame.LookVector * _G.strength
+    velocity.Parent = part
+
+    Debris:AddItem(velocity, 1)
+end
+
+workspace.ChildAdded:Connect(function(model)
+    if model.Name == "GrabParts" then
+        local grabPart = model:WaitForChild("GrabPart", 1)
+        if not grabPart then return end
+
+        local weld = grabPart:WaitForChild("WeldConstraint", 1)
+        if not weld or not weld.Part1 then return end
+
+        local grabbed = weld.Part1
+
+        model:GetPropertyChangedSignal("Parent"):Connect(function()
+            if model.Parent == nil then
+                if UserInputService:GetLastInputType() == Enum.UserInputType.MouseButton2 then
+                    ApplyStrength(grabbed)
+                end
+            end
+        end)
+    end
+end)
+
+-- UI Controls
+local ThrowToggle = Tab:CreateToggle({
+    Name = "Stronger Throw",
+    CurrentValue = false,
+    Flag = "ThrowToggle",
+    Callback = function(Value)
+        throwEnabled = Value
+    end,
+})
+
+local ThrowSlider = Tab:CreateSlider({
+    Name = "Throw Strength",
+    Range = {400, 10000},
+    Increment = 100,
+    Suffix = "Strength",
+    CurrentValue = _G.strength,
+    Flag = "ThrowStrength",
+    Callback = function(Value)
+        _G.strength = Value
+    end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+-- DEATH GRAB SYSTEM
+--//////////////////////////////////////////////////////////////////////////////
+local autoGrabToggle = false
+local grabbedPlayers = {}
+
+local function handleGrabbedPlayer(player)
+    local character = player.Character
+    if character and character:FindFirstChild("Humanoid") then
+        local humanoid = character.Humanoid
+        humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+        humanoid.BreakJointsOnDeath = false
+        humanoid.Health = 0
+    end
+end
+
+local function cleanupPlayerTracking(player)
+    grabbedPlayers[player.UserId] = nil
+end
+
+local function onPlayerCharacterAdded(player)
+    grabbedPlayers[player.UserId] = nil
+end
+
+local function onPlayerAdded(player)
+    player.CharacterAdded:Connect(function()
+        onPlayerCharacterAdded(player)
+    end)
+    if player.Character then
+        onPlayerCharacterAdded(player)
+    end
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    onPlayerAdded(player)
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+Players.PlayerRemoving:Connect(cleanupPlayerTracking)
+
+local function checkHeldPlayers()
+    if not autoGrabToggle then return end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local head = player.Character:FindFirstChild("Head")
+            if head then
+                local partOwner = head:FindFirstChild("PartOwner")
+                if partOwner and partOwner:IsA("StringValue") and partOwner.Value == LocalPlayer.Name then
+                    if not grabbedPlayers[player.UserId] then
+                        grabbedPlayers[player.UserId] = true
+                        print("Player held: " .. (player.DisplayName or player.Name))
+                        handleGrabbedPlayer(player)
+                    end
+                else
+                    grabbedPlayers[player.UserId] = nil
+                end
+            else
+                grabbedPlayers[player.UserId] = nil
+            end
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(checkHeldPlayers)
+
+local DeathGrabToggle = Tab:CreateToggle({
+    Name = "Death Grab",
+    CurrentValue = false,
+    Flag = "DeathGrab",
+    Callback = function(Value)
+        autoGrabToggle = Value
+        print("Auto Grab Players toggle set to:", Value)
+    end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+-- HEAVEN GRAB SYSTEM
+--//////////////////////////////////////////////////////////////////////////////
+local heavenGrabEnabled = false
+
+local function launchPlayer(character, force)
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        local existingVelocity = rootPart:FindFirstChild("LaunchVelocity")
+        if existingVelocity then existingVelocity:Destroy() end
+
+        local bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.Name = "LaunchVelocity"
+        bodyVelocity.Velocity = Vector3.new(0, force, 0)
+        bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+        bodyVelocity.P = 1250
+        bodyVelocity.Parent = rootPart
+        Debris:AddItem(bodyVelocity, 0.5)
+    end
+end
+
+local function removeLaunch(character)
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        local existingVelocity = rootPart:FindFirstChild("LaunchVelocity")
+        if existingVelocity then existingVelocity:Destroy() end
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    if not heavenGrabEnabled then return end
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local head = player.Character:FindFirstChild("Head")
+            local partOwner = head and head:FindFirstChild("PartOwner")
+            if partOwner and partOwner:IsA("StringValue") and partOwner.Value == LocalPlayer.Name then
+                if not grabbedPlayers[player.UserId] then
+                    grabbedPlayers[player.UserId] = true
+                    print("Heaven Grab: " .. (player.DisplayName or player.Name))
+                end
+                launchPlayer(player.Character, 1e11)
+            else
+                grabbedPlayers[player.UserId] = nil
+            end
+        end
+    end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        local head = character:WaitForChild("Head")
+        local partOwner = head:WaitForChild("PartOwner")
+        if heavenGrabEnabled and partOwner.Value == LocalPlayer.Name then
+            launchPlayer(character, 1e8)
+        end
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    grabbedPlayers[player.UserId] = nil
+end)
+
+local HeavenGrabToggle = Tab:CreateToggle({
+    Name = "Heaven Grab",
+    CurrentValue = false,
+    Flag = "HeavenGrab",
+    Callback = function(Value)
+        heavenGrabEnabled = Value
+        if not Value then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    removeLaunch(player.Character)
+                end
+            end
+            grabbedPlayers = {}
+        end
+    end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+-- MASSLESS GRAB
+--//////////////////////////////////////////////////////////////////////////////
+local masslessGrabEnabled = false
+
+local function upgradeDragPart(dragPart)
+    if not dragPart:IsA("BasePart") then return end
+    local alignO = dragPart:FindFirstChild("AlignOrientation")
+    local alignP = dragPart:FindFirstChild("AlignPosition")
+    if alignO then
+        alignO.MaxTorque = math.huge
+        alignO.Responsiveness = 200
+    end
+    if alignP then
+        alignP.MaxForce = math.huge
+        alignP.Responsiveness = 200
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    if masslessGrabEnabled then
+        local grabParts = workspace:FindFirstChild("GrabParts")
+        if grabParts then
+            for _, child in ipairs(grabParts:GetChildren()) do
+                upgradeDragPart(child)
+            end
+        end
+    end
+end)
+
+Tab:CreateToggle({
+   Name = "Massless Grab",
+   CurrentValue = false,
+   Flag = "MasslessGrab",
+   Callback = function(Value)
+       masslessGrabEnabled = Value
+   end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+-- NO-CLIP GRAB
+--//////////////////////////////////////////////////////////////////////////////
+local noclipGrabEnabled = false
+local lastModel = nil
+local modelCollides = {}
+
+local blacklist = {
+    workspace:WaitForChild("Slots"),
+    workspace:WaitForChild("Plots"),
+    workspace:WaitForChild("Map")
+}
+
+local function getModelFromPart(part)
+    local current = part
+    while current.Parent and not current:IsA("Model") do
+        current = current.Parent
+    end
+    return current:IsA("Model") and current or nil
+end
+
+local function isBlacklisted(model)
+    for _, parent in ipairs(blacklist) do
+        if model:IsDescendantOf(parent) then return true end
+    end
+    return false
+end
+
+local function setCanCollide(model, value)
+    if not model then return end
+    modelCollides[model] = modelCollides[model] or {}
+    for _, part in ipairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then
+            if not value then
+                modelCollides[model][part] = modelCollides[model][part] or part.CanCollide
+                part.CanCollide = false
+            else
+                part.CanCollide = modelCollides[model][part] or true
+                modelCollides[model][part] = nil
+            end
+        end
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    if not noclipGrabEnabled then
+        if lastModel then
+            setCanCollide(lastModel, true)
+            local grabbed = lastModel:FindFirstChild("Grabbed")
+            if grabbed then grabbed:Destroy() end
+            lastModel = nil
+        end
+        return
+    end
+
+    local grabFolder = workspace:FindFirstChild("GrabParts")
+    if not grabFolder then return end
+    local grabPart = grabFolder:FindFirstChild("GrabPart")
+    if not grabPart then return end
+
+    local weld = grabPart:FindFirstChild("WeldConstraint")
+    if not weld then return end
+
+    local attached = weld.Part1
+    local currentModel = getModelFromPart(attached)
+
+    if lastModel and lastModel ~= currentModel then
+        setCanCollide(lastModel, true)
+        local grabbed = lastModel:FindFirstChild("Grabbed")
+        if grabbed then grabbed:Destroy() end
+        lastModel = nil
+    end
+
+    if currentModel and not isBlacklisted(currentModel) then
+        local grabbed = currentModel:FindFirstChild("Grabbed")
+        if not grabbed then
+            grabbed = Instance.new("ObjectValue")
+            grabbed.Name = "Grabbed"
+            grabbed.Parent = currentModel
+        end
+        grabbed.Value = LocalPlayer
+        setCanCollide(currentModel, false)
+        lastModel = currentModel
+    end
+end)
+
+Tab:CreateToggle({
+    Name = "No-clip Grab",
+    CurrentValue = false,
+    Flag = "NoclipGrab",
+    Callback = function(Value)
+        noclipGrabEnabled = Value
+        if not Value and lastModel then
+            setCanCollide(lastModel, true)
+            local grabbed = lastModel:FindFirstChild("Grabbed")
+            if grabbed then grabbed:Destroy() end
+            lastModel = nil
+        end
+    end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+-- BRING PLAYERS SYSTEM
+--//////////////////////////////////////////////////////////////////////////////
+local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
+local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
+local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
+
+local function findRoot(char)
+    return char and (char:FindFirstChild("HumanoidRootPart") 
+        or char:FindFirstChild("UpperTorso") 
+        or char:FindFirstChild("Torso"))
+end
+
+local function tryClaimOwner(tRoot, attempts, interval)
+    attempts = attempts or 8
+    interval = interval or 0
+    for i = 1, attempts do
+        pcall(function() SetNetworkOwner:FireServer(tRoot, tRoot.CFrame) end)
+        local head = tRoot.Parent and tRoot.Parent:FindFirstChild("Head")
+        local owner = head and head:FindFirstChild("PartOwner")
+        if owner and owner.Value == LocalPlayer.Name then return true end
+        task.wait(interval)
+    end
+    return false
+end
+
+local function bringOne(targetPlayer, originalCF)
+    if not targetPlayer or targetPlayer == LocalPlayer then return end
+    local char = targetPlayer.Character
+    if not char then return end
+
+    local tRoot = findRoot(char)
+    local head = char:FindFirstChild("Head")
+    local hum = char:FindFirstChild("Humanoid")
+    if not tRoot or not head or not hum or hum.Health <= 0 then return end
+
+    local near = tRoot.CFrame * CFrame.new(0, -3, -2)
+    local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local myRoot = findRoot(myChar)
+    if myRoot then pcall(function() myRoot.CFrame = near end) end
+
+    tryClaimOwner(tRoot, 14, 0.02)
+
+    if DestroyGrabLine then pcall(function() DestroyGrabLine:FireServer(tRoot) end) end
+    pcall(function()
+        tRoot.AssemblyLinearVelocity = Vector3.new(0,0,0)
+        tRoot.CFrame = originalCF
+    end)
+end
+
+-- Dropdown UI
+local selectedPlayers = {}
+local displayNameToPlayer = {}
+
+local function getDisplayNames()
+    displayNameToPlayer = {}
+    local names = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local displayName = plr.DisplayName
+            table.insert(names, displayName)
+            displayNameToPlayer[displayName] = plr
+        end
+    end
+    return names
+end
+
+local PlayerDropdown = Tab:CreateDropdown({
+    Name = "Select Players",
+    Options = getDisplayNames(),
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "SelectedPlayers",
+    Callback = function(Options)
+        selectedPlayers = {}
+        for _, displayName in ipairs(Options) do
+            local plr = displayNameToPlayer[displayName]
+            if plr then table.insert(selectedPlayers, plr) end
+        end
+    end,
+})
+
+local function refreshDropdown()
+    PlayerDropdown:Refresh(getDisplayNames(), {})
+end
+
+Players.PlayerAdded:Connect(refreshDropdown)
+Players.PlayerRemoving:Connect(refreshDropdown)
+
+-- Bring Selected
+Tab:CreateButton({
+    Name = "Bring Selected",
+    Callback = function()
+        local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local myRoot = findRoot(myChar)
+        if not myRoot then return end
+        local originalCF = myRoot.CFrame
+
+        for _, plr in ipairs(selectedPlayers) do
+            pcall(function() bringOne(plr, originalCF) end)
+        end
+
+        -- Return to original
+        pcall(function()
+            local myChar2 = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local myRoot2 = findRoot(myChar2)
+            if myRoot2 then myRoot2.CFrame = originalCF end
+        end)
+    end,
+})
+
+-- Bring All
+Tab:CreateButton({
+    Name = "Bring All",
+    Callback = function()
+        local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local myRoot = findRoot(myChar)
+        if not myRoot then return end
+        local originalCF = myRoot.CFrame
+
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer then
+                pcall(function() bringOne(plr, originalCF) end)
+            end
+        end
+
+        pcall(function()
+            local myChar2 = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local myRoot2 = findRoot(myChar2)
+            if myRoot2 then myRoot2.CFrame = originalCF end
+        end)
+    end,
+})
