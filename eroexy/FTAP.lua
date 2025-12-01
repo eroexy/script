@@ -450,70 +450,18 @@ local Toggle = Tab:CreateToggle({
 })
 
 --//////////////////////////////////////////////////////////////////////////////
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UIS = game:GetService("UserInputService")
-
-local LocalPlayer = Players.LocalPlayer
-
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-local Window = Rayfield:CreateWindow({
-    Name = "Fling things and people",
-    Icon = 0,
-    LoadingTitle = "Fling things and people",
-    LoadingSubtitle = "",
-    ShowText = "nil",
-    Theme = "Default",
-    ToggleUIKeybind = "M",
-    DisableRayfieldPrompts = true,
-    DisableBuildWarnings = false,
-
-    ConfigurationSaving = {
-        Enabled = false,
-        FolderName = true,
-        FileName = "eroexyFTAP"
-    },
-
-    Discord = {
-        Enabled = false,
-        Invite = "",
-        RememberJoins = true
-    },
-
-    KeySystem = false,
-    KeySettings = {
-        Title = "",
-        Subtitle = "Key System",
-        Note = "",
-        FileName = "",
-        SaveKey = true,
-        GrabKeyFromSite = false,
-        Key = {"Hello"}
-    }
-})
-
 local Tab = Window:CreateTab("Grab", 0)
-
---//////////////////////////////////////////////////////////////////////////////
--- BRING SYSTEM
---//////////////////////////////////////////////////////////////////////////////
 local Section = Tab:CreateSection("Bring")
-
-local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
-local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
-local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
-
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 -- SAVED LOCATION SYSTEM
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 
 local savedCF = nil
 local saveToggle = false
 
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 -- DROPDOWN
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 
 local selectedPlayers = {}
 local displayNameToPlayer = {}
@@ -554,9 +502,9 @@ end
 Players.PlayerAdded:Connect(refreshDropdown)
 Players.PlayerRemoving:Connect(refreshDropdown)
 
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 -- MOVE TOGGLE **BELOW DROPDOWN**
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 
 Tab:CreateToggle({
     Name = "Bring Location (V)",
@@ -570,9 +518,9 @@ Tab:CreateToggle({
     end,
 })
 
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 -- V KEY SAVE (NOW PRINTS ONLY X Y Z)
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 
 UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
@@ -596,9 +544,9 @@ UIS.InputBegan:Connect(function(input, gpe)
     end
 end)
 
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 -- BRING FUNCTIONS
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 
 local function findRoot(char)
     return char and (
@@ -660,9 +608,9 @@ local function bringOne(targetPlayer, targetCF)
     end)
 end
 
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 -- BRING SELECTED
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 
 Tab:CreateButton({
     Name = "Bring Selected",
@@ -688,9 +636,9 @@ Tab:CreateButton({
     end
 })
 
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 -- BRING ALL
----------------------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 
 Tab:CreateButton({
     Name = "Bring All",
