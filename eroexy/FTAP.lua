@@ -318,27 +318,37 @@ Tab:CreateToggle({
 --//////////////////////////////////////////////////////////////////////////////
 -- NO-CLIP GRAB
 --//////////////////////////////////////////////////////////////////////////////
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Variables
 local noclipGrabEnabled = false
 local lastModel = nil
-local modelCollides = {}
+local modelCollides = {} -- store original CanCollide states
 
+-- Blacklist for models we don't want to noclip
 local blacklist = {
     workspace:WaitForChild("Slots"),
     workspace:WaitForChild("Plots"),
     workspace:WaitForChild("Map")
 }
 
+-- Helpers
 local function getModelFromPart(part)
     local current = part
-    while current.Parent and not current:IsA("Model") do
+    while current and current.Parent and not current:IsA("Model") do
         current = current.Parent
     end
-    return current:IsA("Model") and current or nil
+    return current and current:IsA("Model") and current or nil
 end
 
 local function isBlacklisted(model)
     for _, parent in ipairs(blacklist) do
-        if model:IsDescendantOf(parent) then return true end
+        if model:IsDescendantOf(parent) then
+            return true
+        end
     end
     return false
 end
@@ -346,76 +356,36 @@ end
 local function setCanCollide(model, value)
     if not model then return end
     modelCollides[model] = modelCollides[model] or {}
+
     for _, part in ipairs(model:GetDescendants()) do
         if part:IsA("BasePart") then
             if not value then
-                modelCollides[model][part] = modelCollides[model][part] or part.CanCollide
+                -- store original state only once
+                if modelCollides[model][part] == nil then
+                    modelCollides[model][part] = part.CanCollide
+                end
                 part.CanCollide = false
             else
-                part.CanCollide = modelCollides[model][part] or true
-                modelCollides[model][part] = nil
+                -- restore original state
+                if modelCollides[model][part] ~= nil then
+                    part.CanCollide = modelCollides[model][part]
+                    modelCollides[model][part] = nil
+                end
             end
         end
     end
+
+    -- cleanup table if empty
+    if value and next(modelCollides[model]) == nil then
+        modelCollides[model] = nil
+    end
 end
 
+-- Heartbeat loop
 RunService.Heartbeat:Connect(function()
     if not noclipGrabEnabled then
         if lastModel then
             setCanCollide(lastModel, true)
-            local grabbed = lastModel:FindFirstChild("Grabbed")
-            if grabbed then grabbed:Destroy() end
-            lastModel = nil
-        end
-        return
-    end
-
-    local grabFolder = workspace:FindFirstChild("GrabParts")
-    if not grabFolder then return end
-    local grabPart = grabFolder:FindFirstChild("GrabPart")
-    if not grabPart then return end
-
-    local weld = grabPart:FindFirstChild("WeldConstraint")
-    if not weld then return end
-
-    local attached = weld.Part1
-    local currentModel = getModelFromPart(attached)
-
-    if lastModel and lastModel ~= currentModel then
-        setCanCollide(lastModel, true)
-        local grabbed = lastModel:FindFirstChild("Grabbed")
-        if grabbed then grabbed:Destroy() end
-        lastModel = nil
-    end
-
-    if currentModel and not isBlacklisted(currentModel) then
-        local grabbed = currentModel:FindFirstChild("Grabbed")
-        if not grabbed then
-            grabbed = Instance.new("ObjectValue")
-            grabbed.Name = "Grabbed"
-            grabbed.Parent = currentModel
-        end
-        grabbed.Value = LocalPlayer
-        setCanCollide(currentModel, false)
-        lastModel = currentModel
-    end
-end)
-
-Tab:CreateToggle({
-    Name = "No-clip Grab",
-    CurrentValue = false,
-    Flag = "NoclipGrab",
-    Callback = function(Value)
-        noclipGrabEnabled = Value
-        if not Value and lastModel then
-            setCanCollide(lastModel, true)
-            local grabbed = lastModel:FindFirstChild("Grabbed")
-            if grabbed then grabbed:Destroy() end
-            lastModel = nil
-        end
-    end,
-})
-
 --//////////////////////////////////////////////////////////////////////////////
 -- BRING PLAYERS SYSTEM
 local Section = Tab:CreateSection("Bring")
@@ -1027,3 +997,172 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+--//////////////////////////////////////////////////////////////////////////////
+local Tab = Window:CreateTab("Aura", 0)
+--//////////////////////////////////////////////////////////////////////////////
+
+--//////////////////////////////////////////////////////////////////////////////
+-- SERVICES & VARIABLES
+--//////////////////////////////////////////////////////////////////////////////
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
+local CreateGrabLine = GrabEvents:WaitForChild("CreateGrabLine")
+local DestroyGrabLine = GrabEvents:WaitForChild("DestroyGrabLine")
+local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
+local ExtendGrabLine = GrabEvents:WaitForChild("ExtendGrabLine")
+
+local MAX_REACH = 30
+local LAUNCH_FORCE = 10000
+
+--//////////////////////////////////////////////////////////////////////////////
+-- HEAVEN AURA
+--//////////////////////////////////////////////////////////////////////////////
+local heavenEnabled = false
+
+local function grabAndLaunch(player)
+    if not player.Character then return end
+
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp or not myHRP then return end
+
+    local distance = (hrp.Position - myHRP.Position).Magnitude
+    if distance > MAX_REACH then return end
+
+    local offset = myHRP.CFrame
+
+    -- Invisible grab
+    pcall(CreateGrabLine.FireServer, CreateGrabLine, hrp, offset)
+    if DestroyGrabLine then
+        pcall(DestroyGrabLine.FireServer, DestroyGrabLine, hrp)
+    end
+    pcall(SetNetworkOwner.FireServer, SetNetworkOwner, hrp, offset)
+    pcall(ExtendGrabLine.FireServer, ExtendGrabLine, distance)
+
+    -- Launch player
+    local existingVelocity = hrp:FindFirstChild("LaunchVelocity")
+    if existingVelocity then existingVelocity:Destroy() end
+
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "LaunchVelocity"
+    bv.Velocity = Vector3.new(0, LAUNCH_FORCE, 0)
+    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bv.P = 1250
+    bv.Parent = hrp
+
+    Debris:AddItem(bv, 1)
+end
+
+-- Heartbeat loop for Heaven Aura
+RunService.Heartbeat:Connect(function()
+    if heavenEnabled and LocalPlayer.Character then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                grabAndLaunch(player)
+            end
+        end
+    end
+end)
+
+-- Heaven Aura Toggle
+Tab:CreateToggle({
+    Name = "Heaven Aura",
+    CurrentValue = false,
+    Flag = "HeavenAura",
+    Callback = function(Value)
+        heavenEnabled = Value
+    end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+-- DEATH AURA
+--//////////////////////////////////////////////////////////////////////////////
+local deathEnabled = false
+local deathConnection = nil
+
+local function startDeathAura()
+    deathConnection = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local enemy = player.Character
+                local enemyRoot = enemy:FindFirstChild("HumanoidRootPart")
+                local enemyHead = enemy:FindFirstChild("Head")
+                local humanoid = enemy:FindFirstChildOfClass("Humanoid")
+
+                if enemyRoot and enemyHead and humanoid and humanoid.Health > 0 then
+                    if (enemyRoot.Position - root.Position).Magnitude <= 25 then
+                        pcall(function()
+                            -- Grab and take network ownership
+                            SetNetworkOwner:FireServer(enemyRoot, enemyRoot.CFrame)
+                            task.wait(0.1)
+                            DestroyGrabLine:FireServer(enemyRoot)
+
+                            -- Confirm ownership
+                            if enemyHead:FindFirstChild("PartOwner") 
+                               and enemyHead.PartOwner.Value == LocalPlayer.Name then
+
+                                -- Move enemy parts far away
+                                for _, part in ipairs(enemy:GetChildren()) do
+                                    if part:IsA("BasePart") then
+                                        part.CFrame = CFrame.new(-1e9, 1e9, -1e9)
+                                    end
+                                end
+
+                                -- Apply extreme downward velocity
+                                local bv = Instance.new("BodyVelocity")
+                                bv.Velocity = Vector3.new(0, -9e9, 0)
+                                bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                                bv.P = 1e8
+                                bv.Parent = enemyRoot
+
+                                -- Force humanoid death
+                                humanoid.Sit = false
+                                humanoid.Jump = true
+                                humanoid.BreakJointsOnDeath = false
+                                humanoid:ChangeState(Enum.HumanoidStateType.Dead)
+
+                                -- Cleanup velocity
+                                task.delay(2, function()
+                                    if bv and bv.Parent then bv:Destroy() end
+                                end)
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function stopDeathAura()
+    if deathConnection then
+        deathConnection:Disconnect()
+        deathConnection = nil
+    end
+end
+
+-- Death Aura Toggle
+Tab:CreateToggle({
+    Name = "Death Aura",
+    CurrentValue = false,
+    Flag = "DeathAuraFTAP",
+    Callback = function(Value)
+        if Value then
+            startDeathAura()
+        else
+            stopDeathAura()
+        end
+    end,
+})
