@@ -550,3 +550,476 @@ Tab:CreateButton({
         end)
     end,
 })
+--//////////////////////////////////////////////////////////////////////////////
+local Tab = Window:CreateTab("Defense", 0)
+--//////////////////////////////////////////////////////////////////////////////
+--//////////////////////////////////////////////////////////////////////////////
+-- Services
+--//////////////////////////////////////////////////////////////////////////////
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
+
+local LocalPlayer = Players.LocalPlayer
+local Tab -- Assuming this is defined somewhere in your UI code
+
+--//////////////////////////////////////////////////////////////////////////////
+-- Anti-Grab (Freeze while held)
+--//////////////////////////////////////////////////////////////////////////////
+local isHeld = LocalPlayer:WaitForChild("IsHeld")
+local StruggleEvent = ReplicatedStorage.CharacterEvents:WaitForChild("Struggle")
+
+local lastPositionBeforeHeld = nil
+local previousValue = isHeld.Value
+local freezeEnabled = false
+
+local function getHRP()
+    return LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+end
+
+local function resetHumanoid()
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local humanoid = char:FindFirstChild("Humanoid")
+    local hrp = getHRP()
+
+    if humanoid then
+        humanoid.Sit = false
+        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+        humanoid.AutoRotate = true
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+    end
+
+    if hrp then hrp.Anchored = false end
+end
+
+-- Toggle
+Tab:CreateToggle({
+    Name = "Anti-Grab",
+    CurrentValue = false,
+    Flag = "AntiGrab",
+    Callback = function(Value)
+        freezeEnabled = Value
+        if not freezeEnabled then
+            local hrp = getHRP()
+            if hrp then hrp.Anchored = false end
+        end
+    end,
+})
+
+-- Listen for IsHeld changes
+isHeld:GetPropertyChangedSignal("Value"):Connect(function()
+    if not freezeEnabled then return end
+
+    local hrp = getHRP()
+    if not hrp then return end
+
+    local newValue = isHeld.Value
+
+    if previousValue == false and newValue == true then
+        lastPositionBeforeHeld = hrp.CFrame
+        hrp.Anchored = true
+    elseif previousValue == true and newValue == false then
+        hrp.Anchored = false
+        if lastPositionBeforeHeld then hrp.CFrame = lastPositionBeforeHeld end
+    end
+
+    previousValue = newValue
+end)
+
+-- Freeze & struggle while held
+RunService.RenderStepped:Connect(function()
+    if freezeEnabled and isHeld.Value then
+        local hrp = getHRP()
+        if hrp then
+            hrp.Anchored = true
+            pcall(function() StruggleEvent:FireServer() end)
+            resetHumanoid()
+        end
+    end
+end)
+
+-- Reset humanoid on respawn
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.1)
+    if freezeEnabled then resetHumanoid() end
+end)
+
+--//////////////////////////////////////////////////////////////////////////////
+-- Anti-Gucci (Persistent Blobman)
+--//////////////////////////////////////////////////////////////////////////////
+local enabled = false
+local originalBlobman
+local ragdollConn
+local posCheckConn
+local originalCFrame
+
+local function findBlobman()
+    local function isOwnedByPlayer(blob)
+        local playerValue = blob:FindFirstChild("PlayerValue")
+        return playerValue and playerValue.Value == LocalPlayer
+    end
+
+    local playerFolder = Workspace:FindFirstChild(LocalPlayer.Name.."SpawnedInToys")
+    if playerFolder then
+        for _, blob in ipairs(playerFolder:GetChildren()) do
+            if blob.Name == "CreatureBlobman" and isOwnedByPlayer(blob) then
+                return blob
+            end
+        end
+    end
+
+    local plotItems = Workspace:FindFirstChild("PlotItems")
+    if plotItems then
+        for i = 1, 6 do
+            local plot = plotItems:FindFirstChild("Plot"..i)
+            if plot then
+                for _, blob in ipairs(plot:GetChildren()) do
+                    if blob.Name == "CreatureBlobman" and isOwnedByPlayer(blob) then
+                        return blob
+                    end
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+local function rideBlobman(Character, HRP, Humanoid)
+    if not originalBlobman or not originalBlobman.Parent then return false end
+    local seat = originalBlobman:FindFirstChild("VehicleSeat")
+    if seat and seat:IsA("VehicleSeat") then
+        originalCFrame = HRP.CFrame
+        HRP.CFrame = seat.CFrame + Vector3.new(0,2,0)
+        seat:Sit(Humanoid)
+        return true
+    end
+    return false
+end
+
+local function setupAntiGucci(Character)
+    local HRP = Character:WaitForChild("HumanoidRootPart")
+    local Humanoid = Character:WaitForChild("Humanoid")
+
+    originalBlobman = findBlobman()
+    if not originalBlobman or not originalBlobman.Parent then
+        ReplicatedStorage.MenuToys.SpawnToyRemoteFunction:InvokeServer(
+            "CreatureBlobman",
+            HRP.CFrame,
+            Vector3.new(0,59.667,0)
+        )
+        originalBlobman = findBlobman()
+        if not originalBlobman then return end
+    end
+
+    local sitting = rideBlobman(Character, HRP, Humanoid)
+    if not sitting then return end
+
+    -- Prevent ragdoll while sitting
+    ragdollConn = RunService.Heartbeat:Connect(function()
+        if enabled and sitting then
+            pcall(function()
+                ReplicatedStorage.CharacterEvents.RagdollRemote:FireServer(HRP, 0)
+            end)
+        end
+    end)
+
+    -- Detect return to original spot
+    posCheckConn = RunService.Heartbeat:Connect(function()
+        if enabled and (HRP.Position - originalCFrame.Position).Magnitude < 1 then
+            sitting = false
+        end
+    end)
+
+    task.delay(0.5, function()
+        if sitting then HRP.CFrame = originalCFrame end
+    end)
+end
+
+-- Toggle
+Tab:CreateToggle({
+    Name = "Anti-Grab Gucci",
+    CurrentValue = false,
+    Flag = "AntiGucci",
+    Callback = function(Value)
+        enabled = Value
+        if enabled then
+            setupAntiGucci(LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait())
+            print("Anti-Gucci Enabled")
+        else
+            if ragdollConn then ragdollConn:Disconnect() end
+            if posCheckConn then posCheckConn:Disconnect() end
+            print("Anti-Gucci Disabled")
+        end
+    end,
+})
+
+-- Auto-setup on respawn
+LocalPlayer.CharacterAdded:Connect(function(Character)
+    if enabled then task.wait(0.1); setupAntiGucci(Character) end
+end)
+
+--//////////////////////////////////////////////////////////////////////////////
+-- Anti-Paint
+--//////////////////////////////////////////////////////////////////////////////
+local AntiPaintEnabled = false
+local loopConnection
+
+Tab:CreateToggle({
+    Name = "Anti-Paint",
+    CurrentValue = false,
+    Flag = "AntiPaintToggle",
+    Callback = function(Value)
+        AntiPaintEnabled = Value
+        if loopConnection then loopConnection:Disconnect(); loopConnection = nil end
+        if AntiPaintEnabled then
+            loopConnection = RunService.Heartbeat:Connect(function()
+                for _, obj in ipairs(Workspace:GetChildren()) do
+                    if string.match(obj.Name, "SpawnedInToys$") then
+                        for _, bucket in ipairs(obj:GetChildren()) do
+                            if bucket.Name == "BucketPaint" then
+                                for _, part in ipairs(bucket:GetChildren()) do
+                                    if part.Name == "PaintPlayerPart" then
+                                        part:Destroy()
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+-- Other Players Protection & Auto-Attack
+--//////////////////////////////////////////////////////////////////////////////
+local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
+local CreateGrabLine = GrabEvents:WaitForChild("CreateGrabLine")
+local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
+local ExtendGrabLine = GrabEvents:WaitForChild("ExtendGrabLine")
+local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
+
+local MAX_REACH = 30
+local LAUNCH_FORCE = 10000
+
+local protectionEnabled = false
+local protectedPlayers = {}
+local whitelistedPlayers = {}
+local autoAttackMode = "Nothing"
+
+local ghostPos = nil
+local camera = Workspace.CurrentCamera
+local camFrozen = false
+local storedCamCF = nil
+
+local displayNameToPlayer = {}
+local function getDisplayNames()
+    displayNameToPlayer = {}
+    local list = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            table.insert(list, plr.DisplayName)
+            displayNameToPlayer[plr.DisplayName] = plr
+        end
+    end
+    return list
+end
+
+-- Dropdowns and toggles
+local WhitelistDropdown = Tab:CreateDropdown({
+    Name = "Whitelist",
+    Options = getDisplayNames(),
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "WhitelistPlayers",
+    Callback = function(options)
+        whitelistedPlayers = {}
+        for _, name in ipairs(options) do
+            local plr = displayNameToPlayer[name]
+            if plr then table.insert(whitelistedPlayers, plr) end
+        end
+    end,
+})
+
+local ProtectDropdown = Tab:CreateDropdown({
+    Name = "Protected Players",
+    Options = getDisplayNames(),
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "ProtectedList",
+    Callback = function(selected)
+        protectedPlayers = {}
+        for _, name in ipairs(selected) do
+            local plr = displayNameToPlayer[name]
+            if plr then table.insert(protectedPlayers, plr) end
+        end
+    end,
+})
+
+local ProtectToggle = Tab:CreateToggle({
+    Name = "Protect Players",
+    CurrentValue = false,
+    Flag = "ProtectionEnabled",
+    Callback = function(v) protectionEnabled = v end,
+})
+
+local AutoAttackDropdown = Tab:CreateDropdown({
+    Name = "Auto Attack",
+    Options = {"Nothing", "Kick", "Heaven"},
+    MultipleOptions = false,
+    CurrentOption = {"Nothing"},
+    Flag = "AutoAttackMode",
+    Callback = function(option) autoAttackMode = option[1] end,
+})
+
+-- Refresh dynamically
+local function refreshDropdowns()
+    ProtectDropdown:Refresh(getDisplayNames(), {})
+    WhitelistDropdown:Refresh(getDisplayNames(), {})
+end
+Players.PlayerAdded:Connect(refreshDropdowns)
+Players.PlayerRemoving:Connect(refreshDropdowns)
+
+-- Ghost teleport helpers
+local function freezeCamera()
+    if camFrozen then return end
+    camFrozen = true
+    storedCamCF = camera.CFrame
+    camera.CameraType = Enum.CameraType.Scriptable
+    camera.CFrame = storedCamCF
+end
+
+local function restoreCamera()
+    if not camFrozen then return end
+    camFrozen = false
+    camera.CameraType = Enum.CameraType.Custom
+end
+
+local function ghostTeleport(cf)
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    if not ghostPos then ghostPos = root.CFrame end
+    freezeCamera()
+    root.CFrame = cf
+    task.defer(function() if storedCamCF then camera.CFrame = storedCamCF end end)
+end
+
+local function ghostRestoreSoon()
+    task.delay(0.03, function()
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root and ghostPos then root.CFrame = ghostPos end
+        restoreCamera()
+        ghostPos = nil
+    end)
+end
+
+-- Helpers for grabbing and attacks
+local function resolveAttacker(value)
+    if typeof(value) == "Instance" and value:IsA("Player") then return value end
+    if typeof(value) == "string" then return Players:FindFirstChild(value) end
+    return nil
+end
+
+local function instantGrab(target)
+    if not target.Character then return end
+    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+    local head = target.Character:FindFirstChild("Head")
+    if not hrp or not head then return end
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+    local dist = (myRoot.Position - hrp.Position).Magnitude
+    if dist <= MAX_REACH then
+        pcall(function() CreateGrabLine:FireServer(hrp, myRoot.CFrame) end)
+        pcall(function() DestroyGrabLine:FireServer(hrp) end)
+        pcall(function() SetNetworkOwner:FireServer(hrp, myRoot.CFrame) end)
+        pcall(function() ExtendGrabLine:FireServer(dist) end)
+        return
+    end
+    ghostTeleport(hrp.CFrame * CFrame.new(0, -3, -2))
+    task.wait()
+    pcall(function() SetNetworkOwner:FireServer(hrp, hrp.CFrame) end)
+    pcall(function() DestroyGrabLine:FireServer(hrp) end)
+    ghostRestoreSoon()
+end
+
+local function Heaven(attacker)
+    if not attacker.Character then return end
+    local hrp = attacker.Character:FindFirstChild("HumanoidRootPart")
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp or not myRoot then return end
+    local distance = (hrp.Position - myRoot.Position).Magnitude
+    if distance > MAX_REACH then return end
+    pcall(function() CreateGrabLine:FireServer(hrp, myRoot.CFrame) end)
+    if DestroyGrabLine then pcall(function() DestroyGrabLine:FireServer(hrp) end) end
+    pcall(function() SetNetworkOwner:FireServer(hrp, myRoot.CFrame) end)
+    pcall(function() ExtendGrabLine:FireServer(distance) end)
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "LaunchVelocity"
+    bv.Velocity = Vector3.new(0, LAUNCH_FORCE, 0)
+    bv.MaxForce = Vector3.new(0, math.huge, 0)
+    bv.P = 1250
+    bv.Parent = hrp
+    Debris:AddItem(bv, 1)
+end
+
+local function Death(attacker)
+    if not attacker.Character then return end
+    local enemyRoot = attacker.Character:FindFirstChild("HumanoidRootPart")
+    if not enemyRoot then return end
+    pcall(function()
+        SetNetworkOwner:FireServer(enemyRoot, enemyRoot.CFrame)
+        if DestroyGrabLine then DestroyGrabLine:FireServer(enemyRoot) end
+    end)
+    for _, part in ipairs(attacker.Character:GetChildren()) do
+        if part:IsA("BasePart") then part.CFrame = CFrame.new(-1e9, 1e9, -1e9) end
+    end
+    local bv = Instance.new("BodyVelocity")
+    bv.Velocity = Vector3.new(0, -9e17, 0)
+    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bv.P = 100000075
+    bv.Parent = enemyRoot
+    Debris:AddItem(bv, 1)
+end
+
+local function performAutoAttack(attacker)
+    if autoAttackMode == "Nothing" then return end
+    if autoAttackMode == "Heaven" then Heaven(attacker)
+    elseif autoAttackMode == "Kick" then Death(attacker) end
+end
+
+-- Main protection loop
+RunService.Heartbeat:Connect(function()
+    if not protectionEnabled or #protectedPlayers == 0 then return end
+
+    for _, protected in ipairs(protectedPlayers) do
+        if not protected.Character then continue end
+        local head = protected.Character:FindFirstChild("Head")
+        if not head then continue end
+        local ownerInst = head:FindFirstChild("PartOwner")
+        if not ownerInst or not ownerInst.Value then continue end
+
+        local attacker = resolveAttacker(ownerInst.Value)
+        if not attacker or attacker == LocalPlayer then continue end
+
+        -- Skip whitelisted attackers
+        local skip = false
+        for _, w in ipairs(whitelistedPlayers) do
+            if attacker == w then skip = true break end
+        end
+        if skip then continue end
+
+        instantGrab(protected)
+        performAutoAttack(attacker)
+    end
+end)
