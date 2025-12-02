@@ -280,18 +280,46 @@ Tab:CreateToggle({
 --  NO-CLIP GRAB
 --//////////////////////////////////////////////////////////////////////////
 
-local noClipEnabled = false
+local toggleEnabled = false
 local lastModel = nil
 local modelCollides = {}
 
-local function setCanCollide(model, val)
+local blacklist = {
+    workspace:WaitForChild("Slots"),
+    workspace:WaitForChild("Plots"),
+    workspace:WaitForChild("Map")
+}
+
+local function getModelFromPart(part)
+    if not part then return nil end
+
+    local current = part
+    while current.Parent and not current:IsA("Model") do
+        current = current.Parent
+    end
+
+    return current:IsA("Model") and current or nil
+end
+
+local function isBlacklisted(model)
+    for _, parent in ipairs(blacklist) do
+        if model:IsDescendantOf(parent) then
+            return true
+        end
+    end
+    return false
+end
+
+local function setCanCollide(model, value)
     if not model then return end
 
-    modelCollides[model] = modelCollides[model] or {}
+    if not modelCollides[model] then
+        modelCollides[model] = {}
+    end
 
     for _, part in ipairs(model:GetDescendants()) do
         if part:IsA("BasePart") then
-            if not val then
+            if not value then
                 if modelCollides[model][part] == nil then
                     modelCollides[model][part] = part.CanCollide
                 end
@@ -309,41 +337,52 @@ local function setCanCollide(model, val)
 end
 
 RunService.Heartbeat:Connect(function()
-    if not noClipEnabled then
+    if not toggleEnabled then
         if lastModel then
             setCanCollide(lastModel, true)
-            local tag = lastModel:FindFirstChild("Grabbed")
-            if tag then tag:Destroy() end
+            local grabbed = lastModel:FindFirstChild("Grabbed")
+            if grabbed then grabbed:Destroy() end
             lastModel = nil
         end
         return
     end
 
-    local folder = Workspace:FindFirstChild("GrabParts")
-    local part = folder and folder:FindFirstChild("GrabPart")
-    if not part then return end
+    local grabFolder = workspace:FindFirstChild("GrabParts")
+    if not grabFolder then
+        if lastModel then
+            setCanCollide(lastModel, true)
+            local grabbed = lastModel:FindFirstChild("Grabbed")
+            if grabbed then grabbed:Destroy() end
+            lastModel = nil
+        end
+        return
+    end
 
-    local weld = part:FindFirstChild("WeldConstraint")
-    if not weld or not weld.Part1 then return end
+    local grabPart = grabFolder:FindFirstChild("GrabPart")
+    if not grabPart then return end
 
-    local currentModel = getModelFromPart(weld.Part1)
+    local weld = grabPart:FindFirstChild("WeldConstraint")
+    if not weld then return end
+
+    local attached = weld.Part1
+    local currentModel = getModelFromPart(attached)
 
     if lastModel and lastModel ~= currentModel then
         setCanCollide(lastModel, true)
-        local tag = lastModel:FindFirstChild("Grabbed")
-        if tag then tag:Destroy() end
+        local grabbed = lastModel:FindFirstChild("Grabbed")
+        if grabbed then grabbed:Destroy() end
         lastModel = nil
     end
 
     if currentModel and not isBlacklisted(currentModel) then
-        local tag = currentModel:FindFirstChild("Grabbed")
-        if not tag then
-            tag = Instance.new("ObjectValue")
-            tag.Name = "Grabbed"
-            tag.Parent = currentModel
+        local grabbed = currentModel:FindFirstChild("Grabbed")
+        if not grabbed then
+            grabbed = Instance.new("ObjectValue")
+            grabbed.Name = "Grabbed"
+            grabbed.Parent = currentModel
         end
-        tag.Value = LocalPlayer
 
+        grabbed.Value = LocalPlayer
         setCanCollide(currentModel, false)
         lastModel = currentModel
     end
