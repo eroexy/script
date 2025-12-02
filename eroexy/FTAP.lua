@@ -451,20 +451,12 @@ local Toggle = Tab:CreateToggle({
 --//////////////////////////////////////////////////////////////////////////////
 -- BRING PLAYERS SYSTEM
 local Section = Tab:CreateSection("Bring")
---//////////////////////////////////////////////////////////////////////////////
-local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
-local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
-local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
-
-local UIS = game:GetService("UserInputService")
-
 ---------------------------------------------------------------------
 -- SAVED LOCATION SYSTEM
 ---------------------------------------------------------------------
 local savedCF = nil
 local saveToggle = false
 
--- Toggle UI
 Tab:CreateToggle({
     Name = "Use Saved Location (V to Save)",
     CurrentValue = false,
@@ -477,7 +469,6 @@ Tab:CreateToggle({
     end,
 })
 
--- Keybind listener for V
 UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.V and saveToggle then
@@ -485,7 +476,7 @@ UIS.InputBegan:Connect(function(input, gpe)
         local myRoot = myChar:FindFirstChild("HumanoidRootPart")
         if myRoot then
             savedCF = myRoot.CFrame
-            
+
             Rayfield:Notify({
                 Title = "Saved Location",
                 Content = "CFrame saved:\n" .. tostring(savedCF),
@@ -528,7 +519,6 @@ local function bringOne(targetPlayer, targetCF)
     local hum = char:FindFirstChild("Humanoid")
     if not tRoot or not head or not hum or hum.Health <= 0 then return end
 
-    -- Move local player near target to claim ownership
     local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local myRoot = findRoot(myChar)
     if myRoot then
