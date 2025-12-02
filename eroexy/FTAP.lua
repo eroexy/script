@@ -40,90 +40,28 @@ local Window = Rayfield:CreateWindow({
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Grab", 0)
 --//////////////////////////////////////////////////////////////////////////////
-local Section = Tab:CreateSection("Line")
+
 --//////////////////////////////////////////////////////////////////////////////
--- SERVICES & LOCALS
+-- SERVICES AT THE TOP (clean + consistent)
 --//////////////////////////////////////////////////////////////////////////////
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
-local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
-local lp = LocalPlayer
-
--- Wait for LocalPlayer if not ready
-if not LocalPlayer then
-    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
-    LocalPlayer = Players.LocalPlayer
-    lp = LocalPlayer
-end
 
 --//////////////////////////////////////////////////////////////////////////////
--- FTAP THROW SYSTEM
+-- SECTION HEADER
 --//////////////////////////////////////////////////////////////////////////////
-_G.strength = 400 -- default throw power
-local throwEnabled = false
 
-local function ApplyStrength(part)
-    if not part or not part:IsA("BasePart") then return end
-    if not throwEnabled then return end
-
-    local velocity = Instance.new("BodyVelocity")
-    velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    velocity.Velocity = workspace.CurrentCamera.CFrame.LookVector * _G.strength
-    velocity.Parent = part
-
-    Debris:AddItem(velocity, 1)
-end
-
-workspace.ChildAdded:Connect(function(model)
-    if model.Name == "GrabParts" then
-        local grabPart = model:WaitForChild("GrabPart", 1)
-        if not grabPart then return end
-
-        local weld = grabPart:WaitForChild("WeldConstraint", 1)
-        if not weld or not weld.Part1 then return end
-
-        local grabbed = weld.Part1
-
-        model:GetPropertyChangedSignal("Parent"):Connect(function()
-            if model.Parent == nil then
-                if UserInputService:GetLastInputType() == Enum.UserInputType.MouseButton2 then
-                    ApplyStrength(grabbed)
-                end
-            end
-        end)
-    end
-end)
-
--- UI Controls
-local ThrowToggle = Tab:CreateToggle({
-    Name = "Stronger Throw",
-    CurrentValue = false,
-    Flag = "ThrowToggle",
-    Callback = function(Value)
-        throwEnabled = Value
-    end,
-})
-
-local ThrowSlider = Tab:CreateSlider({
-    Name = "Throw Strength",
-    Range = {400, 10000},
-    Increment = 100,
-    Suffix = "Strength",
-    CurrentValue = _G.strength,
-    Flag = "ThrowStrength",
-    Callback = function(Value)
-        _G.strength = Value
-    end,
-})
---//////////////////////////////////////////////////////////////////////////////
 local Section = Tab:CreateSection("Grab")
+
 --//////////////////////////////////////////////////////////////////////////////
 -- DEATH GRAB SYSTEM
 --//////////////////////////////////////////////////////////////////////////////
+
 local autoGrabToggle = false
 local grabbedPlayers = {}
 
@@ -149,6 +87,7 @@ local function onPlayerAdded(player)
     player.CharacterAdded:Connect(function()
         onPlayerCharacterAdded(player)
     end)
+
     if player.Character then
         onPlayerCharacterAdded(player)
     end
@@ -187,7 +126,7 @@ end
 
 RunService.RenderStepped:Connect(checkHeldPlayers)
 
-local DeathGrabToggle = Tab:CreateToggle({
+Tab:CreateToggle({
     Name = "Death Grab",
     CurrentValue = false,
     Flag = "DeathGrab",
@@ -200,6 +139,7 @@ local DeathGrabToggle = Tab:CreateToggle({
 --//////////////////////////////////////////////////////////////////////////////
 -- HEAVEN GRAB SYSTEM
 --//////////////////////////////////////////////////////////////////////////////
+
 local heavenGrabEnabled = false
 
 local function launchPlayer(character, force)
@@ -228,10 +168,12 @@ end
 
 RunService.RenderStepped:Connect(function()
     if not heavenGrabEnabled then return end
+
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local head = player.Character:FindFirstChild("Head")
             local partOwner = head and head:FindFirstChild("PartOwner")
+
             if partOwner and partOwner:IsA("StringValue") and partOwner.Value == LocalPlayer.Name then
                 if not grabbedPlayers[player.UserId] then
                     grabbedPlayers[player.UserId] = true
@@ -249,6 +191,7 @@ Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function(character)
         local head = character:WaitForChild("Head")
         local partOwner = head:WaitForChild("PartOwner")
+
         if heavenGrabEnabled and partOwner.Value == LocalPlayer.Name then
             launchPlayer(character, 1e8)
         end
@@ -259,7 +202,7 @@ Players.PlayerRemoving:Connect(function(player)
     grabbedPlayers[player.UserId] = nil
 end)
 
-local HeavenGrabToggle = Tab:CreateToggle({
+Tab:CreateToggle({
     Name = "Heaven Grab",
     CurrentValue = false,
     Flag = "HeavenGrab",
@@ -279,16 +222,20 @@ local HeavenGrabToggle = Tab:CreateToggle({
 --//////////////////////////////////////////////////////////////////////////////
 -- MASSLESS GRAB
 --//////////////////////////////////////////////////////////////////////////////
+
 local masslessGrabEnabled = false
 
 local function upgradeDragPart(dragPart)
     if not dragPart:IsA("BasePart") then return end
+
     local alignO = dragPart:FindFirstChild("AlignOrientation")
     local alignP = dragPart:FindFirstChild("AlignPosition")
+
     if alignO then
         alignO.MaxTorque = math.huge
         alignO.Responsiveness = 200
     end
+
     if alignP then
         alignP.MaxForce = math.huge
         alignP.Responsiveness = 200
@@ -307,20 +254,21 @@ RunService.Heartbeat:Connect(function()
 end)
 
 Tab:CreateToggle({
-   Name = "Massless Grab",
-   CurrentValue = false,
-   Flag = "MasslessGrab",
-   Callback = function(Value)
-       masslessGrabEnabled = Value
-   end,
+    Name = "Massless Grab",
+    CurrentValue = false,
+    Flag = "MasslessGrab",
+    Callback = function(Value)
+        masslessGrabEnabled = Value
+    end,
 })
 
 --//////////////////////////////////////////////////////////////////////////////
 -- NO-CLIP GRAB
 --//////////////////////////////////////////////////////////////////////////////
+
 local toggleEnabled = false
 local lastModel = nil
-local modelCollides = {} -- stores original CanCollide for each model
+local modelCollides = {}
 
 local blacklist = {
     workspace:WaitForChild("Slots"),
@@ -330,10 +278,12 @@ local blacklist = {
 
 local function getModelFromPart(part)
     if not part then return nil end
+
     local current = part
     while current.Parent and not current:IsA("Model") do
         current = current.Parent
     end
+
     return current:IsA("Model") and current or nil
 end
 
@@ -346,7 +296,6 @@ local function isBlacklisted(model)
     return false
 end
 
--- Toggle collisions for a model
 local function setCanCollide(model, value)
     if not model then return end
 
@@ -418,14 +367,14 @@ RunService.Heartbeat:Connect(function()
             grabbed.Name = "Grabbed"
             grabbed.Parent = currentModel
         end
-        grabbed.Value = LocalPlayer
 
+        grabbed.Value = LocalPlayer
         setCanCollide(currentModel, false)
         lastModel = currentModel
     end
 end)
 
-local Toggle = Tab:CreateToggle({
+Tab:CreateToggle({
     Name = "No-clip Grab",
     CurrentValue = false,
     Flag = "NoclipGrab",
@@ -439,6 +388,94 @@ local Toggle = Tab:CreateToggle({
         end
     end,
 })
+
+--//////////////////////////////////////////////////////////////////////////////
+-- GLITCH + SPIN GRAB (ADDED AT BOTTOM AS REQUESTED)
+--//////////////////////////////////////////////////////////////////////////////
+
+local OFF_LIMITS = {
+    Workspace:WaitForChild("Plots"),
+    Workspace:WaitForChild("Slots"),
+    Workspace:WaitForChild("Map")
+}
+
+local function isBlacklisted(model)
+    for _, parent in ipairs(OFF_LIMITS) do
+        if model:IsDescendantOf(parent) then
+            return true
+        end
+    end
+    return false
+end
+
+local function getModelFromPart(part)
+    if not part then return nil end
+
+    local current = part
+    while current.Parent and not current:IsA("Model") do
+        current = current.Parent
+    end
+
+    return current:IsA("Model") and current or nil
+end
+
+local grabEnabled = false
+local spinEnabled = false
+
+Tab:CreateToggle({
+    Name = "Glitch Grab",
+    CurrentValue = false,
+    Flag = "GlitchGrab",
+    Callback = function(Value)
+        grabEnabled = Value
+    end,
+})
+
+Tab:CreateToggle({
+    Name = "Spin Grab",
+    CurrentValue = false,
+    Flag = "SpinGrab",
+    Callback = function(Value)
+        spinEnabled = Value
+    end,
+})
+
+RunService.Heartbeat:Connect(function()
+    local grabPartsFolder = Workspace:FindFirstChild("GrabParts")
+    local grabPart = grabPartsFolder and grabPartsFolder:FindFirstChild("GrabPart")
+    if not grabPart then return end
+
+    local weld = grabPart:FindFirstChild("WeldConstraint")
+    if not weld or not weld.Part1 then return end
+
+    local attachedPart = weld.Part1
+    local model = getModelFromPart(attachedPart)
+    if not model or isBlacklisted(model) then return end
+
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if grabEnabled and root then
+        for _, part in ipairs(model:GetDescendants()) do
+            if part:IsA("BasePart") then
+                local offset = Vector3.new(
+                    math.random(-30, 30),
+                    math.random(2, 30),
+                    math.random(-30, 30)
+                )
+                part.CFrame = CFrame.new(root.Position + offset)
+            end
+        end
+    end
+
+    if spinEnabled then
+        for _, part in ipairs(model:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CFrame = part.CFrame * CFrame.Angles(0, math.rad(10), 0)
+            end
+        end
+    end
+end)
 
 --//////////////////////////////////////////////////////////////////////////////
 -- BRING PLAYERS SYSTEM (WITH DROPDOWN AND V-TO-SAVE)
