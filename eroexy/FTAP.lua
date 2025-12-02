@@ -450,23 +450,15 @@ local Toggle = Tab:CreateToggle({
 })
 
 --//////////////////////////////////////////////////////////////////////////////
--- FIXED: LocalPlayer missing
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UIS = game:GetService("UserInputService")
---//////////////////////////////////////////////////////////////////////////////
-
 -- BRING PLAYERS SYSTEM
-local Section = Tab:CreateSection("Bring")
+--//////////////////////////////////////////////////////////////////////////////
+local GrabSection = Tab:CreateSection("Bring Players")
 
 local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
 local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
 local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
 
----------------------------------------------------------------------
 -- SAVED LOCATION SYSTEM
----------------------------------------------------------------------
 local savedCF = nil
 local saveToggle = false
 
@@ -482,7 +474,7 @@ Tab:CreateToggle({
     end,
 })
 
-UIS.InputBegan:Connect(function(input, gpe)
+UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.V and saveToggle then
         local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -500,9 +492,7 @@ UIS.InputBegan:Connect(function(input, gpe)
     end
 end)
 
----------------------------------------------------------------------
 -- CORE FUNCTIONS
----------------------------------------------------------------------
 local function findRoot(char)
     return char and (char:FindFirstChild("HumanoidRootPart") 
         or char:FindFirstChild("UpperTorso") 
@@ -552,9 +542,7 @@ local function bringOne(targetPlayer, targetCF)
     end)
 end
 
----------------------------------------------------------------------
 -- DROPDOWN
----------------------------------------------------------------------
 local selectedPlayers = {}
 local displayNameToPlayer = {}
 
@@ -593,9 +581,7 @@ end
 Players.PlayerAdded:Connect(refreshDropdown)
 Players.PlayerRemoving:Connect(refreshDropdown)
 
----------------------------------------------------------------------
 -- BRING SELECTED
----------------------------------------------------------------------
 Tab:CreateButton({
     Name = "Bring Selected",
     Callback = function()
@@ -620,9 +606,7 @@ Tab:CreateButton({
     end,
 })
 
----------------------------------------------------------------------
 -- BRING ALL
----------------------------------------------------------------------
 Tab:CreateButton({
     Name = "Bring All",
     Callback = function()
