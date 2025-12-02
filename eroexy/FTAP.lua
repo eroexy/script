@@ -1459,7 +1459,7 @@ end
 local Toggle = Tab:CreateToggle({
     Name = "Infinite plot time",
     CurrentValue = false,
-    Flag = "TeleportPlotToggle",
+    Flag = "TeleportPlotTime",
     Callback = function(Value)
         if Value then
             start()
