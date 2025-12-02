@@ -318,11 +318,6 @@ Tab:CreateToggle({
 --//////////////////////////////////////////////////////////////////////////////
 -- NO-CLIP GRAB
 --//////////////////////////////////////////////////////////////////////////////
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-
 local toggleEnabled = false
 local lastModel = nil
 local modelCollides = {} -- stores original CanCollide for each model
@@ -355,7 +350,6 @@ end
 local function setCanCollide(model, value)
     if not model then return end
 
-    -- Create table for this model if it doesn't exist
     if not modelCollides[model] then
         modelCollides[model] = {}
     end
@@ -363,13 +357,11 @@ local function setCanCollide(model, value)
     for _, part in ipairs(model:GetDescendants()) do
         if part:IsA("BasePart") then
             if not value then
-                -- Save original state only once
                 if modelCollides[model][part] == nil then
                     modelCollides[model][part] = part.CanCollide
                 end
                 part.CanCollide = false
             else
-                -- Restore original state
                 if modelCollides[model][part] ~= nil then
                     part.CanCollide = modelCollides[model][part]
                     modelCollides[model][part] = nil
@@ -433,7 +425,6 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- === TOGGLE ===
 local Toggle = Tab:CreateToggle({
     Name = "No-clip Grab",
     CurrentValue = false,
@@ -450,7 +441,7 @@ local Toggle = Tab:CreateToggle({
 })
 
 --//////////////////////////////////////////////////////////////////////////////
--- BRING PLAYERS SYSTEM
+-- BRING PLAYERS SYSTEM (WITH DROPDOWN AND V-TO-SAVE)
 --//////////////////////////////////////////////////////////////////////////////
 local GrabSection = Tab:CreateSection("Bring Players")
 
@@ -458,7 +449,46 @@ local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
 local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
 local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
 
--- SAVED LOCATION SYSTEM
+-- DROPDOWN
+local selectedPlayers = {}
+local displayNameToPlayer = {}
+
+local function getDisplayNames()
+    displayNameToPlayer = {}
+    local names = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local displayName = plr.DisplayName
+            table.insert(names, displayName)
+            displayNameToPlayer[displayName] = plr
+        end
+    end
+    return names
+end
+
+local PlayerDropdown = Tab:CreateDropdown({
+    Name = "Select Players",
+    Options = getDisplayNames(),
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "SelectedPlayers",
+    Callback = function(Options)
+        selectedPlayers = {}
+        for _, displayName in ipairs(Options) do
+            local plr = displayNameToPlayer[displayName]
+            if plr then table.insert(selectedPlayers, plr) end
+        end
+    end,
+})
+
+local function refreshDropdown()
+    PlayerDropdown:Refresh(getDisplayNames(), {})
+end
+
+Players.PlayerAdded:Connect(refreshDropdown)
+Players.PlayerRemoving:Connect(refreshDropdown)
+
+-- SAVED LOCATION SYSTEM (V TO SAVE) – placed UNDER DROPDOWN
 local savedCF = nil
 local saveToggle = false
 
@@ -541,45 +571,6 @@ local function bringOne(targetPlayer, targetCF)
         tRoot.CFrame = targetCF
     end)
 end
-
--- DROPDOWN
-local selectedPlayers = {}
-local displayNameToPlayer = {}
-
-local function getDisplayNames()
-    displayNameToPlayer = {}
-    local names = {}
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then
-            local displayName = plr.DisplayName
-            table.insert(names, displayName)
-            displayNameToPlayer[displayName] = plr
-        end
-    end
-    return names
-end
-
-local PlayerDropdown = Tab:CreateDropdown({
-    Name = "Select Players",
-    Options = getDisplayNames(),
-    CurrentOption = {},
-    MultipleOptions = true,
-    Flag = "SelectedPlayers",
-    Callback = function(Options)
-        selectedPlayers = {}
-        for _, displayName in ipairs(Options) do
-            local plr = displayNameToPlayer[displayName]
-            if plr then table.insert(selectedPlayers, plr) end
-        end
-    end,
-})
-
-local function refreshDropdown()
-    PlayerDropdown:Refresh(getDisplayNames(), {})
-end
-
-Players.PlayerAdded:Connect(refreshDropdown)
-Players.PlayerRemoving:Connect(refreshDropdown)
 
 -- BRING SELECTED
 Tab:CreateButton({
