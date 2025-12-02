@@ -1307,141 +1307,166 @@ local Tab = Window:CreateTab("Teleport", 0)
 --  Inf Plot Time
 --//////////////////////////////////////////////////////////////////////////////
 
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+
+-- Persistent state so we can clean up later
+local running = false
+local connections = {}     -- store RBXScriptConnection objects
+local monitored = {}       -- map of timeValue Instances we've already monitored
+local debounce = {}        -- map used by the handler
+
+local function safeDisconnect(conn)
+    if not conn then return end
+    pcall(function()
+        -- RBXScriptConnection has :Disconnect()
+        if conn.Disconnect then conn:Disconnect() end
+    end)
+end
+
+local function cleanup()
+    -- stop future handlers from doing work
+    running = false
+
+    -- disconnect all stored connections
+    for _, conn in ipairs(connections) do
+        safeDisconnect(conn)
+    end
+
+    -- clear tables
+    connections = {}
+    monitored = {}
+    debounce = {}
+end
+
+local function teleportToAndBack(targetPart)
+    if not running then return end
+    if not targetPart or not targetPart:IsA("BasePart") then return end
+
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
+    if not hrp then return end
+
+    local originalCFrame = hrp.CFrame
+    pcall(function()
+        hrp.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+    end)
+
+    task.wait(0.5)
+
+    -- restore only if we are still allowed to do so (and still have the character)
+    char = player.Character
+    hrp = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart"))
+    if hrp and originalCFrame then
+        pcall(function()
+            hrp.CFrame = originalCFrame
+        end)
+    end
+end
+
+local function monitorOwnerString(ownerString, plotSign)
+    if not running then return end
+    if not ownerString or not ownerString:IsA("StringValue") then return end
+    if ownerString.Value ~= player.Name then return end
+
+    local timeVal = ownerString:FindFirstChild("TimeRemainingNum")
+    if not timeVal or not timeVal:IsA("IntValue") then return end
+    if monitored[timeVal] then return end
+    monitored[timeVal] = true
+
+    local function handleTrigger()
+        if not running then return end
+        if debounce[timeVal] then return end
+        debounce[timeVal] = true
+
+        local targetPart = plotSign:FindFirstChildWhichIsA("BasePart") or plotSign.PrimaryPart
+        if not targetPart then
+            for _, d in ipairs(plotSign:GetDescendants()) do
+                if d:IsA("BasePart") then
+                    targetPart = d
+                    break
+                end
+            end
+        end
+
+        if targetPart then
+            teleportToAndBack(targetPart)
+        end
+
+        task.delay(0.5, function()
+            debounce[timeVal] = nil
+        end)
+    end
+
+    -- immediate trigger check
+    if timeVal.Value == 1 then
+        task.spawn(handleTrigger)
+    end
+
+    -- property changed connection
+    local conn = timeVal:GetPropertyChangedSignal("Value"):Connect(function()
+        if not running then return end
+        if timeVal.Value == 1 then
+            task.spawn(handleTrigger)
+        end
+    end)
+    table.insert(connections, conn)
+end
+
+local function handlePlotModel(plotModel)
+    if not running then return end
+    local plotSign = plotModel:FindFirstChild("PlotSign")
+    if not plotSign then return end
+
+    local ownersFolder = plotSign:FindFirstChild("ThisPlotsOwners")
+    if not ownersFolder then return end
+
+    for _, entry in ipairs(ownersFolder:GetChildren()) do
+        monitorOwnerString(entry, plotSign)
+    end
+
+    local conn = ownersFolder.ChildAdded:Connect(function(entry)
+        task.wait(0.05)
+        monitorOwnerString(entry, plotSign)
+    end)
+    table.insert(connections, conn)
+end
+
+local function start()
+    if running then return end
+    running = true
+
+    -- ensure Plots exists
+    local plots = Workspace:WaitForChild("Plots")
+    for _, plot in ipairs(plots:GetChildren()) do
+        if plot:IsA("Model") or plot:IsA("Folder") then
+            handlePlotModel(plot)
+        end
+    end
+
+    local plotsConn = plots.ChildAdded:Connect(function(plot)
+        task.wait(0.05)
+        if plot:IsA("Model") or plot:IsA("Folder") then
+            handlePlotModel(plot)
+        end
+    end)
+    table.insert(connections, plotsConn)
+end
+
+-- The toggle creation: call start() when toggled ON, cleanup() when toggled OFF
 local Toggle = Tab:CreateToggle({
     Name = "Infinite plot time",
     CurrentValue = false,
     Flag = "TeleportPlotToggle",
     Callback = function(Value)
-        local Players = game:GetService("Players")
-        local Workspace = game:GetService("Workspace")
-
-        local player = Players.LocalPlayer
-        if not player then return end
-
-        local active = Value -- controls whether script runs
-        local monitored = {}
-        local debounce = {}
-        local connections = {} -- to store all connections for cleanup
-
-        local function teleportToAndBack(targetPart)
-            if not active then return end
-            if not targetPart or not targetPart:IsA("BasePart") then return end
-
-            local char = player.Character or player.CharacterAdded:Wait()
-            local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
-            if not hrp then return end
-
-            local originalCFrame = hrp.CFrame
-            pcall(function()
-                hrp.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
-            end)
-
-            task.wait(0.5)
-
-            char = player.Character
-            hrp = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart"))
-            if hrp and originalCFrame then
-                pcall(function()
-                    hrp.CFrame = originalCFrame
-                end)
-            end
-        end
-
-        local function monitorOwnerString(ownerString, plotSign)
-            if not active then return end
-            if not ownerString:IsA("StringValue") then return end
-            if ownerString.Value ~= player.Name then return end
-
-            local timeVal = ownerString:FindFirstChild("TimeRemainingNum")
-            if not timeVal or not timeVal:IsA("IntValue") then return end
-            if monitored[timeVal] then return end
-            monitored[timeVal] = true
-
-            local function handleTrigger()
-                if not active then return end
-                if debounce[timeVal] then return end
-                debounce[timeVal] = true
-
-                local targetPart = plotSign:FindFirstChildWhichIsA("BasePart") or plotSign.PrimaryPart
-                if not targetPart then
-                    for _, d in ipairs(plotSign:GetDescendants()) do
-                        if d:IsA("BasePart") then
-                            targetPart = d
-                            break
-                        end
-                    end
-                end
-
-                if targetPart then
-                    teleportToAndBack(targetPart)
-                end
-
-                task.delay(0.5, function()
-                    debounce[timeVal] = nil
-                end)
-            end
-
-            if timeVal.Value == 1 then
-                task.spawn(handleTrigger)
-            end
-
-            local conn = timeVal:GetPropertyChangedSignal("Value"):Connect(function()
-                if not active then return end
-                if timeVal.Value == 1 then
-                    task.spawn(handleTrigger)
-                end
-            end)
-            table.insert(connections, conn)
-        end
-
-        local function handlePlotModel(plotModel)
-            if not active then return end
-            local plotSign = plotModel:FindFirstChild("PlotSign")
-            if not plotSign then return end
-
-            local ownersFolder = plotSign:FindFirstChild("ThisPlotsOwners")
-            if not ownersFolder then return end
-
-            for _, entry in ipairs(ownersFolder:GetChildren()) do
-                monitorOwnerString(entry, plotSign)
-            end
-
-            local conn = ownersFolder.ChildAdded:Connect(function(entry)
-                task.wait(0.05)
-                monitorOwnerString(entry, plotSign)
-            end)
-            table.insert(connections, conn)
-        end
-
-        -- MONITOR ALL EXISTING PLOTS
-        local plots = Workspace:WaitForChild("Plots")
-        for _, plot in ipairs(plots:GetChildren()) do
-            if plot:IsA("Model") or plot:IsA("Folder") then
-                handlePlotModel(plot)
-            end
-        end
-
-        -- Connect new plots
-        local plotsConn = plots.ChildAdded:Connect(function(plot)
-            task.wait(0.05)
-            if plot:IsA("Model") or plot:IsA("Folder") then
-                handlePlotModel(plot)
-            end
-        end)
-        table.insert(connections, plotsConn)
-
-        -- CLEANUP when toggled OFF
-        if not Value then
-            active = false
-            for _, conn in ipairs(connections) do
-                if conn.Connected then
-                    conn:Disconnect()
-                end
-            end
-            connections = {}
-            monitored = {}
-            debounce = {}
+        if Value then
+            start()
+        else
+            cleanup()
         end
     end
 })
+
 
