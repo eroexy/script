@@ -493,9 +493,9 @@ local savedCF = nil
 local saveToggle = false
 
 Tab:CreateToggle({
-    Name = "Use Saved Location (V to Save)",
+    Name = "Bring Location (V)",
     CurrentValue = false,
-    Flag = "UseSavedLocation",
+    Flag = "SavedLocation",
     Callback = function(val)
         saveToggle = val
         if not val then
@@ -515,7 +515,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
             Rayfield:Notify({
                 Title = "Saved Location",
                 Content = "CFrame saved:\n" .. tostring(savedCF),
-                Duration = 6.5,
+                Duration = 4,
                 Image = 0,
             })
         end
