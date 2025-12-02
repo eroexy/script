@@ -37,41 +37,70 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
---//////////////////////////////////////////////////////////////////////////////
+--//////////////////////////////////////////////////////////////////////////
+--  TAB
+--//////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Grab", 0)
---//////////////////////////////////////////////////////////////////////////////
 
---//////////////////////////////////////////////////////////////////////////////
--- SERVICES AT THE TOP (clean + consistent)
---//////////////////////////////////////////////////////////////////////////////
-
+--//////////////////////////////////////////////////////////////////////////
+--  SERVICES (ALL AT THE TOP, CLEAN + CONSISTENT)
+--//////////////////////////////////////////////////////////////////////////
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Debris = game:GetService("Debris")
+local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 
---//////////////////////////////////////////////////////////////////////////////
--- SECTION HEADER
---//////////////////////////////////////////////////////////////////////////////
+--//////////////////////////////////////////////////////////////////////////
+--  SHARED UTILS
+--//////////////////////////////////////////////////////////////////////////
 
+local function getModelFromPart(part)
+    if not part then return nil end
+    local cur = part
+    while cur.Parent and not cur:IsA("Model") do
+        cur = cur.Parent
+    end
+    return cur:IsA("Model") and cur or nil
+end
+
+local BLACKLIST = {
+    Workspace:WaitForChild("Plots"),
+    Workspace:WaitForChild("Slots"),
+    Workspace:WaitForChild("Map"),
+}
+
+local function isBlacklisted(model)
+    for _, v in ipairs(BLACKLIST) do
+        if model:IsDescendantOf(v) then
+            return true
+        end
+    end
+    return false
+end
+
+--//////////////////////////////////////////////////////////////////////////
+--  SECTION HEADER
+--//////////////////////////////////////////////////////////////////////////
 local Section = Tab:CreateSection("Grab")
 
---//////////////////////////////////////////////////////////////////////////////
--- DEATH GRAB SYSTEM
---//////////////////////////////////////////////////////////////////////////////
+--//////////////////////////////////////////////////////////////////////////
+--  DEATH GRAB SYSTEM
+--//////////////////////////////////////////////////////////////////////////
 
 local autoGrabToggle = false
 local grabbedPlayers = {}
 
 local function handleGrabbedPlayer(player)
-    local character = player.Character
-    if character and character:FindFirstChild("Humanoid") then
-        local humanoid = character.Humanoid
-        humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-        humanoid.BreakJointsOnDeath = false
-        humanoid.Health = 0
+    local char = player.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    if hum then
+        hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+        hum.BreakJointsOnDeath = false
+        hum.Health = 0
     end
 end
 
@@ -93,32 +122,27 @@ local function onPlayerAdded(player)
     end
 end
 
-for _, player in ipairs(Players:GetPlayers()) do
-    onPlayerAdded(player)
-end
-
+for _, plr in ipairs(Players:GetPlayers()) do onPlayerAdded(plr) end
 Players.PlayerAdded:Connect(onPlayerAdded)
 Players.PlayerRemoving:Connect(cleanupPlayerTracking)
 
 local function checkHeldPlayers()
     if not autoGrabToggle then return end
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local head = player.Character:FindFirstChild("Head")
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local head = plr.Character:FindFirstChild("Head")
             if head then
-                local partOwner = head:FindFirstChild("PartOwner")
-                if partOwner and partOwner:IsA("StringValue") and partOwner.Value == LocalPlayer.Name then
-                    if not grabbedPlayers[player.UserId] then
-                        grabbedPlayers[player.UserId] = true
-                        print("Player held: " .. (player.DisplayName or player.Name))
-                        handleGrabbedPlayer(player)
+                local owner = head:FindFirstChild("PartOwner")
+                if owner and owner:IsA("StringValue") and owner.Value == LocalPlayer.Name then
+                    if not grabbedPlayers[plr.UserId] then
+                        grabbedPlayers[plr.UserId] = true
+                        print("Player held:", plr.DisplayName or plr.Name)
+                        handleGrabbedPlayer(plr)
                     end
                 else
-                    grabbedPlayers[player.UserId] = nil
+                    grabbedPlayers[plr.UserId] = nil
                 end
-            else
-                grabbedPlayers[player.UserId] = nil
             end
         end
     end
@@ -130,88 +154,87 @@ Tab:CreateToggle({
     Name = "Death Grab",
     CurrentValue = false,
     Flag = "DeathGrab",
-    Callback = function(Value)
-        autoGrabToggle = Value
-        print("Auto Grab Players toggle set to:", Value)
+    Callback = function(v)
+        autoGrabToggle = v
+        print("Auto Grab Players:", v)
     end,
 })
 
---//////////////////////////////////////////////////////////////////////////////
--- HEAVEN GRAB SYSTEM
---//////////////////////////////////////////////////////////////////////////////
+--//////////////////////////////////////////////////////////////////////////
+--  HEAVEN GRAB
+--//////////////////////////////////////////////////////////////////////////
 
 local heavenGrabEnabled = false
 
 local function launchPlayer(character, force)
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if rootPart then
-        local existingVelocity = rootPart:FindFirstChild("LaunchVelocity")
-        if existingVelocity then existingVelocity:Destroy() end
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
 
-        local bodyVelocity = Instance.new("BodyVelocity")
-        bodyVelocity.Name = "LaunchVelocity"
-        bodyVelocity.Velocity = Vector3.new(0, force, 0)
-        bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
-        bodyVelocity.P = 1250
-        bodyVelocity.Parent = rootPart
-        Debris:AddItem(bodyVelocity, 0.5)
-    end
+    local existing = root:FindFirstChild("LaunchVelocity")
+    if existing then existing:Destroy() end
+
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "LaunchVelocity"
+    bv.Velocity = Vector3.new(0, force, 0)
+    bv.MaxForce = Vector3.new(0, math.huge, 0)
+    bv.P = 1250
+    bv.Parent = root
+
+    Debris:AddItem(bv, 0.5)
 end
 
 local function removeLaunch(character)
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if rootPart then
-        local existingVelocity = rootPart:FindFirstChild("LaunchVelocity")
-        if existingVelocity then existingVelocity:Destroy() end
-    end
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local existing = root:FindFirstChild("LaunchVelocity")
+    if existing then existing:Destroy() end
 end
 
 RunService.RenderStepped:Connect(function()
     if not heavenGrabEnabled then return end
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local head = player.Character:FindFirstChild("Head")
-            local partOwner = head and head:FindFirstChild("PartOwner")
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local head = plr.Character:FindFirstChild("Head")
+            local owner = head and head:FindFirstChild("PartOwner")
 
-            if partOwner and partOwner:IsA("StringValue") and partOwner.Value == LocalPlayer.Name then
-                if not grabbedPlayers[player.UserId] then
-                    grabbedPlayers[player.UserId] = true
-                    print("Heaven Grab: " .. (player.DisplayName or player.Name))
+            if owner and owner:IsA("StringValue") and owner.Value == LocalPlayer.Name then
+                if not grabbedPlayers[plr.UserId] then
+                    grabbedPlayers[plr.UserId] = true
+                    print("Heaven Grab:", plr.DisplayName or plr.Name)
                 end
-                launchPlayer(player.Character, 1e11)
+                launchPlayer(plr.Character, 1e11)
             else
-                grabbedPlayers[player.UserId] = nil
+                grabbedPlayers[plr.UserId] = nil
             end
         end
     end
 end)
 
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        local head = character:WaitForChild("Head")
-        local partOwner = head:WaitForChild("PartOwner")
-
-        if heavenGrabEnabled and partOwner.Value == LocalPlayer.Name then
-            launchPlayer(character, 1e8)
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function(char)
+        local head = char:WaitForChild("Head")
+        local owner = head:WaitForChild("PartOwner")
+        if heavenGrabEnabled and owner.Value == LocalPlayer.Name then
+            launchPlayer(char, 1e8)
         end
     end)
 end)
 
-Players.PlayerRemoving:Connect(function(player)
-    grabbedPlayers[player.UserId] = nil
+Players.PlayerRemoving:Connect(function(plr)
+    grabbedPlayers[plr.UserId] = nil
 end)
 
 Tab:CreateToggle({
     Name = "Heaven Grab",
     CurrentValue = false,
     Flag = "HeavenGrab",
-    Callback = function(Value)
-        heavenGrabEnabled = Value
-        if not Value then
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character then
-                    removeLaunch(player.Character)
+    Callback = function(v)
+        heavenGrabEnabled = v
+        if not v then
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character then
+                    removeLaunch(plr.Character)
                 end
             end
             grabbedPlayers = {}
@@ -219,36 +242,27 @@ Tab:CreateToggle({
     end,
 })
 
---//////////////////////////////////////////////////////////////////////////////
--- MASSLESS GRAB
---//////////////////////////////////////////////////////////////////////////////
+--//////////////////////////////////////////////////////////////////////////
+--  MASSLESS GRAB
+--//////////////////////////////////////////////////////////////////////////
 
 local masslessGrabEnabled = false
 
-local function upgradeDragPart(dragPart)
-    if not dragPart:IsA("BasePart") then return end
-
-    local alignO = dragPart:FindFirstChild("AlignOrientation")
-    local alignP = dragPart:FindFirstChild("AlignPosition")
-
-    if alignO then
-        alignO.MaxTorque = math.huge
-        alignO.Responsiveness = 200
-    end
-
-    if alignP then
-        alignP.MaxForce = math.huge
-        alignP.Responsiveness = 200
+local function upgradeDragPart(drag)
+    if drag:IsA("BasePart") then
+        local O = drag:FindFirstChild("AlignOrientation")
+        local P = drag:FindFirstChild("AlignPosition")
+        if O then O.MaxTorque = math.huge O.Responsiveness = 200 end
+        if P then P.MaxForce = math.huge P.Responsiveness = 200 end
     end
 end
 
 RunService.Heartbeat:Connect(function()
-    if masslessGrabEnabled then
-        local grabParts = workspace:FindFirstChild("GrabParts")
-        if grabParts then
-            for _, child in ipairs(grabParts:GetChildren()) do
-                upgradeDragPart(child)
-            end
+    if not masslessGrabEnabled then return end
+    local folder = Workspace:FindFirstChild("GrabParts")
+    if folder then
+        for _, v in ipairs(folder:GetChildren()) do
+            upgradeDragPart(v)
         end
     end
 end)
@@ -257,55 +271,27 @@ Tab:CreateToggle({
     Name = "Massless Grab",
     CurrentValue = false,
     Flag = "MasslessGrab",
-    Callback = function(Value)
-        masslessGrabEnabled = Value
+    Callback = function(v)
+        masslessGrabEnabled = v
     end,
 })
 
---//////////////////////////////////////////////////////////////////////////////
--- NO-CLIP GRAB
---//////////////////////////////////////////////////////////////////////////////
+--//////////////////////////////////////////////////////////////////////////
+--  NO-CLIP GRAB
+--//////////////////////////////////////////////////////////////////////////
 
-local toggleEnabled = false
+local noClipEnabled = false
 local lastModel = nil
 local modelCollides = {}
 
-local blacklist = {
-    workspace:WaitForChild("Slots"),
-    workspace:WaitForChild("Plots"),
-    workspace:WaitForChild("Map")
-}
-
-local function getModelFromPart(part)
-    if not part then return nil end
-
-    local current = part
-    while current.Parent and not current:IsA("Model") do
-        current = current.Parent
-    end
-
-    return current:IsA("Model") and current or nil
-end
-
-local function isBlacklisted(model)
-    for _, parent in ipairs(blacklist) do
-        if model:IsDescendantOf(parent) then
-            return true
-        end
-    end
-    return false
-end
-
-local function setCanCollide(model, value)
+local function setCanCollide(model, val)
     if not model then return end
 
-    if not modelCollides[model] then
-        modelCollides[model] = {}
-    end
+    modelCollides[model] = modelCollides[model] or {}
 
     for _, part in ipairs(model:GetDescendants()) do
         if part:IsA("BasePart") then
-            if not value then
+            if not val then
                 if modelCollides[model][part] == nil then
                     modelCollides[model][part] = part.CanCollide
                 end
@@ -323,52 +309,41 @@ local function setCanCollide(model, value)
 end
 
 RunService.Heartbeat:Connect(function()
-    if not toggleEnabled then
+    if not noClipEnabled then
         if lastModel then
             setCanCollide(lastModel, true)
-            local grabbed = lastModel:FindFirstChild("Grabbed")
-            if grabbed then grabbed:Destroy() end
+            local tag = lastModel:FindFirstChild("Grabbed")
+            if tag then tag:Destroy() end
             lastModel = nil
         end
         return
     end
 
-    local grabFolder = workspace:FindFirstChild("GrabParts")
-    if not grabFolder then
-        if lastModel then
-            setCanCollide(lastModel, true)
-            local grabbed = lastModel:FindFirstChild("Grabbed")
-            if grabbed then grabbed:Destroy() end
-            lastModel = nil
-        end
-        return
-    end
+    local folder = Workspace:FindFirstChild("GrabParts")
+    local part = folder and folder:FindFirstChild("GrabPart")
+    if not part then return end
 
-    local grabPart = grabFolder:FindFirstChild("GrabPart")
-    if not grabPart then return end
+    local weld = part:FindFirstChild("WeldConstraint")
+    if not weld or not weld.Part1 then return end
 
-    local weld = grabPart:FindFirstChild("WeldConstraint")
-    if not weld then return end
-
-    local attached = weld.Part1
-    local currentModel = getModelFromPart(attached)
+    local currentModel = getModelFromPart(weld.Part1)
 
     if lastModel and lastModel ~= currentModel then
         setCanCollide(lastModel, true)
-        local grabbed = lastModel:FindFirstChild("Grabbed")
-        if grabbed then grabbed:Destroy() end
+        local tag = lastModel:FindFirstChild("Grabbed")
+        if tag then tag:Destroy() end
         lastModel = nil
     end
 
     if currentModel and not isBlacklisted(currentModel) then
-        local grabbed = currentModel:FindFirstChild("Grabbed")
-        if not grabbed then
-            grabbed = Instance.new("ObjectValue")
-            grabbed.Name = "Grabbed"
-            grabbed.Parent = currentModel
+        local tag = currentModel:FindFirstChild("Grabbed")
+        if not tag then
+            tag = Instance.new("ObjectValue")
+            tag.Name = "Grabbed"
+            tag.Parent = currentModel
         end
+        tag.Value = LocalPlayer
 
-        grabbed.Value = LocalPlayer
         setCanCollide(currentModel, false)
         lastModel = currentModel
     end
@@ -378,56 +353,30 @@ Tab:CreateToggle({
     Name = "No-clip Grab",
     CurrentValue = false,
     Flag = "NoclipGrab",
-    Callback = function(Value)
-        toggleEnabled = Value
-        if not Value and lastModel then
+    Callback = function(v)
+        noClipEnabled = v
+        if not v and lastModel then
             setCanCollide(lastModel, true)
-            local grabbed = lastModel:FindFirstChild("Grabbed")
-            if grabbed then grabbed:Destroy() end
+            local tag = lastModel:FindFirstChild("Grabbed")
+            if tag then tag:Destroy() end
             lastModel = nil
         end
     end,
 })
 
---//////////////////////////////////////////////////////////////////////////////
--- GLITCH + SPIN GRAB (ADDED AT BOTTOM AS REQUESTED)
---//////////////////////////////////////////////////////////////////////////////
+--//////////////////////////////////////////////////////////////////////////
+--  GLITCH + SPIN GRAB
+--//////////////////////////////////////////////////////////////////////////
 
-local OFF_LIMITS = {
-    Workspace:WaitForChild("Plots"),
-    Workspace:WaitForChild("Slots"),
-    Workspace:WaitForChild("Map")
-}
-
-local function isBlacklisted(model)
-    for _, parent in ipairs(OFF_LIMITS) do
-        if model:IsDescendantOf(parent) then
-            return true
-        end
-    end
-    return false
-end
-
-local function getModelFromPart(part)
-    if not part then return nil end
-
-    local current = part
-    while current.Parent and not current:IsA("Model") do
-        current = current.Parent
-    end
-
-    return current:IsA("Model") and current or nil
-end
-
-local grabEnabled = false
+local glitchEnabled = false
 local spinEnabled = false
 
 Tab:CreateToggle({
     Name = "Glitch Grab",
     CurrentValue = false,
     Flag = "GlitchGrab",
-    Callback = function(Value)
-        grabEnabled = Value
+    Callback = function(v)
+        glitchEnabled = v
     end,
 })
 
@@ -435,69 +384,67 @@ Tab:CreateToggle({
     Name = "Spin Grab",
     CurrentValue = false,
     Flag = "SpinGrab",
-    Callback = function(Value)
-        spinEnabled = Value
+    Callback = function(v)
+        spinEnabled = v
     end,
 })
 
 RunService.Heartbeat:Connect(function()
-    local grabPartsFolder = Workspace:FindFirstChild("GrabParts")
-    local grabPart = grabPartsFolder and grabPartsFolder:FindFirstChild("GrabPart")
-    if not grabPart then return end
+    local folder = Workspace:FindFirstChild("GrabParts")
+    local part = folder and folder:FindFirstChild("GrabPart")
+    if not part then return end
 
-    local weld = grabPart:FindFirstChild("WeldConstraint")
+    local weld = part:FindFirstChild("WeldConstraint")
     if not weld or not weld.Part1 then return end
 
-    local attachedPart = weld.Part1
-    local model = getModelFromPart(attachedPart)
+    local model = getModelFromPart(weld.Part1)
     if not model or isBlacklisted(model) then return end
 
     local char = LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    
-    if grabEnabled and root then
-        for _, part in ipairs(model:GetDescendants()) do
-            if part:IsA("BasePart") then
+
+    if glitchEnabled and root then
+        for _, p in ipairs(model:GetDescendants()) do
+            if p:IsA("BasePart") then
                 local offset = Vector3.new(
                     math.random(-30, 30),
                     math.random(2, 30),
                     math.random(-30, 30)
                 )
-                part.CFrame = CFrame.new(root.Position + offset)
+                p.CFrame = CFrame.new(root.Position + offset)
             end
         end
     end
 
     if spinEnabled then
-        for _, part in ipairs(model:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CFrame = part.CFrame * CFrame.Angles(0, math.rad(10), 0)
+        for _, p in ipairs(model:GetDescendants()) do
+            if p:IsA("BasePart") then
+                p.CFrame *= CFrame.Angles(0, math.rad(10), 0)
             end
         end
     end
 end)
 
---//////////////////////////////////////////////////////////////////////////////
--- BRING PLAYERS SYSTEM (WITH DROPDOWN AND V-TO-SAVE)
---//////////////////////////////////////////////////////////////////////////////
+--//////////////////////////////////////////////////////////////////////////
+--  BRING PLAYERS SYSTEM
+--//////////////////////////////////////////////////////////////////////////
+
 local GrabSection = Tab:CreateSection("Bring Players")
 
 local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
 local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
 local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
 
--- DROPDOWN
 local selectedPlayers = {}
-local displayNameToPlayer = {}
+local displayToPlayer = {}
 
 local function getDisplayNames()
-    displayNameToPlayer = {}
+    displayToPlayer = {}
     local names = {}
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
-            local displayName = plr.DisplayName
-            table.insert(names, displayName)
-            displayNameToPlayer[displayName] = plr
+            displayToPlayer[plr.DisplayName] = plr
+            table.insert(names, plr.DisplayName)
         end
     end
     return names
@@ -509,10 +456,10 @@ local PlayerDropdown = Tab:CreateDropdown({
     CurrentOption = {},
     MultipleOptions = true,
     Flag = "SelectedPlayers",
-    Callback = function(Options)
+    Callback = function(opts)
         selectedPlayers = {}
-        for _, displayName in ipairs(Options) do
-            local plr = displayNameToPlayer[displayName]
+        for _, dn in ipairs(opts) do
+            local plr = displayToPlayer[dn]
             if plr then table.insert(selectedPlayers, plr) end
         end
     end,
@@ -525,7 +472,7 @@ end
 Players.PlayerAdded:Connect(refreshDropdown)
 Players.PlayerRemoving:Connect(refreshDropdown)
 
--- SAVED LOCATION SYSTEM (V TO SAVE) – placed UNDER DROPDOWN
+-- SAVED LOCATION
 local savedCF = nil
 local saveToggle = false
 
@@ -533,25 +480,22 @@ Tab:CreateToggle({
     Name = "Bring Location (V)",
     CurrentValue = false,
     Flag = "SavedLocation",
-    Callback = function(val)
-        saveToggle = val
-        if not val then
-            savedCF = nil
-        end
+    Callback = function(v)
+        saveToggle = v
+        if not v then savedCF = nil end
     end,
 })
 
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.V and saveToggle then
-        local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local myRoot = myChar:FindFirstChild("HumanoidRootPart")
-        if myRoot then
-            savedCF = myRoot.CFrame
-
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root then
+            savedCF = root.CFrame
             Rayfield:Notify({
                 Title = "Saved Location",
-                Content = "CFrame saved:\n" .. tostring(savedCF),
+                Content = tostring(savedCF),
                 Duration = 4,
                 Image = 0,
             })
@@ -561,27 +505,34 @@ end)
 
 -- CORE FUNCTIONS
 local function findRoot(char)
-    return char and (char:FindFirstChild("HumanoidRootPart") 
-        or char:FindFirstChild("UpperTorso") 
-        or char:FindFirstChild("Torso"))
+    return char and (
+        char:FindFirstChild("HumanoidRootPart") or
+        char:FindFirstChild("UpperTorso") or
+        char:FindFirstChild("Torso")
+    )
 end
 
-local function tryClaimOwner(tRoot, attempts, interval)
+local function tryClaimOwner(root, attempts, interval)
     attempts = attempts or 8
     interval = interval or 0
     for i = 1, attempts do
-        pcall(function() SetNetworkOwner:FireServer(tRoot, tRoot.CFrame) end)
-        local head = tRoot.Parent and tRoot.Parent:FindFirstChild("Head")
+        pcall(function()
+            SetNetworkOwner:FireServer(root, root.CFrame)
+        end)
+        local head = root.Parent:FindFirstChild("Head")
         local owner = head and head:FindFirstChild("PartOwner")
-        if owner and owner.Value == LocalPlayer.Name then return true end
+        if owner and owner.Value == LocalPlayer.Name then
+            return true
+        end
         task.wait(interval)
     end
     return false
 end
 
-local function bringOne(targetPlayer, targetCF)
-    if not targetPlayer or targetPlayer == LocalPlayer then return end
-    local char = targetPlayer.Character
+local function bringOne(target, cf)
+    if not target or target == LocalPlayer then return end
+
+    local char = target.Character
     if not char then return end
 
     local tRoot = findRoot(char)
@@ -591,6 +542,7 @@ local function bringOne(targetPlayer, targetCF)
 
     local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local myRoot = findRoot(myChar)
+
     if myRoot then
         pcall(function()
             myRoot.CFrame = tRoot.CFrame * CFrame.new(0, -3, -2)
@@ -600,30 +552,31 @@ local function bringOne(targetPlayer, targetCF)
     tryClaimOwner(tRoot, 14, 0.02)
 
     if DestroyGrabLine then
-        pcall(function() DestroyGrabLine:FireServer(tRoot) end)
+        pcall(function()
+            DestroyGrabLine:FireServer(tRoot)
+        end)
     end
 
     pcall(function()
-        tRoot.AssemblyLinearVelocity = Vector3.new(0,0,0)
-        tRoot.CFrame = targetCF
+        tRoot.AssemblyLinearVelocity = Vector3.new()
+        tRoot.CFrame = cf
     end)
 end
 
--- BRING SELECTED
+-- Buttons
+
 Tab:CreateButton({
     Name = "Bring Selected",
     Callback = function()
-        local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local myRoot = findRoot(myChar)
-        if not myRoot then return end
-        
-        local returnCF = myRoot.CFrame
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local root = findRoot(char)
+        if not root then return end
+
+        local returnCF = root.CFrame
         local targetCF = (saveToggle and savedCF) or returnCF
 
         for _, plr in ipairs(selectedPlayers) do
-            pcall(function()
-                bringOne(plr, targetCF)
-            end)
+            bringOne(plr, targetCF)
         end
 
         task.wait(0.05)
@@ -634,22 +587,19 @@ Tab:CreateButton({
     end,
 })
 
--- BRING ALL
 Tab:CreateButton({
     Name = "Bring All",
     Callback = function()
-        local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local myRoot = findRoot(myChar)
-        if not myRoot then return end
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local root = findRoot(char)
+        if not root then return end
 
-        local returnCF = myRoot.CFrame
+        local returnCF = root.CFrame
         local targetCF = (saveToggle and savedCF) or returnCF
 
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer then
-                pcall(function()
-                    bringOne(plr, targetCF)
-                end)
+                bringOne(plr, targetCF)
             end
         end
 
@@ -660,6 +610,7 @@ Tab:CreateButton({
         end)
     end,
 })
+
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Defense", 0)
 local Section = Tab:CreateSection("Anti")
