@@ -392,12 +392,12 @@ Tab:CreateToggle({
     Name = "No-clip Grab",
     CurrentValue = false,
     Flag = "NoclipGrab",
-    Callback = function(v)
-        noClipEnabled = v
-        if not v and lastModel then
+    Callback = function(Value)
+        toggleEnabled = Value
+        if not Value and lastModel then
             setCanCollide(lastModel, true)
-            local tag = lastModel:FindFirstChild("Grabbed")
-            if tag then tag:Destroy() end
+            local grabbed = lastModel:FindFirstChild("Grabbed")
+            if grabbed then grabbed:Destroy() end
             lastModel = nil
         end
     end,
