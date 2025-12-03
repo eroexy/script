@@ -3,129 +3,112 @@
 --//////////////////////////////////////////////////////////////////////////////
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local TextChatService = game:GetService("TextChatService")
 local LocalPlayer = Players.LocalPlayer
 
--- Blacklist table
+------------------------------------------------
+-- BLACKLIST SYSTEM
+------------------------------------------------
 local blacklistedUsers = {
-    ["0"] = true,
     ["0"] = true,
 }
 
--- Kill script with smooth notification if user is blacklisted
 if blacklistedUsers[LocalPlayer.Name] then
-    -- Create the notification GUI
     local Notification = Instance.new("ScreenGui")
     Notification.IgnoreGuiInset = true
     Notification.Name = "Notification"
     Notification.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    Notification.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    local NotifyMain = Instance.new("Frame")
-    NotifyMain.Name = "NotifyMain"
-    NotifyMain.Parent = Notification
-    NotifyMain.AnchorPoint = Vector2.new(0.5, 0.5)
-    NotifyMain.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    NotifyMain.BorderColor3 = Color3.fromRGB(0, 0, 0)
-    NotifyMain.BorderSizePixel = 0
-    NotifyMain.Position = UDim2.new(0.5, 0, 0.5, 0)
-    NotifyMain.Size = UDim2.new(1.0, 0, 1.0, 0)
-    NotifyMain.BackgroundTransparency = 1 -- start invisible
+    local Main = Instance.new("Frame")
+    Main.Parent = Notification
+    Main.AnchorPoint = Vector2.new(0.5, 0.5)
+    Main.Position = UDim2.new(0.5, 0, 0.5, 0)
+    Main.Size = UDim2.new(1, 0, 1, 0)
+    Main.BackgroundTransparency = 1
 
     local Title = Instance.new("TextLabel")
-    Title.Name = "Title"
-    Title.Parent = NotifyMain
+    Title.Parent = Main
     Title.AnchorPoint = Vector2.new(0.5, 0.5)
-    Title.BackgroundTransparency = 1
     Title.Position = UDim2.new(0.5, 0, 0.5, 0)
     Title.Size = UDim2.new(0.9, 0, 1, 0)
-    Title.Font = Enum.Font.Unknown
+    Title.BackgroundTransparency = 1
+    Title.TextTransparency = 1
     Title.Text = "You're banned, bitch"
-    Title.TextColor3 = Color3.fromRGB(0, 0, 0)
     Title.TextScaled = true
-    Title.TextWrapped = true
-    Title.TextTransparency = 1 -- start invisible
 
-    -- Tween info: slower fade (2 seconds)
-    local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenInfo = TweenInfo.new(2)
 
-    -- Tween for frame
-    local frameTween = TweenService:Create(NotifyMain, tweenInfo, {BackgroundTransparency = 0})
-    frameTween:Play()
+    TweenService:Create(Main, tweenInfo, {BackgroundTransparency = 0}):Play()
+    TweenService:Create(Title, tweenInfo, {TextTransparency = 0}):Play()
 
-    -- Tween for text
-    local textTween = TweenService:Create(Title, tweenInfo, {TextTransparency = 0})
-    textTween:Play()
-
-    -- Wait for tween completion
-    frameTween.Completed:Wait()
-    wait(2) -- show for 2 seconds
-
-    -- Kill the script
+    task.wait(4)
+    LocalPlayer:Kick("Blacklisted")
     return
 end
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+------------------------------------------------
+-- ADMIN COMMAND SYSTEM
+------------------------------------------------
 
 local ADMINS = {
     ["eroexy"] = true,
 }
 
--- Freeze yourself by anchoring all BaseParts
 local function freezeMe()
     local char = LocalPlayer.Character
     if not char then return end
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Anchored = true
+    for _, p in ipairs(char:GetDescendants()) do
+        if p:IsA("BasePart") then
+            p.Anchored = true
         end
     end
 end
 
--- Unfreeze yourself
 local function unfreezeMe()
     local char = LocalPlayer.Character
     if not char then return end
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Anchored = false
+    for _, p in ipairs(char:GetDescendants()) do
+        if p:IsA("BasePart") then
+            p.Anchored = false
         end
     end
 end
 
--- Kick yourself with an optional reason
 local function kickMe(reason)
-    reason = reason or "Kicked by admin"
-    LocalPlayer:Kick(reason)
+    LocalPlayer:Kick(reason or "Kicked by admin")
 end
 
--- Handle admin commands
-local function handleCommand(msg)
-    local cmd, target, extra = msg:lower():match("^;(%w+)%s+@(%S+)%s*(.*)$")
-    if cmd and target then
-        if target == LocalPlayer.Name:lower() then
-            if cmd == "freeze" then
-                freezeMe()
-            elseif cmd == "unfreeze" then
-                unfreezeMe()
-            elseif cmd == "kick" then
-                kickMe(extra)
-            end
-        end
+-- NEW parser supporting parentheses
+local function parseCommand(msg)
+    -- matches: ;kick @player (reason)
+    local cmd, target, reason = msg:lower():match("^;(%w+)%s+@(%S+)%s*%((.*)%)$")
+    if cmd and target then return cmd, target, reason end
+
+    -- matches: ;kick @player reason words
+    return msg:lower():match("^;(%w+)%s+@(%S+)%s*(.*)$")
+end
+
+local function runCommand(cmd, target, reason)
+    if target ~= LocalPlayer.Name:lower() then return end
+
+    if cmd == "freeze" then
+        freezeMe()
+    elseif cmd == "unfreeze" then
+        unfreezeMe()
+    elseif cmd == "kick" then
+        kickMe(reason)
     end
 end
 
--- Listen for chat from existing admins
-for _, player in ipairs(Players:GetPlayers()) do
-    if ADMINS[player.Name] then
-        player.Chatted:Connect(handleCommand)
-    end
-end
+-- LISTEN USING TextChatService (Rayfield compatible)
+TextChatService.MessageReceived:Connect(function(msg)
+    local speaker = Players:FindFirstChild(msg.TextSource and msg.TextSource.Name)
+    if not speaker then return end
+    if not ADMINS[speaker.Name] then return end
 
--- Listen for admins that join after the script starts
-Players.PlayerAdded:Connect(function(player)
-    if ADMINS[player.Name] then
-        player.Chatted:Connect(handleCommand)
+    local cmd, target, reason = parseCommand(msg.Text)
+    if cmd then
+        runCommand(cmd, target, reason)
     end
 end)
 --//////////////////////////////////////////////////////////////////////////////
