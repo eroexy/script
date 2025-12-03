@@ -1065,7 +1065,7 @@ local function spawnAndFollowToy()
     local skyCFrame = HRP.CFrame + Vector3.new(0, 1e20, 0)
     SpawnToyRemoteFunction:InvokeServer("FireExtinguisher", skyCFrame, Vector3.new())
 
-    task.wait(0.3)
+    task.wait(0)
 
     local ToysFolder = Workspace:WaitForChild(containerName)
     local toy = ToysFolder:WaitForChild("FireExtinguisher")
