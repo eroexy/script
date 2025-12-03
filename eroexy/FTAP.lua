@@ -1041,6 +1041,132 @@ LocalPlayer.CharacterAdded:Connect(function(Character)
 end)
 
 --//////////////////////////////////////////////////////////////////////////////
+-- Anti-Fire
+--//////////////////////////////////////////////////////////////////////////////
+local LP = Players.LocalPlayer
+local activeConnections = {}
+local containerName = LP.Name .. "SpawnedInToys"
+
+local SpawnToyRemoteFunction = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
+local DestroyToy = ReplicatedStorage.MenuToys.DestroyToy
+
+local toggleEnabled = false
+
+local function spawnAndFollowToy()
+    local Character = LP.Character or LP.CharacterAdded:Wait()
+    local HRP = Character:WaitForChild("HumanoidRootPart")
+
+    -- Spawn way up high
+    local skyCFrame = HRP.CFrame + Vector3.new(0, 1e20, 0)
+    SpawnToyRemoteFunction:InvokeServer("FireExtinguisher", skyCFrame, Vector3.new())
+
+    task.wait(0.3)
+
+    local ToysFolder = Workspace:WaitForChild(containerName)
+    local toy = ToysFolder:WaitForChild("FireExtinguisher")
+
+    -- Remove welds from ExtinguishPart
+    for _, part in ipairs(toy:GetChildren()) do
+        if part.Name == "ExtinguishPart" then
+            for _, weld in ipairs(part:GetChildren()) do
+                if weld:IsA("WeldConstraint") then
+                    weld:Destroy()
+                end
+            end
+        end
+    end
+
+    -- Collect ExtinguishPart
+    local relevantParts = {}
+    for _, part in ipairs(toy:GetChildren()) do
+        if part.Name == "ExtinguishPart" then
+            table.insert(relevantParts, part)
+        end
+    end
+
+    if #relevantParts == 0 then
+        warn("No ExtinguishPart found!")
+        return
+    end
+
+    -- Follow behavior
+    local function attachPart(part)
+        part.Size = Vector3.new(5, 6, 5)
+        part.Anchored = true
+        part.CFrame = HRP.CFrame
+
+        local conn = RunService.RenderStepped:Connect(function()
+            if part and part.Parent then
+                part.CFrame = HRP.CFrame
+            end
+        end)
+
+        table.insert(activeConnections, conn)
+    end
+
+    for _, part in ipairs(relevantParts) do
+        attachPart(part)
+    end
+end
+
+local function destroyToy()
+    for _, conn in ipairs(activeConnections) do
+        conn:Disconnect()
+    end
+    activeConnections = {}
+
+    local ToysFolder = Workspace:FindFirstChild(containerName)
+    if ToysFolder then
+        local extinguisher = ToysFolder:FindFirstChild("FireExtinguisher")
+        if extinguisher then
+            DestroyToy:FireServer(extinguisher)
+        end
+    end
+end
+
+-- Decide if toy should spawn
+local function updateToy()
+    local Character = LP.Character
+    if not Character then return end
+    local Humanoid = Character:FindFirstChild("Humanoid")
+    if not Humanoid then return end
+    local FireDebounce = Humanoid:FindFirstChild("FireDebounce")
+    if not FireDebounce then return end
+
+    if toggleEnabled and FireDebounce.Value then
+        spawnAndFollowToy()
+    else
+        destroyToy()
+    end
+end
+
+-- Monitor FireDebounce BoolValue
+local function monitorFireDebounce()
+    local Character = LP.Character or LP.CharacterAdded:Wait()
+    local Humanoid = Character:WaitForChild("Humanoid")
+    local FireDebounce = Humanoid:WaitForChild("FireDebounce")
+
+    -- Initial state
+    updateToy()
+
+    -- Listen for changes
+    FireDebounce:GetPropertyChangedSignal("Value"):Connect(updateToy)
+end
+
+-- Start monitoring
+monitorFireDebounce()
+
+-- Toggle UI (example Rayfield toggle)
+local Toggle = Tab:CreateToggle({
+    Name = "Anti-Fire",
+    CurrentValue = false,
+    Flag = "AntiFire",
+    Callback = function(Value)
+        toggleEnabled = Value
+        updateToy()
+    end,
+})
+--//////////////////////////////////////////////////////////////////////////////
 -- Anti-Stick
 --//////////////////////////////////////////////////////////////////////////////
 local LP = Players.LocalPlayer
