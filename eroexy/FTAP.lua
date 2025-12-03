@@ -129,8 +129,8 @@ local Window = Rayfield:CreateWindow({
    DisableBuildWarnings = false,
 
    ConfigurationSaving = {
-      Enabled = false,
-      FolderName = true,
+      Enabled = true,
+      FolderName = false,
       FileName = "eroexyFTAP"
    },
 
