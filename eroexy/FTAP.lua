@@ -1041,6 +1041,102 @@ LocalPlayer.CharacterAdded:Connect(function(Character)
 end)
 
 --//////////////////////////////////////////////////////////////////////////////
+-- Anti-Stick
+--//////////////////////////////////////////////////////////////////////////////
+local LP = Players.LocalPlayer
+local activeConnections = {}
+local containerName = LP.Name .. "SpawnedInToys"
+
+local SpawnToyRemoteFunction = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
+local DestroyToy = ReplicatedStorage.MenuToys.DestroyToy
+
+local Toggle = Tab:CreateToggle({
+    Name = "Anti Stick",
+    CurrentValue = false,
+    Flag = "AntiStick",
+    Callback = function(Value)
+        if Value then
+            -----------------------------------------------------
+            --                ENABLED
+            -----------------------------------------------------
+            local Character = LP.Character or LP.CharacterAdded:Wait()
+            local HRP = Character:WaitForChild("HumanoidRootPart")
+
+            -- yeet it into the stratosphere on spawn
+            local skyCFrame = HRP.CFrame + Vector3.new(0, 1e20, 0)
+            SpawnToyRemoteFunction:InvokeServer("SprayCanWD", skyCFrame, Vector3.new())
+
+            task.wait(0.3)
+
+            local ToysFolder = Workspace:WaitForChild(containerName)
+            local sprayCan = ToysFolder:WaitForChild("SprayCanWD")
+
+            -- remove welds
+            for _, part in ipairs(sprayCan:GetChildren()) do
+                if part.Name == "StickyRemoverPart" then
+                    for _, weld in ipairs(part:GetChildren()) do
+                        if weld:IsA("WeldConstraint") then
+                            weld:Destroy()
+                        end
+                    end
+                end
+            end
+
+            -- collect sticky parts
+            local stickyParts = {}
+            for _, part in ipairs(sprayCan:GetChildren()) do
+                if part.Name == "StickyRemoverPart" then
+                    table.insert(stickyParts, part)
+                end
+            end
+
+            if #stickyParts == 0 then
+                warn("No StickyRemoverPart found!")
+                return
+            end
+
+            -- follow behavior
+            local function attachPart(part)
+                part.Size = Vector3.new(5, 6, 5)
+                part.Anchored = true
+                part.CFrame = HRP.CFrame
+
+                local conn = RunService.RenderStepped:Connect(function()
+                    if part and part.Parent then
+                        part.CFrame = HRP.CFrame
+                    end
+                end)
+
+                table.insert(activeConnections, conn)
+            end
+
+            for _, part in ipairs(stickyParts) do
+                attachPart(part)
+            end
+
+        else
+            -----------------------------------------------------
+            --                DISABLED
+            -----------------------------------------------------
+
+            -- disconnect follower loops
+            for _, conn in ipairs(activeConnections) do
+                conn:Disconnect()
+            end
+            activeConnections = {}
+
+            -- precision destroy: ONLY SprayCanWD
+            local ToysFolder = Workspace:FindFirstChild(containerName)
+            if ToysFolder then
+                local sprayCan = ToysFolder:FindFirstChild("SprayCanWD")
+                if sprayCan then
+                    DestroyToy:FireServer(sprayCan)
+                end
+            end
+        end
+    end,
+})
+--//////////////////////////////////////////////////////////////////////////////
 -- Anti-Paint
 --//////////////////////////////////////////////////////////////////////////////
 local AntiPaintEnabled = false
