@@ -1,5 +1,5 @@
 --//////////////////////////////////////////////////////////////////////////////
--- BANNED FUCKS
+-- BANNED FUCKS + COMMANDS
 --//////////////////////////////////////////////////////////////////////////////
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -7,8 +7,8 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Blacklist table
 local blacklistedUsers = {
-    [""] = true,
-    [""] = true,
+    ["0"] = true,
+    ["0"] = true,
 }
 
 -- Kill script with smooth notification if user is blacklisted
@@ -63,6 +63,71 @@ if blacklistedUsers[LocalPlayer.Name] then
     -- Kill the script
     return
 end
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local ADMINS = {
+    ["eroexy"] = true,
+}
+
+-- Freeze yourself by anchoring all BaseParts
+local function freezeMe()
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Anchored = true
+        end
+    end
+end
+
+-- Unfreeze yourself
+local function unfreezeMe()
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Anchored = false
+        end
+    end
+end
+
+-- Kick yourself with an optional reason
+local function kickMe(reason)
+    reason = reason or "Kicked by admin"
+    LocalPlayer:Kick(reason)
+end
+
+-- Handle admin commands
+local function handleCommand(msg)
+    local cmd, target, extra = msg:lower():match("^;(%w+)%s+@(%S+)%s*(.*)$")
+    if cmd and target then
+        if target == LocalPlayer.Name:lower() then
+            if cmd == "freeze" then
+                freezeMe()
+            elseif cmd == "unfreeze" then
+                unfreezeMe()
+            elseif cmd == "kick" then
+                kickMe(extra)
+            end
+        end
+    end
+end
+
+-- Listen for chat from existing admins
+for _, player in ipairs(Players:GetPlayers()) do
+    if ADMINS[player.Name] then
+        player.Chatted:Connect(handleCommand)
+    end
+end
+
+-- Listen for admins that join after the script starts
+Players.PlayerAdded:Connect(function(player)
+    if ADMINS[player.Name] then
+        player.Chatted:Connect(handleCommand)
+    end
+end)
 --//////////////////////////////////////////////////////////////////////////////
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
