@@ -7,8 +7,8 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Blacklist table
 local blacklistedUsers = {
-    ["eroexy"] = true,
-    ["realcrystxll"] = true,
+    [""] = true,
+    [""] = true,
 }
 
 -- Kill script with smooth notification if user is blacklisted
