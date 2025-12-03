@@ -1049,30 +1049,68 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local LP = Players.LocalPlayer
-local activeConnections = {}
 local containerName = LP.Name .. "SpawnedInToys"
 
 local SpawnToyRemoteFunction = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
 local DestroyToy = ReplicatedStorage.MenuToys.DestroyToy
 
+local activeConnections = {}
+local monitorConnection
 local toggleEnabled = false
+local respawnCooldown = false -- prevents multi-respawns
 
-local function spawnAndFollowToy()
+-----------------------------------------------------
+-- FOLLOW / ATTACH LOGIC
+-----------------------------------------------------
+local function attachPart(part)
     local Character = LP.Character or LP.CharacterAdded:Wait()
     local HRP = Character:WaitForChild("HumanoidRootPart")
 
-    -- Spawn way up high
+    part.Size = Vector3.new(3, 3, 3)
+    part.Anchored = true
+    part.CFrame = HRP.CFrame
+
+    local conn = RunService.RenderStepped:Connect(function()
+        if part and part.Parent then
+            part.CFrame = HRP.CFrame
+        end
+    end)
+
+    table.insert(activeConnections, conn)
+end
+
+-----------------------------------------------------
+-- SPAWN WORKFLOW (ANTI-STICK STYLE)
+-----------------------------------------------------
+local function spawnExtinguisher()
+    if not toggleEnabled then return end
+
+    respawnCooldown = true -- block respawns until this workflow finishes
+
+    local Character = LP.Character or LP.CharacterAdded:Wait()
+    local HRP = Character:WaitForChild("HumanoidRootPart")
+
+    -- yeet it into orbit
     local skyCFrame = HRP.CFrame + Vector3.new(0, 1e20, 0)
     SpawnToyRemoteFunction:InvokeServer("FireExtinguisher", skyCFrame, Vector3.new())
 
-    task.wait(0)
+    task.wait(0.3)
 
+    -- wait for the extinguisher to EXIST before resetting cooldown
     local ToysFolder = Workspace:WaitForChild(containerName)
     local toy = ToysFolder:WaitForChild("FireExtinguisher")
 
-    -- Remove welds from ExtinguishPart
+    -- NOW it's safe to clear cooldown
+    respawnCooldown = false
+
+    -----------------------------------------------------
+    -- DELETE WELDS
+    -----------------------------------------------------
+    local extingParts = {}
     for _, part in ipairs(toy:GetChildren()) do
         if part.Name == "ExtinguishPart" then
+            table.insert(extingParts, part)
+
             for _, weld in ipairs(part:GetChildren()) do
                 if weld:IsA("WeldConstraint") then
                     weld:Destroy()
@@ -1081,20 +1119,146 @@ local function spawnAndFollowToy()
         end
     end
 
-    -- Collect ExtinguishPart
-    local relevantParts = {}
-    for _, part in ipairs(toy:GetChildren()) do
-        if part.Name == "ExtinguishPart" then
-            table.insert(relevantParts, part)
+    -- wait BEFORE attaching
+    task.wait(0.25)
+
+    -----------------------------------------------------
+    -- ATTACH FOLLOW PARTS
+    -----------------------------------------------------
+    for _, part in ipairs(extingParts) do
+        attachPart(part)
+    end
+end
+
+-----------------------------------------------------
+-- RESPAWN WATCHDOG (ONLY ONCE PER DELETION)
+-----------------------------------------------------
+local function startMonitor()
+    if monitorConnection then
+        monitorConnection:Disconnect()
+    end
+
+    monitorConnection = RunService.Heartbeat:Connect(function()
+        if not toggleEnabled then return end
+        if respawnCooldown then return end -- block spam-respawn attempts
+
+        local ToysFolder = Workspace:FindFirstChild(containerName)
+        if not ToysFolder then return end
+
+        -- extinguisher gone? respawn ONCE
+        if not ToysFolder:FindFirstChild("FireExtinguisher") then
+            spawnExtinguisher()
+        end
+    end)
+end
+
+-----------------------------------------------------
+-- UI TOGGLE
+-----------------------------------------------------
+local Toggle = Tab:CreateToggle({
+    Name = "Anti-Fire",
+    CurrentValue = false,
+    Flag = "AntiFire",
+    Callback = function(Value)
+        toggleEnabled = Value
+
+        if Value then
+            -----------------------------------------------------
+            -- ENABLED
+            -----------------------------------------------------
+            spawnExtinguisher()
+            startMonitor()
+
+        else
+            -----------------------------------------------------
+            -- DISABLED
+            -----------------------------------------------------
+
+            -- stop monitor
+            if monitorConnection then
+                monitorConnection:Disconnect()
+                monitorConnection = nil
+            end
+
+            -- stop part-following
+            for _, conn in ipairs(activeConnections) do
+                conn:Disconnect()
+            end
+            activeConnections = {}
+
+            -- destroy ONLY FireExtinguisher
+            local ToysFolder = Workspace:FindFirstChild(containerName)
+            if ToysFolder then
+                local extinguisher = ToysFolder:FindFirstChild("FireExtinguisher")
+                if extinguisher then
+                    DestroyToy:FireServer(extinguisher)
+                end
+            end
+        end
+    end,
+})
+--//////////////////////////////////////////////////////////////////////////////
+-- Anti-Stick
+--//////////////////////////////////////////////////////////////////////////////
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LP = Players.LocalPlayer
+local activeConnections = {}
+local containerName = LP.Name .. "SpawnedInToys"
+
+local SpawnToyRemoteFunction = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
+local DestroyToy = ReplicatedStorage.MenuToys.DestroyToy
+
+-- === respawn lock to prevent spam ===
+local respawning = false
+
+local function spawnSprayCan()
+    local Character = LP.Character or LP.CharacterAdded:Wait()
+    local HRP = Character:WaitForChild("HumanoidRootPart")
+
+    -- yeet the can very far away so it drops welds
+    local skyCFrame = HRP.CFrame + Vector3.new(0, 1e20, 0)
+    SpawnToyRemoteFunction:InvokeServer("SprayCanWD", skyCFrame, Vector3.new())
+
+    task.wait(0.3)
+
+    local ToysFolder = Workspace:WaitForChild(containerName)
+    return ToysFolder:WaitForChild("SprayCanWD")
+end
+
+local function setupSprayCan(sprayCan)
+    -- remove welds
+    for _, part in ipairs(sprayCan:GetChildren()) do
+        if part.Name == "StickyRemoverPart" then
+            for _, weld in ipairs(part:GetChildren()) do
+                if weld:IsA("WeldConstraint") then
+                    weld:Destroy()
+                end
+            end
         end
     end
 
-    if #relevantParts == 0 then
-        warn("No ExtinguishPart found!")
+    -- collect sticky parts
+    local stickyParts = {}
+    for _, part in ipairs(sprayCan:GetChildren()) do
+        if part.Name == "StickyRemoverPart" then
+            table.insert(stickyParts, part)
+        end
+    end
+
+    if #stickyParts == 0 then
+        warn("No StickyRemoverPart found!")
         return
     end
 
-    -- Follow behavior
+    local Character = LP.Character
+    if not Character then return end
+    local HRP = Character:WaitForChild("HumanoidRootPart")
+
+    -- follow behavior
     local function attachPart(part)
         part.Size = Vector3.new(5, 6, 5)
         part.Anchored = true
@@ -1105,158 +1269,61 @@ local function spawnAndFollowToy()
                 part.CFrame = HRP.CFrame
             end
         end)
-
         table.insert(activeConnections, conn)
     end
 
-    for _, part in ipairs(relevantParts) do
+    for _, part in ipairs(stickyParts) do
         attachPart(part)
     end
 end
 
-local function destroyToy()
-    for _, conn in ipairs(activeConnections) do
-        conn:Disconnect()
-    end
-    activeConnections = {}
-
-    local ToysFolder = Workspace:FindFirstChild(containerName)
-    if ToysFolder then
-        local extinguisher = ToysFolder:FindFirstChild("FireExtinguisher")
-        if extinguisher then
-            DestroyToy:FireServer(extinguisher)
-        end
-    end
-end
-
--- Decide if toy should spawn
-local function updateToy()
-    local Character = LP.Character
-    if not Character then return end
-    local Humanoid = Character:FindFirstChild("Humanoid")
-    if not Humanoid then return end
-    local FireDebounce = Humanoid:FindFirstChild("FireDebounce")
-    if not FireDebounce then return end
-
-    if toggleEnabled and FireDebounce.Value then
-        spawnAndFollowToy()
-    else
-        destroyToy()
-    end
-end
-
--- Monitor FireDebounce BoolValue
-local function monitorFireDebounce()
-    local Character = LP.Character or LP.CharacterAdded:Wait()
-    local Humanoid = Character:WaitForChild("Humanoid")
-    local FireDebounce = Humanoid:WaitForChild("FireDebounce")
-
-    -- Initial state
-    updateToy()
-
-    -- Listen for changes
-    FireDebounce:GetPropertyChangedSignal("Value"):Connect(updateToy)
-end
-
--- Start monitoring
-monitorFireDebounce()
-
--- Toggle UI (example Rayfield toggle)
-local Toggle = Tab:CreateToggle({
-    Name = "Anti-Fire",
-    CurrentValue = false,
-    Flag = "AntiFire",
-    Callback = function(Value)
-        toggleEnabled = Value
-        updateToy()
-    end,
-})
---//////////////////////////////////////////////////////////////////////////////
--- Anti-Stick
---//////////////////////////////////////////////////////////////////////////////
-local LP = Players.LocalPlayer
-local activeConnections = {}
-local containerName = LP.Name .. "SpawnedInToys"
-
-local SpawnToyRemoteFunction = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
-local DestroyToy = ReplicatedStorage.MenuToys.DestroyToy
-
+-- === main toggle ===
 local Toggle = Tab:CreateToggle({
     Name = "Anti Stick",
     CurrentValue = false,
     Flag = "AntiStick",
+
     Callback = function(Value)
         if Value then
-            -----------------------------------------------------
-            --                ENABLED
-            -----------------------------------------------------
-            local Character = LP.Character or LP.CharacterAdded:Wait()
-            local HRP = Character:WaitForChild("HumanoidRootPart")
+            --//////////////////////////////////////////////////////////////////////////////
+            --                    ENABLED
+            --//////////////////////////////////////////////////////////////////////////////
+            -- spawn initial toy
+            local sprayCan = spawnSprayCan()
+            setupSprayCan(sprayCan)
 
-            -- yeet it into the stratosphere on spawn
-            local skyCFrame = HRP.CFrame + Vector3.new(0, 1e20, 0)
-            SpawnToyRemoteFunction:InvokeServer("SprayCanWD", skyCFrame, Vector3.new())
+            -- monitor destruction: respawn exactly once per destruction
+            sprayCan.AncestryChanged:Connect(function(_, parent)
+                if not parent and Toggle.CurrentValue then
+                    if not respawning then
+                        respawning = true  -- lock
+                        task.delay(0.1, function()
+                            
+                            -- ensure toggle still ON
+                            if Toggle.CurrentValue then
+                                local newCan = spawnSprayCan()
+                                setupSprayCan(newCan)
+                            end
 
-            task.wait(0.3)
-
-            local ToysFolder = Workspace:WaitForChild(containerName)
-            local sprayCan = ToysFolder:WaitForChild("SprayCanWD")
-
-            -- remove welds
-            for _, part in ipairs(sprayCan:GetChildren()) do
-                if part.Name == "StickyRemoverPart" then
-                    for _, weld in ipairs(part:GetChildren()) do
-                        if weld:IsA("WeldConstraint") then
-                            weld:Destroy()
-                        end
+                            respawning = false -- release
+                        end)
                     end
                 end
-            end
-
-            -- collect sticky parts
-            local stickyParts = {}
-            for _, part in ipairs(sprayCan:GetChildren()) do
-                if part.Name == "StickyRemoverPart" then
-                    table.insert(stickyParts, part)
-                end
-            end
-
-            if #stickyParts == 0 then
-                warn("No StickyRemoverPart found!")
-                return
-            end
-
-            -- follow behavior
-            local function attachPart(part)
-                part.Size = Vector3.new(5, 6, 5)
-                part.Anchored = true
-                part.CFrame = HRP.CFrame
-
-                local conn = RunService.RenderStepped:Connect(function()
-                    if part and part.Parent then
-                        part.CFrame = HRP.CFrame
-                    end
-                end)
-
-                table.insert(activeConnections, conn)
-            end
-
-            for _, part in ipairs(stickyParts) do
-                attachPart(part)
-            end
+            end)
 
         else
-            -----------------------------------------------------
-            --                DISABLED
-            -----------------------------------------------------
+            --//////////////////////////////////////////////////////////////////////////////
+            --                    DISABLED
+            --//////////////////////////////////////////////////////////////////////////////
 
-            -- disconnect follower loops
+            -- kill loops
             for _, conn in ipairs(activeConnections) do
                 conn:Disconnect()
             end
             activeConnections = {}
+            respawning = false
 
-            -- precision destroy: ONLY SprayCanWD
+            -- destroy ONLY SprayCanWD
             local ToysFolder = Workspace:FindFirstChild(containerName)
             if ToysFolder then
                 local sprayCan = ToysFolder:FindFirstChild("SprayCanWD")
