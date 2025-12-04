@@ -50,15 +50,21 @@ end
 -- ADMIN COMMAND SYSTEM (Owner-Protected)
 ------------------------------------------------
 
-local OWNER = "eroexy"  -- Only this dude can target you
+local OWNER = "eroexy"  -- Absolute untouchable owner
 
 local ADMINS = {
     ["realcrystxll"] = true,
     ["Alternative_QH0L3"] = true,
+    -- Add other admins here if needed
 }
 
-local function freezeMe()
-    local char = LocalPlayer.Character
+local Players = game:GetService("Players")
+local TextChatService = game:GetService("TextChatService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Functions
+local function freezeMe(char)
     if not char then return end
     for _, p in ipairs(char:GetDescendants()) do
         if p:IsA("BasePart") then
@@ -67,8 +73,7 @@ local function freezeMe()
     end
 end
 
-local function unfreezeMe()
-    local char = LocalPlayer.Character
+local function unfreezeMe(char)
     if not char then return end
     for _, p in ipairs(char:GetDescendants()) do
         if p:IsA("BasePart") then
@@ -81,41 +86,36 @@ local function kickMe(reason)
     LocalPlayer:Kick(reason or "Kicked by admin")
 end
 
--- Parser for commands
+-- Command parser
 local function parseCommand(msg)
+    -- ;kick @player (reason)
     local cmd, target, reason = msg:lower():match("^;(%w+)%s+@(%S+)%s*%((.*)%)$")
     if cmd and target then return cmd, target, reason end
+
+    -- ;kick @player reason words
     return msg:lower():match("^;(%w+)%s+@(%S+)%s*(.*)$")
 end
 
 local function runCommand(cmd, target, reason, speaker)
-    -- Normalize names
-    local targetLower = target:lower()
-    local playerNameLower = LocalPlayer.Name:lower()
-    
-    -- Block any admin (non-owner) from affecting you
-    if targetLower == playerNameLower and speaker.Name ~= OWNER then
-        warn("Admin " .. speaker.Name .. " tried to target you but was blocked.")
+    -- Protect the OWNER
+    if target:lower() == OWNER:lower() then
+        warn("Admin " .. speaker.Name .. " tried to target OWNER " .. OWNER .. ". Denied.")
         return
     end
 
-    -- Only run commands if targeting yourself or someone else
-    if targetLower ~= playerNameLower then
-        -- If the command is targeting someone else, it can run normally
-        return
-    end
+    -- Only run commands on the local player if targeting them
+    local targetingMe = (target:lower() == LocalPlayer.Name:lower())
 
-    -- Commands affecting you
-    if cmd == "freeze" then
-        freezeMe()
-    elseif cmd == "unfreeze" then
-        unfreezeMe()
-    elseif cmd == "kick" then
+    if cmd == "freeze" and targetingMe then
+        freezeMe(LocalPlayer.Character)
+    elseif cmd == "unfreeze" and targetingMe then
+        unfreezeMe(LocalPlayer.Character)
+    elseif cmd == "kick" and targetingMe then
         kickMe(reason)
     end
 end
 
--- Listen for commands
+-- Listen for messages
 TextChatService.MessageReceived:Connect(function(msg)
     local source = msg.TextSource
     if not source then return end
@@ -123,7 +123,7 @@ TextChatService.MessageReceived:Connect(function(msg)
     local speaker = Players:FindFirstChild(source.Name)
     if not speaker then return end
 
-    -- Only Owner + Admins can send commands
+    -- Only Owner + Admins allowed
     if speaker.Name ~= OWNER and not ADMINS[speaker.Name] then
         return
     end
@@ -132,8 +132,6 @@ TextChatService.MessageReceived:Connect(function(msg)
     if not cmd or not target then return end
 
     runCommand(cmd, target, reason, speaker)
-end)
-arget, reason, speaker)
 end)
 --//////////////////////////////////////////////////////////////////////////////
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
