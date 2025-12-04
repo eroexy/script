@@ -1015,9 +1015,9 @@ local monitorConnection
 local toggleEnabled = false
 local respawnCooldown = false -- prevents multi-respawns
 
------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 -- FOLLOW / ATTACH LOGIC
------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 local function attachPart(part)
     local Character = LP.Character or LP.CharacterAdded:Wait()
     local HRP = Character:WaitForChild("HumanoidRootPart")
@@ -1035,9 +1035,9 @@ local function attachPart(part)
     table.insert(activeConnections, conn)
 end
 
------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 -- SPAWN WORKFLOW (ANTI-STICK STYLE)
------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 local function spawnExtinguisher()
     if not toggleEnabled then return end
 
@@ -1059,9 +1059,9 @@ local function spawnExtinguisher()
     -- NOW it's safe to clear cooldown
     respawnCooldown = false
 
-    -----------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
     -- DELETE WELDS
-    -----------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
     local extingParts = {}
     for _, part in ipairs(toy:GetChildren()) do
         if part.Name == "ExtinguishPart" then
@@ -1078,17 +1078,17 @@ local function spawnExtinguisher()
     -- wait BEFORE attaching
     task.wait(0.25)
 
-    -----------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
     -- ATTACH FOLLOW PARTS
-    -----------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
     for _, part in ipairs(extingParts) do
         attachPart(part)
     end
 end
 
------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 -- RESPAWN WATCHDOG (ONLY ONCE PER DELETION)
------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 local function startMonitor()
     if monitorConnection then
         monitorConnection:Disconnect()
@@ -1108,9 +1108,9 @@ local function startMonitor()
     end)
 end
 
------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 -- UI TOGGLE
------------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 local Toggle = Tab:CreateToggle({
     Name = "Anti-Fire",
     CurrentValue = false,
@@ -1119,16 +1119,16 @@ local Toggle = Tab:CreateToggle({
         toggleEnabled = Value
 
         if Value then
-            -----------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
             -- ENABLED
-            -----------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
             spawnExtinguisher()
             startMonitor()
 
         else
-            -----------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
             -- DISABLED
-            -----------------------------------------------------
+--//////////////////////////////////////////////////////////////////////////////
 
             -- stop monitor
             if monitorConnection then
@@ -1583,10 +1583,7 @@ local function isWhitelisted(plr)
     return false
 end
 
---//////////////////////////////////////////////////////////////////////////////
-local Section = Tab:CreateSection("Whitelist")
---//////////////////////////////////////////////////////////////////////////////
-
+-- Auto-Friend Whitelist Toggle (above dropdown)
 Tab:CreateToggle({
     Name = "Whitelist Friends",
     CurrentValue = true,
@@ -1637,10 +1634,6 @@ Players.PlayerAdded:Connect(RefreshWhitelistDropdown)
 Players.PlayerRemoving:Connect(RefreshWhitelistDropdown)
 
 --//////////////////////////////////////////////////////////////////////////////
-local Section = Tab:CreateSection("Aura")
---//////////////////////////////////////////////////////////////////////////////
-
---//////////////////////////////////////////////////////////////////////////////
 --  GRAB EVENT REFERENCES
 --//////////////////////////////////////////////////////////////////////////////
 
@@ -1664,6 +1657,166 @@ Tab:CreateToggle({
     Flag = "HeavenAura",
     Callback = function(Value)
         auraEnabled = Value
+    end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+--  HEAVEN AURA LOGIC
+--//////////////////////////////////////////////////////////////////////////////
+
+local function grabAndLaunch(player)
+    if isWhitelisted(player) then return end -- WHITELIST CHECK
+
+    if not player.Character then return end
+
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    local myHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp or not myHRP then return end
+
+    local distance = (hrp.Position - myHRP.Position).Magnitude
+    if distance > MAX_REACH then return end
+
+    local offset = myHRP.CFrame
+
+    -- Safe grab sequence
+    pcall(function() CreateGrabLine:FireServer(hrp, offset) end)
+    if DestroyGrabLine then
+        pcall(function() DestroyGrabLine:FireServer(hrp) end)
+    end
+    pcall(function() SetNetworkOwner:FireServer(hrp, offset) end)
+    pcall(function() ExtendGrabLine:FireServer(distance) end)
+
+    -- Launch physics
+    local existingVelocity = hrp:FindFirstChild("LaunchVelocity")
+    if existingVelocity then existingVelocity:Destroy() end
+
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Name = "LaunchVelocity"
+    bodyVelocity.Velocity = Vector3.new(0, LAUNCH_FORCE, 0)
+    bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+    bodyVelocity.P = 1250
+    bodyVelocity.Parent = hrp
+
+    Debris:AddItem(bodyVelocity, 1)
+end
+
+RunService.Heartbeat:Connect(function()
+    if not auraEnabled then return end
+
+    local myHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= localPlayer and not isWhitelisted(plr) then
+            grabAndLaunch(plr)
+        end
+    end
+end)
+
+--//////////////////////////////////////////////////////////////////////////////
+--  DEATH AURA CONFIG + SERVICES
+--//////////////////////////////////////////////////////////////////////////////
+
+local LocalPlayer  = localPlayer
+local GrabEvents   = grabEventsFolder
+local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
+local DestroyGrabLine = GrabEvents:WaitForChild("DestroyGrabLine")
+
+if not LocalPlayer.Character then
+    LocalPlayer.CharacterAdded:Wait()
+end
+
+local DeathAuraConnection = nil
+
+--//////////////////////////////////////////////////////////////////////////////
+--  DEATH AURA LOGIC
+--//////////////////////////////////////////////////////////////////////////////
+
+local function StartDeathAura()
+    DeathAuraConnection = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and not isWhitelisted(plr) and plr.Character then
+                local enemy = plr.Character
+                local enemyRoot = enemy:FindFirstChild("HumanoidRootPart")
+                local enemyHead = enemy:FindFirstChild("Head")
+                local humanoid = enemy:FindFirstChildOfClass("Humanoid")
+
+                if enemyRoot and enemyHead and humanoid and humanoid.Health > 0 then
+                    if (enemyRoot.Position - root.Position).Magnitude <= 25 then
+
+                        pcall(function()
+                            SetNetworkOwner:FireServer(enemyRoot, enemyRoot.CFrame)
+                            task.wait(0.1)
+
+                            DestroyGrabLine:FireServer(enemyRoot)
+
+                            if enemyHead:FindFirstChild("PartOwner")
+                               and enemyHead.PartOwner.Value == LocalPlayer.Name then
+
+                                for _, part in ipairs(enemy:GetChildren()) do
+                                    if part:IsA("BasePart") then
+                                        part.CFrame = CFrame.new(-1e9, 1e9, -1e9)
+                                    end
+                                end
+                                task.wait()
+                                for _, part in ipairs(enemy:GetChildren()) do
+                                    if part:IsA("BasePart") then
+                                        part.CFrame = CFrame.new(-1e9, 1e9, -1e9)
+                                    end
+                                end
+
+                                local bv = Instance.new("BodyVelocity")
+                                bv.Velocity = Vector3.new(0, -9999999, 0)
+                                bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                                bv.P = 100000075
+                                bv.Parent = enemyRoot
+
+                                humanoid.Sit = false
+                                humanoid.Jump = true
+                                humanoid.BreakJointsOnDeath = false
+                                humanoid:ChangeState(Enum.HumanoidStateType.Dead)
+
+                                task.delay(2, function()
+                                    if bv and bv.Parent then
+                                        bv:Destroy()
+                                    end
+                                end)
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function StopDeathAura()
+    if DeathAuraConnection then
+        DeathAuraConnection:Disconnect()
+        DeathAuraConnection = nil
+    end
+end
+
+--//////////////////////////////////////////////////////////////////////////////
+--  DEATH AURA TOGGLE
+--//////////////////////////////////////////////////////////////////////////////
+
+Tab:CreateToggle({
+    Name = "Death Aura",
+    CurrentValue = false,
+    Flag = "DeathAura",
+    Callback = function(Value)
+        if Value then
+            StartDeathAura()
+        else
+            StopDeathAura()
+        end
     end,
 })
 
