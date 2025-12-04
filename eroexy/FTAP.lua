@@ -50,12 +50,11 @@ end
 -- ADMIN COMMAND SYSTEM (Owner-Protected)
 ------------------------------------------------
 
-local OWNER = "eroexy"  -- Only this dude can mess with you
+local OWNER = "eroexy"  -- Only this dude can target you
 
 local ADMINS = {
     ["realcrystxll"] = true,
     ["Alternative_QH0L3"] = true,
-    -- You can add more admins here, but they will NEVER affect you
 }
 
 local function freezeMe()
@@ -84,24 +83,29 @@ end
 
 -- Parser for commands
 local function parseCommand(msg)
-    -- matches: ;kick @player (reason)
     local cmd, target, reason = msg:lower():match("^;(%w+)%s+@(%S+)%s*%((.*)%)$")
     if cmd and target then return cmd, target, reason end
-
-    -- matches: ;kick @player reason words
     return msg:lower():match("^;(%w+)%s+@(%S+)%s*(.*)$")
 end
 
 local function runCommand(cmd, target, reason, speaker)
-    -- Determine if this command targets YOU
-    local targetingMe = (target == LocalPlayer.Name:lower())
-
-    -- If admin tries to hit you → denied
-    if targetingMe and speaker.Name ~= OWNER then
+    -- Normalize names
+    local targetLower = target:lower()
+    local playerNameLower = LocalPlayer.Name:lower()
+    
+    -- Block any admin (non-owner) from affecting you
+    if targetLower == playerNameLower and speaker.Name ~= OWNER then
         warn("Admin " .. speaker.Name .. " tried to target you but was blocked.")
         return
     end
 
+    -- Only run commands if targeting yourself or someone else
+    if targetLower ~= playerNameLower then
+        -- If the command is targeting someone else, it can run normally
+        return
+    end
+
+    -- Commands affecting you
     if cmd == "freeze" then
         freezeMe()
     elseif cmd == "unfreeze" then
@@ -111,7 +115,7 @@ local function runCommand(cmd, target, reason, speaker)
     end
 end
 
--- LISTEN USING TextChatService
+-- Listen for commands
 TextChatService.MessageReceived:Connect(function(msg)
     local source = msg.TextSource
     if not source then return end
@@ -119,7 +123,7 @@ TextChatService.MessageReceived:Connect(function(msg)
     local speaker = Players:FindFirstChild(source.Name)
     if not speaker then return end
 
-    -- Only Owner + Admins allowed to issue commands
+    -- Only Owner + Admins can send commands
     if speaker.Name ~= OWNER and not ADMINS[speaker.Name] then
         return
     end
@@ -128,6 +132,8 @@ TextChatService.MessageReceived:Connect(function(msg)
     if not cmd or not target then return end
 
     runCommand(cmd, target, reason, speaker)
+end)
+arget, reason, speaker)
 end)
 --//////////////////////////////////////////////////////////////////////////////
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
