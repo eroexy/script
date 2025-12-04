@@ -1800,9 +1800,229 @@ Tab:CreateToggle({
 local Tab = Window:CreateTab("Player", 0)
 --//////////////////////////////////////////////////////////////////////////////
 
+--//////////////////////////////////////////////////////////////////////////////
+local Section = Tab:CreateSection("Walk")
+--//////////////////////////////////////////////////////////////////////////////
 
+-- Walkspeed Toggle
+Tab:CreateToggle({
+    Name = "Walkspeed",
+    CurrentValue = false,
+    Flag = "WalkSpeedToggle",
+    Callback = function(Value)
+        local Players = game:GetService("Players")
+        local RunService = game:GetService("RunService")
+        local lp = Players.LocalPlayer
 
+        if _G.WSConnection then
+            _G.WSConnection:Disconnect()
+            _G.WSConnection = nil
+        end
 
+        if Value then
+            _G.WSConnection = RunService.Stepped:Connect(function()
+                local char = lp.Character
+                if not char then return end
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if not (hrp and hum) then return end
+
+                local moveDir = hum.MoveDirection
+                local newVel = Vector3.new(moveDir.X * (_G.WalkSpeedValue or 16), hrp.Velocity.Y, moveDir.Z * (_G.WalkSpeedValue or 16))
+                hrp.Velocity = newVel
+            end)
+        end
+    end,
+})
+
+-- Walkspeed Slider
+Tab:CreateSlider({
+    Name = "Walkspeed",
+    Range = {16, 250},
+    Increment = 5,
+    Suffix = "Walkspeed",
+    CurrentValue = 16,
+    Flag = "WalkSpeedSlider",
+    Callback = function(Value)
+        _G.WalkSpeedValue = Value
+    end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+local Section = Tab:CreateSection("Jump")
+--//////////////////////////////////////////////////////////////////////////////
+
+Tab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+    Flag = "InfiniteJumpToggle",
+    Callback = function(Value)
+        local Players = game:GetService("Players")
+        local UserInputService = game:GetService("UserInputService")
+        local lp = Players.LocalPlayer
+
+        if _G.IJConnection then
+            _G.IJConnection:Disconnect()
+            _G.IJConnection = nil
+        end
+
+        if Value then
+            _G.IJConnection = UserInputService.JumpRequest:Connect(function()
+                local char = lp.Character
+                if not char then return end
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum.JumpPower = _G.JumpPowerValue or 50
+                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end)
+        end
+    end,
+})
+
+-- Jump Power Slider
+Tab:CreateSlider({
+    Name = "JumpPower",
+    Range = {24, 1000},
+    Increment = 10,
+    Suffix = "JumpPower",
+    CurrentValue = 24,
+    Flag = "JumpPowerSlider",
+    Callback = function(Value)
+        _G.JumpPowerValue = Value
+        local char = game.Players.LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.JumpPower = Value
+            end
+        end
+    end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+-- 3rd Person
+--//////////////////////////////////////////////////////////////////////////////
+
+local Section = Tab:CreateSection("Camera")
+
+local Toggle = Tab:CreateToggle({ 
+    Name = "3rd person",
+    CurrentValue = false,
+    Flag = "3rdPerson",
+    Callback = function(Value)
+        local Players = game:GetService("Players")
+        local RunService = game:GetService("RunService")
+
+        local player = Players.LocalPlayer
+        local cam = workspace.CurrentCamera
+
+        -- hard-locked 3rd-person distance
+        local THIRD_PERSON_DISTANCE = 12  -- <<< change this to whatever you want
+
+        local FIRST_PERSON_THRESHOLD = 1
+        local FADE_START = 2
+        local FADE_END = 4
+
+        local BODY_PART_NAMES = {
+            "Head",
+            "Torso",
+            "Left Arm",
+            "Right Arm",
+            "Left Leg",
+            "Right Leg",
+        }
+
+        local function getAccessoryParts(char)
+            local parts = {}
+            for _, accessory in ipairs(char:GetChildren()) do
+                if accessory:IsA("Accessory") then
+                    local h = accessory:FindFirstChild("Handle")
+                    if h then table.insert(parts, h) end
+                end
+            end
+            return parts
+        end
+
+        local function getAccessoryDescendants(char, name)
+            local accessory = char:FindFirstChild(name)
+            if not accessory then return {} end
+            local parts = {}
+            for _, d in ipairs(accessory:GetDescendants()) do
+                if d:IsA("BasePart") then table.insert(parts, d) end
+            end
+            return parts
+        end
+
+        -- nuke old connection
+        if _G.BodyFadeConnection then
+            _G.BodyFadeConnection:Disconnect()
+            _G.BodyFadeConnection = nil
+        end
+
+        if Value then
+            -- Toggle ON: locked 3rd-person
+            player.CameraMode = Enum.CameraMode.Classic
+
+            -- LOCK the zoom so nobody can change it
+            player.CameraMinZoomDistance = THIRD_PERSON_DISTANCE
+            player.CameraMaxZoomDistance = THIRD_PERSON_DISTANCE
+
+            _G.BodyFadeConnection = RunService.RenderStepped:Connect(function()
+                local char = player.Character
+                if not char then return end
+
+                local head = char:FindFirstChild("Head")
+                if not head then return end
+
+                local dist = (cam.CFrame.Position - head.Position).Magnitude
+                local alpha
+
+                if dist <= FIRST_PERSON_THRESHOLD then
+                    alpha = 1
+                elseif dist <= FADE_END then
+                    alpha = 1 - ((dist - FADE_START) / (FADE_END - FADE_START))
+                    alpha = math.clamp(alpha, 0, 1)
+                else
+                    alpha = 0
+                end
+
+                for _, name in ipairs(BODY_PART_NAMES) do
+                    local p = char:FindFirstChild(name)
+                    if p then
+                        p.LocalTransparencyModifier = alpha
+                        p.Transparency = (alpha == 1) and 1 or 0
+                    end
+                end
+
+                for _, h in ipairs(getAccessoryParts(char)) do
+                    h.LocalTransparencyModifier = alpha
+                    h.Transparency = (alpha == 1) and 1 or 0
+                end
+
+                for _, p in ipairs(getAccessoryDescendants(char, "TypingKeyboardMyWorld")) do
+                    p.LocalTransparencyModifier = 1
+                    p.Transparency = 1
+                end
+            end)
+        else
+            -- Toggle OFF: full first-person lock
+            if player.Character then
+                for _, name in ipairs(BODY_PART_NAMES) do
+                    local p = player.Character:FindFirstChild(name)
+                    if p then
+                        p.LocalTransparencyModifier = 0
+                        p.Transparency = 0
+                    end
+                end
+            end
+
+            player.CameraMinZoomDistance = 0
+            player.CameraMaxZoomDistance = 0
+            player.CameraMode = Enum.CameraMode.LockFirstPerson
+        end
+    end
+})
 
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Teleport", 0)
