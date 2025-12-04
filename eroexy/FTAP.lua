@@ -1564,6 +1564,9 @@ local Debris            = game:GetService("Debris")
 local localPlayer       = Players.LocalPlayer
 
 --//////////////////////////////////////////////////////////////////////////////
+local Section = Tab:CreateSection("Whitelist")
+--//////////////////////////////////////////////////////////////////////////////
+
 --  WHITELIST SYSTEM
 local autoFriendWhitelist = true
 local manualWhitelist = {}
@@ -1618,7 +1621,7 @@ WhitelistDropdown = Tab:CreateDropdown({
     Options = {},
     CurrentOption = {},
     MultipleOptions = true,
-    Flag = "ManualWhitelist",
+    Flag = "PlayerWhitelist",
     Callback = function() end,
 })
 
@@ -1667,6 +1670,10 @@ local function grabAndLaunch(player)
     bv.Parent = hrp
     Debris:AddItem(bv, 1)
 end
+
+--//////////////////////////////////////////////////////////////////////////////
+local Section = Tab:CreateSection("Aura")
+--//////////////////////////////////////////////////////////////////////////////
 
 local HeavenToggle = Tab:CreateToggle({
     Name = "Heaven Aura",
