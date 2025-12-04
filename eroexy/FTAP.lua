@@ -53,6 +53,7 @@ end
 local ADMINS = {
     ["eroexy"] = true,
     ["realcrystxll"] = true,
+    ["Alternative_QH0L3"] = true,
 }
 
 local function freezeMe()
