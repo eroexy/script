@@ -67,6 +67,7 @@ if blacklistedUsers[LocalPlayer.Name] then
     -- Kill the script
     return
 end
+
 --//////////////////////////////////////////////////////////////////////////////
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
