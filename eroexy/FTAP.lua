@@ -1555,8 +1555,6 @@ end)
 local Tab = Window:CreateTab("Aura", 0)
 --//////////////////////////////////////////////////////////////////////////////
 --  SERVICES
---//////////////////////////////////////////////////////////////////////////////
-
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace         = game:GetService("Workspace")
@@ -1566,25 +1564,22 @@ local Debris            = game:GetService("Debris")
 local localPlayer       = Players.LocalPlayer
 
 --//////////////////////////////////////////////////////////////////////////////
---  AUTO-FRIEND WHITELIST + DROPDOWN
---//////////////////////////////////////////////////////////////////////////////
+--  WHITELIST SYSTEM
+local autoFriendWhitelist = true
+local manualWhitelist = {}
 
-local autoFriendWhitelist = true -- toggle default ON
-local whitelistedPlayers = {} -- manual selections only
-
--- automatically whitelist Roblox friends
 local function isFriend(plr)
     return autoFriendWhitelist and localPlayer:IsFriendsWith(plr.UserId)
 end
 
 local function isWhitelisted(plr)
     if isFriend(plr) then return true end
-    if table.find(whitelistedPlayers, plr.Name) then return true end
+    if table.find(manualWhitelist, plr.Name) then return true end
     return false
 end
 
--- Auto-Friend Whitelist Toggle (above dropdown)
-Tab:CreateToggle({
+-- Auto-Friend Whitelist Toggle
+local AutoWhitelistToggle = Tab:CreateToggle({
     Name = "Whitelist Friends",
     CurrentValue = true,
     Flag = "AutoFriendWhitelist",
@@ -1593,39 +1588,37 @@ Tab:CreateToggle({
     end,
 })
 
--- Dropdown that displays "DisplayName (@username)"
-local dropdownRef
-
+-- Manual whitelist dropdown
+local WhitelistDropdown
 local function RefreshWhitelistDropdown()
-    local formattedOptions = {}
-    local map = {} -- label → username
-
+    local options = {}
+    local map = {}
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= localPlayer then
             local label = string.format("%s (@%s)", plr.DisplayName, plr.Name)
-            table.insert(formattedOptions, label)
+            table.insert(options, label)
             map[label] = plr.Name
         end
     end
 
-    if dropdownRef and dropdownRef.Refresh then
-        dropdownRef:Refresh(formattedOptions)
+    if WhitelistDropdown and WhitelistDropdown.Refresh then
+        WhitelistDropdown:Refresh(options)
     end
 
-    dropdownRef.Callback = function(selectedLabels)
-        whitelistedPlayers = {}
-        for _, label in ipairs(selectedLabels) do
-            table.insert(whitelistedPlayers, map[label])
+    WhitelistDropdown.Callback = function(selected)
+        manualWhitelist = {}
+        for _, label in ipairs(selected) do
+            table.insert(manualWhitelist, map[label])
         end
     end
 end
 
-dropdownRef = Tab:CreateDropdown({
+WhitelistDropdown = Tab:CreateDropdown({
     Name = "Whitelist Players",
     Options = {},
     CurrentOption = {},
     MultipleOptions = true,
-    Flag = "PlayerWhitelist",
+    Flag = "ManualWhitelist",
     Callback = function() end,
 })
 
@@ -1634,41 +1627,23 @@ Players.PlayerAdded:Connect(RefreshWhitelistDropdown)
 Players.PlayerRemoving:Connect(RefreshWhitelistDropdown)
 
 --//////////////////////////////////////////////////////////////////////////////
---  GRAB EVENT REFERENCES
---//////////////////////////////////////////////////////////////////////////////
-
-local grabEventsFolder  = ReplicatedStorage:WaitForChild("GrabEvents")
-local CreateGrabLine    = grabEventsFolder:WaitForChild("CreateGrabLine")
-local SetNetworkOwner   = grabEventsFolder:WaitForChild("SetNetworkOwner")
-local ExtendGrabLine    = grabEventsFolder:WaitForChild("ExtendGrabLine")
-local DestroyGrabLine   = grabEventsFolder:FindFirstChild("DestroyGrabLine")
+--  GRAB EVENTS
+local GrabEventsFolder  = ReplicatedStorage:WaitForChild("GrabEvents")
+local CreateGrabLine    = GrabEventsFolder:WaitForChild("CreateGrabLine")
+local SetNetworkOwner   = GrabEventsFolder:WaitForChild("SetNetworkOwner")
+local ExtendGrabLine    = GrabEventsFolder:WaitForChild("ExtendGrabLine")
+local DestroyGrabLine   = GrabEventsFolder:FindFirstChild("DestroyGrabLine")
 
 --//////////////////////////////////////////////////////////////////////////////
---  HEAVEN AURA CONFIG
---//////////////////////////////////////////////////////////////////////////////
-
+--  HEAVEN AURA
 local MAX_REACH   = 30
 local LAUNCH_FORCE = 10000
-local auraEnabled  = false
-
-Tab:CreateToggle({
-    Name = "Heaven Aura",
-    CurrentValue = false,
-    Flag = "HeavenAura",
-    Callback = function(Value)
-        auraEnabled = Value
-    end,
-})
-
---//////////////////////////////////////////////////////////////////////////////
---  HEAVEN AURA LOGIC
---//////////////////////////////////////////////////////////////////////////////
+local HeavenEnabled = false
+local HeavenConnection
 
 local function grabAndLaunch(player)
-    if isWhitelisted(player) then return end -- WHITELIST CHECK
-
+    if isWhitelisted(player) then return end
     if not player.Character then return end
-
     local hrp = player.Character:FindFirstChild("HumanoidRootPart")
     local myHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not hrp or not myHRP then return end
@@ -1677,116 +1652,83 @@ local function grabAndLaunch(player)
     if distance > MAX_REACH then return end
 
     local offset = myHRP.CFrame
-
-    -- Safe grab sequence
     pcall(function() CreateGrabLine:FireServer(hrp, offset) end)
-    if DestroyGrabLine then
-        pcall(function() DestroyGrabLine:FireServer(hrp) end)
-    end
+    if DestroyGrabLine then pcall(function() DestroyGrabLine:FireServer(hrp) end) end
     pcall(function() SetNetworkOwner:FireServer(hrp, offset) end)
     pcall(function() ExtendGrabLine:FireServer(distance) end)
 
-    -- Launch physics
     local existingVelocity = hrp:FindFirstChild("LaunchVelocity")
     if existingVelocity then existingVelocity:Destroy() end
-
-    local bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.Name = "LaunchVelocity"
-    bodyVelocity.Velocity = Vector3.new(0, LAUNCH_FORCE, 0)
-    bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
-    bodyVelocity.P = 1250
-    bodyVelocity.Parent = hrp
-
-    Debris:AddItem(bodyVelocity, 1)
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "LaunchVelocity"
+    bv.Velocity = Vector3.new(0, LAUNCH_FORCE, 0)
+    bv.MaxForce = Vector3.new(0, math.huge, 0)
+    bv.P = 1250
+    bv.Parent = hrp
+    Debris:AddItem(bv, 1)
 end
 
-RunService.Heartbeat:Connect(function()
-    if not auraEnabled then return end
-
-    local myHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myHRP then return end
-
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= localPlayer and not isWhitelisted(plr) then
-            grabAndLaunch(plr)
+local HeavenToggle = Tab:CreateToggle({
+    Name = "Heaven Aura",
+    CurrentValue = false,
+    Flag = "HeavenAura",
+    Callback = function(Value)
+        HeavenEnabled = Value
+        if HeavenEnabled then
+            HeavenConnection = RunService.Heartbeat:Connect(function()
+                local myHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if not myHRP then return end
+                for _, plr in ipairs(Players:GetPlayers()) do
+                    if plr ~= localPlayer then grabAndLaunch(plr) end
+                end
+            end)
+        else
+            if HeavenConnection then
+                HeavenConnection:Disconnect()
+                HeavenConnection = nil
+            end
         end
-    end
-end)
+    end,
+})
 
 --//////////////////////////////////////////////////////////////////////////////
---  DEATH AURA CONFIG + SERVICES
---//////////////////////////////////////////////////////////////////////////////
+--  DEATH AURA
+local DeathEnabled = false
+local DeathConnection
 
-local LocalPlayer  = localPlayer
-local GrabEvents   = grabEventsFolder
-local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
-local DestroyGrabLine = GrabEvents:WaitForChild("DestroyGrabLine")
-
-if not LocalPlayer.Character then
-    LocalPlayer.CharacterAdded:Wait()
-end
-
-local DeathAuraConnection = nil
-
---//////////////////////////////////////////////////////////////////////////////
---  DEATH AURA LOGIC
---//////////////////////////////////////////////////////////////////////////////
-
-local function StartDeathAura()
-    DeathAuraConnection = RunService.Heartbeat:Connect(function()
-        local char = LocalPlayer.Character
+local function startDeathAura()
+    DeathConnection = RunService.Heartbeat:Connect(function()
+        local char = localPlayer.Character
         if not char then return end
-
         local root = char:FindFirstChild("HumanoidRootPart")
         if not root then return end
 
         for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and not isWhitelisted(plr) and plr.Character then
+            if plr ~= localPlayer and not isWhitelisted(plr) and plr.Character then
                 local enemy = plr.Character
                 local enemyRoot = enemy:FindFirstChild("HumanoidRootPart")
                 local enemyHead = enemy:FindFirstChild("Head")
                 local humanoid = enemy:FindFirstChildOfClass("Humanoid")
-
                 if enemyRoot and enemyHead and humanoid and humanoid.Health > 0 then
                     if (enemyRoot.Position - root.Position).Magnitude <= 25 then
-
                         pcall(function()
                             SetNetworkOwner:FireServer(enemyRoot, enemyRoot.CFrame)
                             task.wait(0.1)
-
                             DestroyGrabLine:FireServer(enemyRoot)
 
-                            if enemyHead:FindFirstChild("PartOwner")
-                               and enemyHead.PartOwner.Value == LocalPlayer.Name then
-
+                            if enemyHead:FindFirstChild("PartOwner") and enemyHead.PartOwner.Value == localPlayer.Name then
                                 for _, part in ipairs(enemy:GetChildren()) do
                                     if part:IsA("BasePart") then
                                         part.CFrame = CFrame.new(-1e9, 1e9, -1e9)
                                     end
                                 end
-                                task.wait()
-                                for _, part in ipairs(enemy:GetChildren()) do
-                                    if part:IsA("BasePart") then
-                                        part.CFrame = CFrame.new(-1e9, 1e9, -1e9)
-                                    end
-                                end
-
                                 local bv = Instance.new("BodyVelocity")
                                 bv.Velocity = Vector3.new(0, -9999999, 0)
                                 bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
                                 bv.P = 100000075
                                 bv.Parent = enemyRoot
-
-                                humanoid.Sit = false
-                                humanoid.Jump = true
-                                humanoid.BreakJointsOnDeath = false
                                 humanoid:ChangeState(Enum.HumanoidStateType.Dead)
-
-                                task.delay(2, function()
-                                    if bv and bv.Parent then
-                                        bv:Destroy()
-                                    end
-                                end)
+                                task.delay(2, function() if bv and bv.Parent then bv:Destroy() end end)
                             end
                         end)
                     end
@@ -1796,26 +1738,23 @@ local function StartDeathAura()
     end)
 end
 
-local function StopDeathAura()
-    if DeathAuraConnection then
-        DeathAuraConnection:Disconnect()
-        DeathAuraConnection = nil
+local function stopDeathAura()
+    if DeathConnection then
+        DeathConnection:Disconnect()
+        DeathConnection = nil
     end
 end
-
---//////////////////////////////////////////////////////////////////////////////
---  DEATH AURA TOGGLE
---//////////////////////////////////////////////////////////////////////////////
 
 Tab:CreateToggle({
     Name = "Death Aura",
     CurrentValue = false,
     Flag = "DeathAura",
     Callback = function(Value)
-        if Value then
-            StartDeathAura()
+        DeathEnabled = Value
+        if DeathEnabled then
+            startDeathAura()
         else
-            StopDeathAura()
+            stopDeathAura()
         end
     end,
 })
