@@ -12,7 +12,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Blacklist table
 local blacklistedUsers = {
-    ["eroexy"] = true,
+    ["o"] = true,
     ["Troll123"] = true,
 }
 
