@@ -1874,11 +1874,11 @@ local Toggle = Tab:CreateToggle({
         local cam = workspace.CurrentCamera
 
         -- hard-locked 3rd-person distance
-        local THIRD_PERSON_DISTANCE = 12  -- <<< change this to whatever you want
+        local THIRD_PERSON_DISTANCE = 1000  -- <<< change this to whatever you want
 
         local FIRST_PERSON_THRESHOLD = 1
-        local FADE_START = 2
-        local FADE_END = 4
+        local FADE_START = 1.5
+        local FADE_END = 3.5
 
         local BODY_PART_NAMES = {
             "Head",
