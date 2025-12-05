@@ -519,25 +519,25 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
 
 local LP = Players.LocalPlayer
 local activeConnections = {}
 local containerName = LP.Name .. "SpawnedInToys"
-local seenGrabParts = {}
 local respawning = false
 local currentPallet = nil
 
 local SpawnToyRemoteFunction = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
 local DestroyToy = ReplicatedStorage.MenuToys.DestroyToy
 
---//////////////////////////////////////////////////////////////////////////////
+-- ======================
 -- Spawn Pallet
---//////////////////////////////////////////////////////////////////////////////
+-- ======================
 local function spawnPallet()
     local Character = LP.Character or LP.CharacterAdded:Wait()
     local HRP = Character:WaitForChild("HumanoidRootPart")
 
-    -- Sky-high spawn
+    -- sky-high spawn
     local skyCFrame = HRP.CFrame + Vector3.new(0, 1e20, 0)
     SpawnToyRemoteFunction:InvokeServer("PalletLightBrown", skyCFrame, Vector3.new(0, 59.667, 0))
 
@@ -549,9 +549,9 @@ local function spawnPallet()
     return pallet
 end
 
---//////////////////////////////////////////////////////////////////////////////
+-- ======================
 -- Setup Pallet
---//////////////////////////////////////////////////////////////////////////////
+-- ======================
 local function setupPallet(pallet)
     if not pallet then return end
 
@@ -565,15 +565,14 @@ local function setupPallet(pallet)
         end
     end
 
-    -- Heartbeat loop to move SoundPart to GrabParts
+    -- Heartbeat loop to continuously teleport SoundPart to all GrabParts
     local conn = RunService.Heartbeat:Connect(function()
         if not soundPart then return end
         local grabFolder = Workspace:FindFirstChild("GrabParts")
         if not grabFolder then return end
 
         for _, gp in ipairs(grabFolder:GetChildren()) do
-            if gp.Name == "GrabPart" and gp:IsA("BasePart") and not seenGrabParts[gp] then
-                seenGrabParts[gp] = true
+            if gp.Name == "GrabPart" and gp:IsA("BasePart") then
                 soundPart.CFrame = gp.CFrame
             end
         end
@@ -582,11 +581,11 @@ local function setupPallet(pallet)
 
     -- Respawn if destroyed
     pallet.AncestryChanged:Connect(function(_, parent)
-        if not parent and Toggle.CurrentValue then
+        if not parent and ToggleCallback and ToggleCallback() then
             if not respawning then
                 respawning = true
                 task.delay(0.1, function()
-                    if Toggle.CurrentValue then
+                    if ToggleCallback and ToggleCallback() then
                         local newPallet = spawnPallet()
                         setupPallet(newPallet)
                     end
@@ -597,27 +596,36 @@ local function setupPallet(pallet)
     end)
 end
 
---//////////////////////////////////////////////////////////////////////////////
--- Rayfield-compatible Toggle
---//////////////////////////////////////////////////////////////////////////////
+-- ======================
+-- Toggle Callback Storage
+-- ======================
+local ToggleCallback = nil
+
+-- ======================
+-- Rayfield-compatible Toggle with Callback
+-- ======================
 local Toggle = Tab:CreateToggle({
     Name = "Ragdoll Grab",
     CurrentValue = false,
     Flag = "RagdollGrab",
     Callback = function(Value)
+        -- update callback state
+        ToggleCallback = function() return Value end
+
         if Value then
             -- ENABLED
             local pallet = spawnPallet()
             setupPallet(pallet)
         else
-            -- Disconnect all heartbeat loops
+            -- DISABLED
+            -- disconnect all loops
             for _, conn in ipairs(activeConnections) do
                 conn:Disconnect()
             end
             activeConnections = {}
             respawning = false
 
-            -- Destroy current pallet
+            -- destroy pallet if exists
             local ToysFolder = Workspace:FindFirstChild(containerName)
             if ToysFolder then
                 local pallet = ToysFolder:FindFirstChild("PalletLightBrown")
