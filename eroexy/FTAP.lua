@@ -512,6 +512,126 @@ local Toggle = Tab:CreateToggle({
 })
 
 --//////////////////////////////////////////////////////////////////////////////
+-- Ragdoll Grab
+--//////////////////////////////////////////////////////////////////////////////
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LP = Players.LocalPlayer
+local activeConnections = {}
+local containerName = LP.Name .. "SpawnedInToys"
+
+local SpawnToyRemoteFunction = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
+local DestroyToy = ReplicatedStorage.MenuToys.DestroyToy
+
+local seenGrabParts = {}
+local respawning = false
+local currentPallet = nil
+
+-- ======================
+-- Spawn Pallet Function
+-- ======================
+local function spawnPallet()
+    local Character = LP.Character or LP.CharacterAdded:Wait()
+    local HRP = Character:WaitForChild("HumanoidRootPart")
+
+    -- sky-high spawn
+    local skyCFrame = HRP.CFrame + Vector3.new(0, 1e20, 0)
+    SpawnToyRemoteFunction:InvokeServer("PalletLightBrown", skyCFrame, Vector3.new(0, 59.667, 0))
+
+    task.wait(0.3) -- give Roblox time to replicate
+
+    local ToysFolder = Workspace:WaitForChild(containerName)
+    local pallet = ToysFolder:FindFirstChild("PalletLightBrown")
+    currentPallet = pallet
+    return pallet
+end
+
+-- ======================
+-- Setup Pallet Function
+-- ======================
+local function setupPallet(pallet)
+    if not pallet then return end
+
+    local soundPart
+    for _, obj in ipairs(pallet:GetChildren()) do
+        if obj.Name ~= "Main" and obj.Name ~= "SoundPart" then
+            obj:Destroy()
+        elseif obj.Name == "SoundPart" and obj:IsA("BasePart") then
+            obj.CanCollide = false
+            soundPart = obj
+        end
+    end
+
+    -- Heartbeat loop to move SoundPart to GrabParts
+    local conn = RunService.Heartbeat:Connect(function()
+        if not soundPart then return end
+        local grabFolder = Workspace:FindFirstChild("GrabParts")
+        if not grabFolder then return end
+
+        for _, gp in ipairs(grabFolder:GetChildren()) do
+            if gp.Name == "GrabPart" and gp:IsA("BasePart") and not seenGrabParts[gp] then
+                seenGrabParts[gp] = true
+                print(LP.Name .. " Found GrabPart:", gp)
+                soundPart.CFrame = gp.CFrame
+            end
+        end
+    end)
+
+    table.insert(activeConnections, conn)
+
+    -- Auto-respawn if destroyed
+    pallet.AncestryChanged:Connect(function(_, parent)
+        if not parent and Toggle.CurrentValue then
+            if not respawning then
+                respawning = true
+                task.delay(0.1, function()
+                    if Toggle.CurrentValue then
+                        local newPallet = spawnPallet()
+                        setupPallet(newPallet)
+                    end
+                    respawning = false
+                end)
+            end
+        end
+    end)
+end
+
+-- ======================
+-- Toggle
+-- ======================
+local Toggle = Tab:CreateToggle({
+    Name = "Ragdoll Grab",
+    CurrentValue = false,
+    Flag = "RagdollGrab",
+    Callback = function(Value)
+        if Value then
+            local pallet = spawnPallet()
+            setupPallet(pallet)
+        else
+            -- Disconnect all loops
+            for _, conn in ipairs(activeConnections) do
+                conn:Disconnect()
+            end
+            activeConnections = {}
+            respawning = false
+
+            -- Destroy pallet if exists
+            local ToysFolder = Workspace:FindFirstChild(containerName)
+            if ToysFolder then
+                local pallet = ToysFolder:FindFirstChild("PalletLightBrown")
+                if pallet then
+                    DestroyToy:FireServer(pallet)
+                end
+            end
+        end
+    end,
+})
+
+--//////////////////////////////////////////////////////////////////////////////
 -- Glitch Grab + Spin Grab
 --//////////////////////////////////////////////////////////////////////////////
 
@@ -782,6 +902,35 @@ Tab:CreateButton({
         end)
     end,
 })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Defense", 0)
 local Section = Tab:CreateSection("Anti")
@@ -1550,6 +1699,37 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 --//////////////////////////////////////////////////////////////////////////////
 --  AURA TAB
 local Tab = Window:CreateTab("Aura", 0)
@@ -1766,15 +1946,51 @@ Tab:CreateToggle({
     end,
 })
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Loop", 0)
 --//////////////////////////////////////////////////////////////////////////////
 
---//////////////////////////////////////////////////////////////////////////////
-local Tab = Window:CreateTab("Player", 0)
---//////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 --//////////////////////////////////////////////////////////////////////////////
+local Tab = Window:CreateTab("Player", 0)
 local Section = Tab:CreateSection("Walk")
 --//////////////////////////////////////////////////////////////////////////////
 
@@ -1998,9 +2214,54 @@ local Toggle = Tab:CreateToggle({
     end
 })
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("ESP", 0)
 --//////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Teleport", 0)
