@@ -828,30 +828,24 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
-
-local LocalPlayer = Players.LocalPlayer
-
---//////////////////////////////////////////////////////////////////////////////
--- Anti-Grab (Freeze while held)
---//////////////////////////////////////////////////////////////////////////////
--- AntiGrab + AntiExplode combined (LocalScript)
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
 local task = task
 
 local LocalPlayer = Players.LocalPlayer
 
 --//////////////////////////////////////////////////////////////////////////////
--- Anti-Grab (Freeze while held)
+-- Anti-Grab (Freeze while held) + Anti-Explode (same toggle)
 --//////////////////////////////////////////////////////////////////////////////
 local isHeld = LocalPlayer:WaitForChild("IsHeld")
 local StruggleEvent = ReplicatedStorage.CharacterEvents:WaitForChild("Struggle")
 
 local lastPositionBeforeHeld = nil
 local previousValue = isHeld.Value
-local freezeEnabled = false
+local freezeEnabled = false -- single toggle controls both anti-grab and anti-explode
+
+-- Anti-Explode config (controlled by same toggle)
+local REACT_DISTANCE = 20       -- distance threshold to react to an exploding "Part"
+local CHECK_TIMEOUT = 2         -- max seconds to wait for RagdollLimbPart to clear
+local LOOP_WAIT = 0.01          -- wait between checks in the inner loop
 
 local function getHRP()
     return LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -865,9 +859,9 @@ local function resetHumanoid()
     local hrp = getHRP()
 
     if humanoid then
-        humanoid.Sit = false
+        pcall(function() humanoid.Sit = false end)
         pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.GettingUp) end)
-        humanoid.AutoRotate = true
+        pcall(function() humanoid.AutoRotate = true end)
         pcall(function() humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true) end)
         pcall(function() humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false) end)
         pcall(function() humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false) end)
@@ -876,7 +870,7 @@ local function resetHumanoid()
     if hrp then pcall(function() hrp.Anchored = false end) end
 end
 
--- Toggle: Anti-Grab
+-- Toggle (single toggle controls both behaviors)
 Tab:CreateToggle({
     Name = "Anti-Grab",
     CurrentValue = false,
@@ -884,13 +878,14 @@ Tab:CreateToggle({
     Callback = function(Value)
         freezeEnabled = Value
         if not freezeEnabled then
+            -- ensure HRP is not left anchored when toggle is turned off
             local hrp = getHRP()
             if hrp then pcall(function() hrp.Anchored = false end) end
         end
     end,
 })
 
--- Listen for IsHeld changes
+-- Listen for IsHeld changes (original behavior)
 isHeld:GetPropertyChangedSignal("Value"):Connect(function()
     if not freezeEnabled then
         previousValue = isHeld.Value
@@ -909,6 +904,7 @@ isHeld:GetPropertyChangedSignal("Value"):Connect(function()
         lastPositionBeforeHeld = hrp.CFrame
         pcall(function() hrp.Anchored = true end)
     elseif previousValue == true and newValue == false then
+        -- only unanchor here if toggle still enabled; otherwise the toggle-off logic will unanchor
         pcall(function() hrp.Anchored = false end)
         if lastPositionBeforeHeld then
             pcall(function() hrp.CFrame = lastPositionBeforeHeld end)
@@ -918,7 +914,7 @@ isHeld:GetPropertyChangedSignal("Value"):Connect(function()
     previousValue = newValue
 end)
 
--- Freeze & struggle while held
+-- Freeze & struggle while held (original behavior)
 RunService.RenderStepped:Connect(function()
     if freezeEnabled and isHeld.Value then
         local hrp = getHRP()
@@ -930,90 +926,76 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Reset humanoid on respawn
+-- Reset humanoid on respawn (original behavior)
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.1)
     if freezeEnabled then resetHumanoid() end
 end)
 
 --//////////////////////////////////////////////////////////////////////////////
--- Anti-Explode (Anchor briefly if an explosion 'Part' appears nearby)
+-- Anti-Explode logic (runs when freezeEnabled == true)
 --//////////////////////////////////////////////////////////////////////////////
 
-local antiExplodeEnabled = false
-
--- Config
-local REACT_DISTANCE = 20               -- distance from HRP to react
-local CHECK_TIMEOUT = 2                 -- seconds max to wait for RagdollLimbPart to clear
-local LOOP_WAIT = 0.01                  -- wait between checks in the inner loop
-
-local function getCharacterParts()
-    local char = LocalPlayer.Character
-    if not char then return nil end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    -- try common right-arm names for R6/R15 rigs
-    local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or char:FindFirstChild("RightUpperArm")
-    return char, hrp, rightArm
+-- helper to find common right-arm names (R6/R15)
+local function findRightArm(character)
+    if not character then return nil end
+    return character:FindFirstChild("Right Arm")
+        or character:FindFirstChild("RightHand")
+        or character:FindFirstChild("RightUpperArm")
 end
 
 local function handleExplodingPart(part)
-    -- run in separate thread so ChildAdded handler isn't blocked
+    -- run in task.spawn so ChildAdded handler isn't blocked
     task.spawn(function()
-        if not antiExplodeEnabled then return end
-        if not part:IsA("BasePart") then return end
-        if part.Name ~= "Part" then return end
+        if not freezeEnabled then return end
+        if not part or not part:IsA("BasePart") then return end
+        if part.Name ~= "Part" then return end -- matches original behaviour; remove if you want any BasePart
 
-        local char, hrp, rightArm = getCharacterParts()
-        if not char or not hrp then return end
+        local char = LocalPlayer.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local rightArm = findRightArm(char)
+        if not hrp then return end
 
-        -- distance check
         if (part.Position - hrp.Position).Magnitude > REACT_DISTANCE then return end
 
-        -- anchor to limit explosion physics
+        -- Anchor HRP to reduce explosion physics
         pcall(function() hrp.Anchored = true end)
 
-        -- tiny pause to match original timing
+        -- small pause to match original timing
         task.wait(0.01)
 
-        -- wait until RightArm's RagdollLimbPart is gone or non-collidable, but don't wait forever
-        local start = tick()
-        while tick() - start < CHECK_TIMEOUT do
-            if not antiExplodeEnabled then break end -- abort if toggle turned off mid-loop
-            rightArm = rightArm or (LocalPlayer.Character and (LocalPlayer.Character:FindFirstChild("Right Arm") or LocalPlayer.Character:FindFirstChild("RightHand") or LocalPlayer.Character:FindFirstChild("RightUpperArm")))
+        -- Wait until RightArm's RagdollLimbPart is gone or non-collidable, but don't wait forever
+        local startTime = tick()
+        while tick() - startTime < CHECK_TIMEOUT do
+            if not freezeEnabled then break end -- abort if toggle turned off mid-loop
+
+            -- refresh rightArm reference if necessary
+            rightArm = rightArm or findRightArm(LocalPlayer.Character)
             if not rightArm then break end
+
             local rag = rightArm:FindFirstChild("RagdollLimbPart")
             if not rag then break end
-            if not pcall(function() return rag and rag.CanCollide end) then break end
-            if not rag.CanCollide then break end
+
+            local ok, canCollide = pcall(function() return rag and rag.CanCollide end)
+            if not ok then break end
+            if not canCollide then break end
+
             task.wait(LOOP_WAIT)
         end
 
-        -- release anchor
-        pcall(function() hrp.Anchored = false end)
+        -- Only release anchor if player is not currently held (Anti-Grab takes precedence)
+        if not (isHeld and isHeld.Value) then
+            pcall(function() hrp.Anchored = false end)
+        end
     end)
 end
 
--- Always connected, but handler checks antiExplodeEnabled to decide whether to react.
+-- Connect ChildAdded once, handler checks freezeEnabled
 Workspace.ChildAdded:Connect(function(child)
-    if antiExplodeEnabled then
-        handleExplodingPart(child)
-    end
+    if not freezeEnabled then return end
+    handleExplodingPart(child)
 end)
-
--- Toggle: Anti-Explode
-Tab:CreateToggle({
-    Name = "Anti-Explode",
-    CurrentValue = false,
-    Flag = "AntiExplode",
-    Callback = function(Value)
-        antiExplodeEnabled = Value
-        if not antiExplodeEnabled then
-            -- ensure HRP is not left anchored
-            local hrp = getHRP()
-            if hrp then pcall(function() hrp.Anchored = false end) end
-        end
-    end,
-})
 
 --//////////////////////////////////////////////////////////////////////////////
 -- Anti-Gucci (Persistent Blobman)
