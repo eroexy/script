@@ -820,91 +820,222 @@ Tab:CreateButton({
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Defense", 0)
 local Section = Tab:CreateSection("Anti")
---//////////////////////////////////////////////////////////////////////////////
+-- Anti-Grab + Anti-Explode (single toggle) - Robust LocalScript
+-- Place in StarterPlayerScripts
+
 -- Services
---//////////////////////////////////////////////////////////////////////////////
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local Debris = game:GetService("Debris")
+local UserInputService = game:GetService("UserInputService")
+local task = task
 
 local LocalPlayer = Players.LocalPlayer
 
---//////////////////////////////////////////////////////////////////////////////
--- Anti-Grab (Freeze while held)
---//////////////////////////////////////////////////////////////////////////////
-local isHeld = LocalPlayer:WaitForChild("IsHeld")
-local StruggleEvent = ReplicatedStorage.CharacterEvents:WaitForChild("Struggle")
+-- Config
+local REACT_DISTANCE = 20       -- explosion react distance (studs)
+local CHECK_TIMEOUT = 2         -- max wait seconds for RagdollLimbPart to clear
+local LOOP_WAIT = 0.01          -- inner loop wait
+local TOGGLE_KEY = Enum.KeyCode.RightControl -- fallback toggle key if Tab UI isn't present
 
-local lastPositionBeforeHeld = nil
-local previousValue = isHeld.Value
-local freezeEnabled = false
+-- State
+local freezeEnabled = false  -- single toggle controls both anti-grab and anti-explode
 
-local function getHRP()
-    return LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+-- Utility: safe print only for debugging; comment out if noisy
+local function debug(...)
+    -- print(...) -- uncomment for verbose debug
 end
 
+-- Helper: find HRP and right arm robustly
+local function getCharacter()
+    return LocalPlayer.Character
+end
+
+local function getHRP()
+    local char = getCharacter()
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+local function findRightArm(character)
+    if not character then return nil end
+    return character:FindFirstChild("Right Arm")
+        or character:FindFirstChild("RightHand")
+        or character:FindFirstChild("RightUpperArm")
+        or character:FindFirstChild("Right Arm (2)") -- fallback names if any
+end
+
+-- Ensure CharacterEvents exist
+local CharacterEvents = ReplicatedStorage:WaitForChild("CharacterEvents", 5)
+if not CharacterEvents then
+    warn("[Anti-Grab] ReplicatedStorage.CharacterEvents not found")
+    -- still continue; some features won't work
+end
+
+-- Wait for IsHeld BoolValue on player (safe wait)
+local function waitForIsHeld()
+    local ok, val = pcall(function()
+        return LocalPlayer:WaitForChild("IsHeld", 5)
+    end)
+    if ok and val then
+        return val
+    end
+    -- fallback: try FindFirstChild loop
+    repeat
+        local v = LocalPlayer:FindFirstChild("IsHeld")
+        if v then return v end
+        task.wait(0.1)
+    until false
+end
+
+local isHeld = waitForIsHeld()
+
+-- Get Struggle remote safely (may be nil in some games)
+local StruggleEvent
+if CharacterEvents then
+    StruggleEvent = CharacterEvents:FindFirstChild("Struggle") or CharacterEvents:WaitForChild("Struggle", 2)
+    if not StruggleEvent then
+        debug("[Anti-Grab] Struggle event not found")
+    end
+end
+
+-- Humanoid reset helper
 local function resetHumanoid()
-    local char = LocalPlayer.Character
+    local char = getCharacter()
     if not char then return end
 
-    local humanoid = char:FindFirstChild("Humanoid")
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
     local hrp = getHRP()
 
     if humanoid then
-        humanoid.Sit = false
-        humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-        humanoid.AutoRotate = true
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        pcall(function() humanoid.Sit = false end)
+        pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.GettingUp) end)
+        pcall(function() humanoid.AutoRotate = true end)
+        pcall(function() humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true) end)
+        pcall(function() humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false) end)
+        pcall(function() humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false) end)
     end
 
-    if hrp then hrp.Anchored = false end
+    if hrp then pcall(function() hrp.Anchored = false end) end
 end
 
--- Toggle
-Tab:CreateToggle({
-    Name = "Anti-Grab",
-    CurrentValue = false,
-    Flag = "AntiGrab",
-    Callback = function(Value)
-        freezeEnabled = Value
-        if not freezeEnabled then
-            local hrp = getHRP()
-            if hrp then hrp.Anchored = false end
-        end
-    end,
-})
+-- Keep previousValue in sync with current IsHeld (handles respawn)
+local previousValue = false
+if isHeld then
+    previousValue = isHeld.Value
+else
+    previousValue = false
+end
 
--- Listen for IsHeld changes
-isHeld:GetPropertyChangedSignal("Value"):Connect(function()
-    if not freezeEnabled then return end
-
-    local hrp = getHRP()
-    if not hrp then return end
-
-    local newValue = isHeld.Value
-
-    if previousValue == false and newValue == true then
-        lastPositionBeforeHeld = hrp.CFrame
-        hrp.Anchored = true
-    elseif previousValue == true and newValue == false then
-        hrp.Anchored = false
-        if lastPositionBeforeHeld then hrp.CFrame = lastPositionBeforeHeld end
+-- Toggle creation (use Tab.CreateToggle if available; fallback to RightControl keybind)
+-- Note: If you DO have Tab, make sure `Tab` is in scope. If not, fallback will be used.
+local function createToggleUI()
+    local created = false
+    if _G and _G.Tab and type(_G.Tab.CreateToggle) == "function" then
+        -- some environments put Tab in a global; try that first
+        pcall(function()
+            _G.Tab:CreateToggle({
+                Name = "Anti-Grab",
+                CurrentValue = false,
+                Flag = "AntiGrab",
+                Callback = function(Value)
+                    freezeEnabled = Value
+                    if not freezeEnabled then
+                        local hrp = getHRP()
+                        if hrp then pcall(function() hrp.Anchored = false end) end
+                    end
+                end,
+            })
+            created = true
+        end)
     end
 
-    previousValue = newValue
-end)
+    -- Try local Tab variable (common in many hub scripts)
+    if not created and (typeof or type) then
+        local envTab = rawget(_G, "Tab") or nil
+        if envTab and type(envTab.CreateToggle) == "function" then
+            pcall(function()
+                envTab:CreateToggle({
+                    Name = "Anti-Grab",
+                    CurrentValue = false,
+                    Flag = "AntiGrab",
+                    Callback = function(Value)
+                        freezeEnabled = Value
+                        if not freezeEnabled then
+                            local hrp = getHRP()
+                            if hrp then pcall(function() hrp.Anchored = false end) end
+                        end
+                    end,
+                })
+            end)
+            created = true
+        end
+    end
 
--- Freeze & struggle while held
+    -- If still not created, fallback to keybind toggle (RightControl)
+    if not created then
+        debug("[Anti-Grab] Tab UI not found - using RightControl key toggle fallback")
+        local function onInputBegan(input, gpe)
+            if gpe then return end
+            if input.KeyCode == TOGGLE_KEY then
+                freezeEnabled = not freezeEnabled
+                print("[Anti-Grab] Toggle set to", freezeEnabled and "ON" or "OFF")
+                if not freezeEnabled then
+                    local hrp = getHRP()
+                    if hrp then pcall(function() hrp.Anchored = false end) end
+                end
+            end
+        end
+        UserInputService.InputBegan:Connect(onInputBegan)
+    end
+end
+
+-- Try to create toggle (if user uses their own Tab, ensure Tab is in scope before running this)
+-- The user earlier showed `Tab` variable; if Tab exists in this environment it'll be used.
+-- For safety, we also attempt the global/local lookups in createToggleUI().
+createToggleUI()
+
+-- IsHeld change handler (original behavior kept, with safety)
+if isHeld then
+    isHeld:GetPropertyChangedSignal("Value"):Connect(function()
+        -- update previousValue even if freeze disabled so logic stays correct
+        local newVal = isHeld.Value
+        if not freezeEnabled then
+            previousValue = newVal
+            return
+        end
+
+        local hrp = getHRP()
+        if not hrp then
+            previousValue = newVal
+            return
+        end
+
+        if previousValue == false and newVal == true then
+            -- about to be held
+            pcall(function() lastPositionBeforeHeld = hrp.CFrame end)
+            pcall(function() hrp.Anchored = true end)
+        elseif previousValue == true and newVal == false then
+            -- released
+            pcall(function() hrp.Anchored = false end)
+            if lastPositionBeforeHeld then
+                pcall(function() hrp.CFrame = lastPositionBeforeHeld end)
+            end
+        end
+
+        previousValue = newVal
+    end)
+end
+
+-- Freeze & struggle each frame while held (original behavior)
 RunService.RenderStepped:Connect(function()
-    if freezeEnabled and isHeld.Value then
+    if freezeEnabled and isHeld and isHeld.Value then
         local hrp = getHRP()
         if hrp then
-            hrp.Anchored = true
-            pcall(function() StruggleEvent:FireServer() end)
+            pcall(function() hrp.Anchored = true end)
+            if StruggleEvent then
+                pcall(function() StruggleEvent:FireServer() end)
+            end
             resetHumanoid()
         end
     end
@@ -913,8 +1044,64 @@ end)
 -- Reset humanoid on respawn
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.1)
+    -- refresh previousValue when respawned
+    if isHeld then
+        previousValue = isHeld.Value
+    else
+        previousValue = false
+    end
     if freezeEnabled then resetHumanoid() end
 end)
+
+-- Anti-Explode handler (only runs when freezeEnabled == true)
+local function handleExplodingPart(part)
+    -- run in separate thread
+    task.spawn(function()
+        if not freezeEnabled then return end
+        if not (part and part:IsA("BasePart")) then return end
+        if part.Name ~= "Part" then return end -- keep original behavior
+        local hrp = getHRP()
+        if not hrp then return end
+        -- distance check
+        local okDist, dist = pcall(function() return (part.Position - hrp.Position).Magnitude end)
+        if not okDist or dist > REACT_DISTANCE then return end
+
+        -- anchor HRP to limit explosion physics
+        pcall(function() hrp.Anchored = true end)
+        task.wait(0.01)
+
+        -- wait until RightArm's RagdollLimbPart is gone or non-collidable, but don't wait forever
+        local startT = tick()
+        while tick() - startT < CHECK_TIMEOUT do
+            if not freezeEnabled then break end -- abort if toggle turned off mid-loop
+            local char = getCharacter()
+            local rightArm = findRightArm(char)
+            if not rightArm then break end
+            local rag = rightArm:FindFirstChild("RagdollLimbPart")
+            if not rag then break end
+            local ok, canCollide = pcall(function() return rag and rag.CanCollide end)
+            if not ok then break end
+            if not canCollide then break end
+            task.wait(LOOP_WAIT)
+        end
+
+        -- Only unanchor if not currently held (anti-grab has precedence) and toggle still on
+        if freezeEnabled and (not (isHeld and isHeld.Value)) then
+            pcall(function() hrp.Anchored = false end)
+        end
+    end)
+end
+
+-- Connect ChildAdded; handler checks freezeEnabled
+Workspace.ChildAdded:Connect(function(child)
+    if not freezeEnabled then return end
+    -- Protect against non-BasePart children quickly
+    if not child:IsA("BasePart") then return end
+    handleExplodingPart(child)
+end)
+
+-- Final debug message
+debug("[Anti-Grab] Script loaded. Toggle with Tab.CreateToggle (if available) or press RightControl to toggle.")
 
 --//////////////////////////////////////////////////////////////////////////////
 -- Anti-Gucci (Persistent Blobman)
