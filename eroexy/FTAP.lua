@@ -632,9 +632,7 @@ local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
 --//////////////////////////////////////////////////////////////////////////////
 -- PLOT IMMUNITY SYSTEM (IGNORE PlayersInPlots)
 --//////////////////////////////////////////////////////////////////////////////
-local PlayersInPlots = workspace
-    :WaitForChild("PlotItems")
-    :WaitForChild("PlayersInPlots")
+local PlayersInPlots = workspace:WaitForChild("PlotItems"):WaitForChild("PlayersInPlots")
 
 local function isInPlot(player)
     if not player or not player.Character then return false end
@@ -642,7 +640,7 @@ local function isInPlot(player)
 end
 
 --//////////////////////////////////////////////////////////////////////////////
--- DROPDOWN
+-- DROPDOWN (no filtering)
 --//////////////////////////////////////////////////////////////////////////////
 local selectedPlayers = {}
 local displayNameToPlayer = {}
@@ -650,15 +648,13 @@ local displayNameToPlayer = {}
 local function getDisplayNames()
     displayNameToPlayer = {}
     local names = {}
-
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and not isInPlot(plr) then
+        if plr ~= LocalPlayer then
             local displayName = plr.DisplayName
             table.insert(names, displayName)
             displayNameToPlayer[displayName] = plr
         end
     end
-
     return names
 end
 
@@ -672,7 +668,7 @@ local PlayerDropdown = Tab:CreateDropdown({
         selectedPlayers = {}
         for _, displayName in ipairs(Options) do
             local plr = displayNameToPlayer[displayName]
-            if plr and not isInPlot(plr) then
+            if plr then
                 table.insert(selectedPlayers, plr)
             end
         end
@@ -823,7 +819,7 @@ Tab:CreateButton({
         local targetCF = (saveToggle and savedCF) or returnCF
 
         for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and not isInPlot(plr) then
+            if plr ~= LocalPlayer then
                 bringOne(plr, targetCF)
             end
         end
