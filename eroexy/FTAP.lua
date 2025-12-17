@@ -721,7 +721,7 @@ local function bringOne(targetPlayer, targetCF)
     local myRoot = findRoot(myChar)
     if myRoot then
         pcall(function()
-            myRoot.CFrame = tRoot.CFrame * CFrame.new(0, -10, 0)
+            myRoot.CFrame = tRoot.CFrame * CFrame.new(0, -20, 0)
         end)
     end
 
