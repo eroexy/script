@@ -679,7 +679,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 
             Rayfield:Notify({
                 Title = "Saved Location",
-                Content = "CFrame saved:\n" .. tostring(savedCF),
+                Content = "Awesome Sauce",
                 Duration = 4,
                 Image = 0,
             })
@@ -721,7 +721,7 @@ local function bringOne(targetPlayer, targetCF)
     local myRoot = findRoot(myChar)
     if myRoot then
         pcall(function()
-            myRoot.CFrame = tRoot.CFrame * CFrame.new(0, -3, -2)
+            myRoot.CFrame = tRoot.CFrame * CFrame.new(0, -5, 0)
         end)
     end
 
