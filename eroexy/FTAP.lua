@@ -605,6 +605,13 @@ Tab:CreateToggle({
     end,
 })
 
+
+
+
+
+
+
+
 --//////////////////////////////////////////////////////////////////////////////
 -- BRING PLAYERS SYSTEM (WITH DROPDOWN AND V-TO-SAVE)
 --//////////////////////////////////////////////////////////////////////////////
@@ -626,9 +633,8 @@ local function isInPlot(player)
 end
 
 --//////////////////////////////////////////////////////////////////////////////
--- UI
+-- UI SETUP
 --//////////////////////////////////////////////////////////////////////////////
-
 local selectedPlayers = {}
 local displayNameToPlayer = {}
 
@@ -679,9 +685,7 @@ Tab:CreateToggle({
     Flag = "SavedLocation",
     Callback = function(val)
         saveToggle = val
-        if not val then
-            savedCF = nil
-        end
+        if not val then savedCF = nil end
     end,
 })
 
@@ -706,8 +710,8 @@ end)
 -- CORE FUNCTIONS
 --//////////////////////////////////////////////////////////////////////////////
 local function findRoot(char)
-    return char and (char:FindFirstChild("HumanoidRootPart") 
-        or char:FindFirstChild("UpperTorso") 
+    return char and (char:FindFirstChild("HumanoidRootPart")
+        or char:FindFirstChild("UpperTorso")
         or char:FindFirstChild("Torso"))
 end
 
@@ -755,7 +759,7 @@ local function bringOne(targetPlayer, targetCF)
 end
 
 --//////////////////////////////////////////////////////////////////////////////
--- BRING SELECTED (with notifications)
+-- BRING SELECTED (with plot immunity + notifications)
 --//////////////////////////////////////////////////////////////////////////////
 Tab:CreateButton({
     Name = "Bring Selected",
@@ -790,13 +794,14 @@ Tab:CreateButton({
         end
 
         task.wait(0.05)
-        pcall(function()
-            local r = findRoot(LocalPlayer.Character)
-            if r then r.CFrame = returnCF end
-        end)
+        local r = findRoot(LocalPlayer.Character)
+        if r then r.CFrame = returnCF end
     end,
 })
 
+--//////////////////////////////////////////////////////////////////////////////
+-- BRING ALL (with plot immunity + notifications)
+--//////////////////////////////////////////////////////////////////////////////
 Tab:CreateButton({
     Name = "Bring All",
     Callback = function()
@@ -832,10 +837,8 @@ Tab:CreateButton({
         end
 
         task.wait(0.05)
-        pcall(function()
-            local r = findRoot(LocalPlayer.Character)
-            if r then r.CFrame = returnCF end
-        end)
+        local r = findRoot(LocalPlayer.Character)
+        if r then r.CFrame = returnCF end
     end,
 })
 
