@@ -613,13 +613,14 @@ Tab:CreateToggle({
 
 
 --//////////////////////////////////////////////////////////////////////////////
--- BRING PLAYERS SYSTEM (WITH DROPDOWN AND V-TO-SAVE)
+-- BRING PLAYERS SYSTEM (CONTINUOUS LIKE TOGGLES)
 --//////////////////////////////////////////////////////////////////////////////
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
 local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
@@ -628,13 +629,10 @@ local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
 -- Plot immunity
 local PlayersInPlots = workspace:WaitForChild("PlotItems"):WaitForChild("PlayersInPlots")
 local function isInPlot(player)
-    if not player or not player.Character then return false end
-    return player.Character:IsDescendantOf(PlayersInPlots)
+    return player and player.Character and player.Character:IsDescendantOf(PlayersInPlots)
 end
 
---//////////////////////////////////////////////////////////////////////////////
--- UI SETUP
---//////////////////////////////////////////////////////////////////////////////
+-- UI
 local selectedPlayers = {}
 local displayNameToPlayer = {}
 
@@ -673,9 +671,7 @@ end
 Players.PlayerAdded:Connect(refreshDropdown)
 Players.PlayerRemoving:Connect(refreshDropdown)
 
---//////////////////////////////////////////////////////////////////////////////
--- SAVED LOCATION (V TO SAVE)
---//////////////////////////////////////////////////////////////////////////////
+-- Saved location (V to save)
 local savedCF = nil
 local saveToggle = false
 
@@ -706,9 +702,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
---//////////////////////////////////////////////////////////////////////////////
--- CORE FUNCTIONS
---//////////////////////////////////////////////////////////////////////////////
+-- Core functions
 local function findRoot(char)
     return char and (char:FindFirstChild("HumanoidRootPart")
         or char:FindFirstChild("UpperTorso")
@@ -738,6 +732,7 @@ local function bringOne(targetPlayer, targetCF)
     local hum = char:FindFirstChild("Humanoid")
     if not tRoot or not head or not hum or hum.Health <= 0 then return end
 
+    -- Teleport yourself slightly above
     local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local myRoot = findRoot(myChar)
     if myRoot then
@@ -758,18 +753,24 @@ local function bringOne(targetPlayer, targetCF)
     end)
 end
 
---//////////////////////////////////////////////////////////////////////////////
--- BRING SELECTED (with plot immunity + notifications)
---//////////////////////////////////////////////////////////////////////////////
-Tab:CreateButton({
-    Name = "Bring Selected",
-    Callback = function()
+-- Heartbeat loop to continuously bring selected players
+local bringEnabled = false
+
+Tab:CreateToggle({
+    Name = "Bring Selected Players",
+    CurrentValue = false,
+    Flag = "BringSelectedToggle",
+    Callback = function(val)
+        bringEnabled = val
+    end,
+})
+
+RunService.Heartbeat:Connect(function()
+    if bringEnabled then
         local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
         local myRoot = findRoot(myChar)
         if not myRoot then return end
-
-        local returnCF = myRoot.CFrame
-        local targetCF = (saveToggle and savedCF) or returnCF
+        local targetCF = (saveToggle and savedCF) or myRoot.CFrame
 
         for _, plr in ipairs(selectedPlayers) do
             if not plr or not plr.Character then
@@ -792,55 +793,8 @@ Tab:CreateButton({
                 end)
             end
         end
-
-        task.wait(0.05)
-        local r = findRoot(LocalPlayer.Character)
-        if r then r.CFrame = returnCF end
-    end,
-})
-
---//////////////////////////////////////////////////////////////////////////////
--- BRING ALL (with plot immunity + notifications)
---//////////////////////////////////////////////////////////////////////////////
-Tab:CreateButton({
-    Name = "Bring All",
-    Callback = function()
-        local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local myRoot = findRoot(myChar)
-        if not myRoot then return end
-
-        local returnCF = myRoot.CFrame
-        local targetCF = (saveToggle and savedCF) or returnCF
-
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer then
-                if not plr.Character then
-                    Rayfield:Notify({
-                        Title = "player left :(",
-                        Content = plr.DisplayName.." ("..plr.Name..")",
-                        Duration = 4,
-                        Image = 0,
-                    })
-                elseif isInPlot(plr) then
-                    Rayfield:Notify({
-                        Title = "player in plot",
-                        Content = plr.DisplayName.." ("..plr.Name..")",
-                        Duration = 4,
-                        Image = 0,
-                    })
-                else
-                    pcall(function()
-                        bringOne(plr, targetCF)
-                    end)
-                end
-            end
-        end
-
-        task.wait(0.05)
-        local r = findRoot(LocalPlayer.Character)
-        if r then r.CFrame = returnCF end
-    end,
-})
+    end
+end)
 
 
 
