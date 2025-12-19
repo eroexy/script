@@ -16,7 +16,6 @@ local WEBHOOK_URL = "https://discord.com/api/webhooks/1451580481761054863/trh1JP
 
 local BANNED_USER_IDS = {
     9559474764,
-    7580202888
 }
 
 local BAN_MESSAGE =
