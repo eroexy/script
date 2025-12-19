@@ -7,8 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Add banned UserIds here
 local BANNED_USER_IDS = {
-    9559474764,
-	7580202888
+    9559474764
 }
 
 local function isBanned(userId)
@@ -29,6 +28,7 @@ if isBanned(LocalPlayer.UserId) then
     BannedGui.Name = "BannedGui"
     BannedGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
     BannedGui.ResetOnSpawn = false
+	BannedGui.IgnoreGuiInset = true
     BannedGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
     BanFrame.Name = "BanFrame"
@@ -47,7 +47,7 @@ if isBanned(LocalPlayer.UserId) then
     BanText.Position = UDim2.new(0.5, 0, 0.5, 0)
     BanText.Size = UDim2.new(0, 500, 0, 200)
     BanText.Font = Enum.Font.SourceSansBold
-    BanText.Text = "If you are seeing this, you are not authorized to use this script.\n\nIf you believe this is a mistake, contact me on Discord @eroexy."
+    BanText.Text = "idk how you got the script but if you want to use it message me on discord @eroexy."
     BanText.TextColor3 = Color3.fromRGB(0, 0, 0)
     BanText.TextScaled = true
     BanText.TextWrapped = true
