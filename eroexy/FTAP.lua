@@ -59,64 +59,43 @@ end
 -- User logger
 --//////////////////////////////////////////////////////////////////////////////
 
-local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
-local LocalPlayer = Players.LocalPlayer
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1451580481761054863/trh1JPSfK5WzR4rfV5vBdo1SWMAmH6Kd8U-175SfnhX-FR2GdOlQbcSt3qpfz1aGC9N0"
 
--- Determine which HTTP function is available
 local function sendRequest(data)
     local jsonData = HttpService:JSONEncode(data)
-    if typeof(request) == "function" then
-        request({
-            Url = WEBHOOK_URL,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = jsonData
-        })
-    elseif typeof(syn) == "table" and typeof(syn.request) == "function" then
-        syn.request({
-            Url = WEBHOOK_URL,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = jsonData
-        })
-    elseif typeof(http_request) == "function" then
-        http_request({
-            Url = WEBHOOK_URL,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = jsonData
-        })
-    elseif typeof(fluxus) == "table" and typeof(fluxus.request) == "function" then
-        fluxus.request({
-            Url = WEBHOOK_URL,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = jsonData
-        })
-    else
-        warn("No supported HTTP function found for webhook.")
+
+    local req =
+        request or
+        (syn and syn.request) or
+        http_request or
+        (fluxus and fluxus.request)
+
+    if not req then
+        warn("No supported HTTP function found.")
+        return
     end
+
+    req({
+        Url = WEBHOOK_URL,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = jsonData
+    })
 end
 
 pcall(function()
-    local timestamp = DateTime.now():ToIsoDate()
     sendRequest({
         username = "eroexy",
-        content = "**Look who loaded up our script**",
-        embeds = {
-            {
-                title = "I caught you",
-                color = 0,
-                fields = {
-                    {name = "Username", value = LocalPlayer.Name, inline = true},
-                    {name = "UserId", value = tostring(LocalPlayer.UserId), inline = true},
-                    {name = "Timestamp", value = timestamp, inline = false}
-                },
-                footer = {text = "I loaded the script eroexy"}
+        content = "**Look who loaded our script**",
+        embeds = {{
+            title = "Script Load",
+            fields = {
+                {name="Username", value=LocalPlayer.Name, inline=true},
+                {name="UserId", value=tostring(LocalPlayer.UserId), inline=true},
+                {name="Time", value=os.date("!%Y-%m-%d %H:%M:%S UTC")}
             }
-        }
+        }}
     })
 end)
 --//////////////////////////////////////////////////////////////////////////////
