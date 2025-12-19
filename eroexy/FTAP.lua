@@ -1768,8 +1768,6 @@ Tab:CreateToggle({
 local Section = Tab:CreateSection("Camera")
 --//////////////////////////////////////////////////////////////////////////////
 
-local Section = Tab:CreateSection("Camera")
-
 local Toggle = Tab:CreateToggle({ 
     Name = "3rd person",
     CurrentValue = false,
