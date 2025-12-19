@@ -1308,7 +1308,6 @@ Tab:CreateToggle({
 -- Other Players Protection & Auto-Attack
 local Section = Tab:CreateSection("Protect Others")
 --//////////////////////////////////////////////////////////////////////////////
-
 local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
 local CreateGrabLine = GrabEvents:WaitForChild("CreateGrabLine")
 local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
@@ -1493,7 +1492,7 @@ local function Death(attacker)
         if part:IsA("BasePart") then part.CFrame = CFrame.new(-1e9, 1e9, -1e9) end
     end
     local bv = Instance.new("BodyVelocity")
-    bv.Velocity = Vector3.new(0, -9e17, 0)
+    bv.Velocity = Vector3.new(0, -99999999, 0)
     bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
     bv.P = 100000075
     bv.Parent = enemyRoot
