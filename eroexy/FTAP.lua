@@ -1556,6 +1556,12 @@ end)
 --  AURA TAB
 local Tab = Window:CreateTab("Aura", 0)
 --//////////////////////////////////////////////////////////////////////////////
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace         = game:GetService("Workspace")
+local RunService        = game:GetService("RunService")
+local Debris            = game:GetService("Debris")
+local localPlayer = Players.LocalPlayer
 
 local autoFriendWhitelist = true
 local manualWhitelist = {}
@@ -1569,6 +1575,8 @@ local function isWhitelisted(plr)
     if table.find(manualWhitelist, plr.Name) then return true end
     return false
 end
+
+local Section = Tab:CreateSection("Whitelist")
 
 Tab:CreateToggle({
     Name = "Whitelist Friends",
@@ -1612,6 +1620,7 @@ WhitelistDropdown = Tab:CreateDropdown({
     Flag = "PlayerWhitelist",
     Callback = function() end,
 })
+local Section = Tab:CreateSection("Auras")
 
 task.delay(1, RefreshWhitelistDropdown)
 Players.PlayerAdded:Connect(RefreshWhitelistDropdown)
