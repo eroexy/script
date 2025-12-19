@@ -1708,7 +1708,64 @@ Tab:CreateSlider({
 })
 
 --//////////////////////////////////////////////////////////////////////////////
--- 3rd Person
+local Section = Tab:CreateSection("Player")
+--//////////////////////////////////////////////////////////////////////////////
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LP = Players.LocalPlayer
+local noclip = false
+local noclipConn
+
+local function setR6Collisions(char, state)
+	local head = char:FindFirstChild("Head")
+	local torso = char:FindFirstChild("Torso")
+
+	if head then head.CanCollide = state end
+	if torso then torso.CanCollide = state end
+end
+
+local function startNoclip(char)
+	if noclipConn then noclipConn:Disconnect() end
+
+	noclipConn = RunService.Stepped:Connect(function()
+		if noclip and char then
+			setR6Collisions(char, false)
+		end
+	end)
+end
+
+LP.CharacterAdded:Connect(function(char)
+	task.wait(0.3)
+	if noclip then
+		startNoclip(char)
+	end
+end)
+
+Tab:CreateToggle({
+	Name = "No-Clip",
+	CurrentValue = false,
+	Flag = "NoClip",
+	Callback = function(v)
+		noclip = v
+		local char = LP.Character
+		if not char then return end
+
+		if v then
+			startNoclip(char)
+		else
+			setR6Collisions(char, true)
+			if noclipConn then
+				noclipConn:Disconnect()
+				noclipConn = nil
+			end
+		end
+	end
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+local Section = Tab:CreateSection("Camera")
 --//////////////////////////////////////////////////////////////////////////////
 
 local Section = Tab:CreateSection("Camera")
