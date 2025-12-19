@@ -1308,240 +1308,27 @@ Tab:CreateToggle({
 -- Other Players Protection & Auto-Attack
 local Section = Tab:CreateSection("Protect Others")
 --//////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local LocalPlayer = Players.LocalPlayer
 local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
-local CreateGrabLine = GrabEvents:WaitForChild("CreateGrabLine")
 local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
-local ExtendGrabLine = GrabEvents:WaitForChild("ExtendGrabLine")
 local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
-
-local MAX_REACH = 30
-local LAUNCH_FORCE = 10000
-
-local protectionEnabled = false
-local protectedPlayers = {}
-local whitelistedPlayers = {}
-local autoAttackMode = "Nothing"
-
-local ghostPos = nil
-local camera = Workspace.CurrentCamera
-local camFrozen = false
-local storedCamCF = nil
-
-local displayNameToPlayer = {}
-local function getDisplayNames()
-    displayNameToPlayer = {}
-    local list = {}
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then
-            table.insert(list, plr.DisplayName)
-            displayNameToPlayer[plr.DisplayName] = plr
-        end
-    end
-    return list
-end
-
--- Dropdowns and toggles
-local WhitelistDropdown = Tab:CreateDropdown({
-    Name = "Whitelist",
-    Options = getDisplayNames(),
-    CurrentOption = {},
-    MultipleOptions = true,
-    Flag = "WhitelistPlayers",
-    Callback = function(options)
-        whitelistedPlayers = {}
-        for _, name in ipairs(options) do
-            local plr = displayNameToPlayer[name]
-            if plr then table.insert(whitelistedPlayers, plr) end
-        end
-    end,
-})
-
-local ProtectDropdown = Tab:CreateDropdown({
-    Name = "Protected Players",
-    Options = getDisplayNames(),
-    CurrentOption = {},
-    MultipleOptions = true,
-    Flag = "ProtectedList",
-    Callback = function(selected)
-        protectedPlayers = {}
-        for _, name in ipairs(selected) do
-            local plr = displayNameToPlayer[name]
-            if plr then table.insert(protectedPlayers, plr) end
-        end
-    end,
-})
-
-local ProtectToggle = Tab:CreateToggle({
-    Name = "Protect Players",
-    CurrentValue = false,
-    Flag = "ProtectionEnabled",
-    Callback = function(v) protectionEnabled = v end,
-})
-
-local AutoAttackDropdown = Tab:CreateDropdown({
-    Name = "Auto Attack",
-    Options = {"Nothing", "Kick", "Heaven"},
-    MultipleOptions = false,
-    CurrentOption = {"Nothing"},
-    Flag = "AutoAttackMode",
-    Callback = function(option) autoAttackMode = option[1] end,
-})
-
--- Refresh dynamically
-local function refreshDropdowns()
-    ProtectDropdown:Refresh(getDisplayNames(), {})
-    WhitelistDropdown:Refresh(getDisplayNames(), {})
-end
-Players.PlayerAdded:Connect(refreshDropdowns)
-Players.PlayerRemoving:Connect(refreshDropdowns)
-
--- Ghost teleport helpers
-local function freezeCamera()
-    if camFrozen then return end
-    camFrozen = true
-    storedCamCF = camera.CFrame
-    camera.CameraType = Enum.CameraType.Scriptable
-    camera.CFrame = storedCamCF
-end
-
-local function restoreCamera()
-    if not camFrozen then return end
-    camFrozen = false
-    camera.CameraType = Enum.CameraType.Custom
-end
-
-local function ghostTeleport(cf)
-    local char = LocalPlayer.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    if not ghostPos then ghostPos = root.CFrame end
-    freezeCamera()
-    root.CFrame = cf
-    task.defer(function() if storedCamCF then camera.CFrame = storedCamCF end end)
-end
-
-local function ghostRestoreSoon()
-    task.delay(0.03, function()
-        local char = LocalPlayer.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if root and ghostPos then root.CFrame = ghostPos end
-        restoreCamera()
-        ghostPos = nil
-    end)
-end
-
--- Helpers for grabbing and attacks
-local function resolveAttacker(value)
-    if typeof(value) == "Instance" and value:IsA("Player") then return value end
-    if typeof(value) == "string" then return Players:FindFirstChild(value) end
-    return nil
-end
-
-local function instantGrab(target)
-    if not target.Character then return end
-    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
-    local head = target.Character:FindFirstChild("Head")
-    if not hrp or not head then return end
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-    local dist = (myRoot.Position - hrp.Position).Magnitude
-    if dist <= MAX_REACH then
-        pcall(function() CreateGrabLine:FireServer(hrp, myRoot.CFrame) end)
-        pcall(function() DestroyGrabLine:FireServer(hrp) end)
-        pcall(function() SetNetworkOwner:FireServer(hrp, myRoot.CFrame) end)
-        pcall(function() ExtendGrabLine:FireServer(dist) end)
-        return
-    end
-    ghostTeleport(hrp.CFrame * CFrame.new(0, -3, -2))
-    task.wait()
-    pcall(function() SetNetworkOwner:FireServer(hrp, hrp.CFrame) end)
-    pcall(function() DestroyGrabLine:FireServer(hrp) end)
-    ghostRestoreSoon()
-end
-
-local function Heaven(attacker)
-    if not attacker.Character then return end
-    local hrp = attacker.Character:FindFirstChild("HumanoidRootPart")
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp or not myRoot then return end
-    local distance = (hrp.Position - myRoot.Position).Magnitude
-    if distance > MAX_REACH then return end
-    pcall(function() CreateGrabLine:FireServer(hrp, myRoot.CFrame) end)
-    if DestroyGrabLine then pcall(function() DestroyGrabLine:FireServer(hrp) end) end
-    pcall(function() SetNetworkOwner:FireServer(hrp, myRoot.CFrame) end)
-    pcall(function() ExtendGrabLine:FireServer(distance) end)
-    local bv = Instance.new("BodyVelocity")
-    bv.Name = "LaunchVelocity"
-    bv.Velocity = Vector3.new(0, LAUNCH_FORCE, 0)
-    bv.MaxForce = Vector3.new(0, math.huge, 0)
-    bv.P = 1250
-    bv.Parent = hrp
-    Debris:AddItem(bv, 1)
-end
-
-local function Death(attacker)
-    if not attacker.Character then return end
-    local enemyRoot = attacker.Character:FindFirstChild("HumanoidRootPart")
-    if not enemyRoot then return end
-    pcall(function()
-        SetNetworkOwner:FireServer(enemyRoot, enemyRoot.CFrame)
-        if DestroyGrabLine then DestroyGrabLine:FireServer(enemyRoot) end
-    end)
-    for _, part in ipairs(attacker.Character:GetChildren()) do
-        if part:IsA("BasePart") then part.CFrame = CFrame.new(-1e9, 1e9, -1e9) end
-    end
-    local bv = Instance.new("BodyVelocity")
-    bv.Velocity = Vector3.new(0, -9e17, 0)
-    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    bv.P = 100000075
-    bv.Parent = enemyRoot
-    Debris:AddItem(bv, 1)
-end
-
-local function performAutoAttack(attacker)
-    if autoAttackMode == "Nothing" then return end
-    if autoAttackMode == "Heaven" then Heaven(attacker)
-    elseif autoAttackMode == "Kick" then Death(attacker) end
-end
-
--- Main protection loop
-RunService.Heartbeat:Connect(function()
-    if not protectionEnabled or #protectedPlayers == 0 then return end
-
-    for _, protected in ipairs(protectedPlayers) do
-        if not protected.Character then continue end
-        local head = protected.Character:FindFirstChild("Head")
-        if not head then continue end
-        local ownerInst = head:FindFirstChild("PartOwner")
-        if not ownerInst or not ownerInst.Value then continue end
-
-        local attacker = resolveAttacker(ownerInst.Value)
-        if not attacker or attacker == LocalPlayer then continue end
-
-        -- Skip whitelisted attackers
-        local skip = false
-        for _, w in ipairs(whitelistedPlayers) do
-            if attacker == w then skip = true break end
-        end
-        if skip then continue end
-
-        instantGrab(protected)
-        performAutoAttack(attacker)
-    end
-end)
-
-
-
-
-
-
-
-
-
-
-
-
+local ExtendGrabLine = GrabEvents:WaitForChild("ExtendGrabLine")
 
 
 local MAX_REACH = 30
