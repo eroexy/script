@@ -1,5 +1,5 @@
 --//////////////////////////////////////////////////////////////////////////////
--- FTAP | BAN + LOGGER HEADER (SAFE)
+-- SERVICES
 --//////////////////////////////////////////////////////////////////////////////
 
 local Players = game:GetService("Players")
@@ -8,19 +8,24 @@ local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 
+--//////////////////////////////////////////////////////////////////////////////
 -- CONFIG
+--//////////////////////////////////////////////////////////////////////////////
+
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1451580481761054863/trh1JPSfK5WzR4rfV5vBdo1SWMAmH6Kd8U-175SfnhX-FR2GdOlQbcSt3qpfz1aGC9N0"
 
 local BANNED_USER_IDS = {
     9559474764,
-    7580202888
 }
 
 local BAN_MESSAGE =
     "You are not authorized to use this script.\n\n" ..
     "If you believe this is a mistake, contact me on Discord @eroexy."
 
+--//////////////////////////////////////////////////////////////////////////////
 -- UTILS
+--//////////////////////////////////////////////////////////////////////////////
+
 local function isBanned(userId)
     for _, id in ipairs(BANNED_USER_IDS) do
         if id == userId then
@@ -31,36 +36,45 @@ local function isBanned(userId)
 end
 
 local function sendRequest(data)
-    local body = HttpService:JSONEncode(data)
+    local jsonData = HttpService:JSONEncode(data)
 
     if typeof(request) == "function" then
-        request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = body })
-    elseif typeof(syn) == "table" and syn.request then
-        syn.request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = body })
+        request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = jsonData })
+    elseif typeof(syn) == "table" and typeof(syn.request) == "function" then
+        syn.request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = jsonData })
     elseif typeof(http_request) == "function" then
-        http_request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = body })
-    elseif typeof(fluxus) == "table" and fluxus.request then
-        fluxus.request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = body })
+        http_request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = jsonData })
+    elseif typeof(fluxus) == "table" and typeof(fluxus.request) == "function" then
+        fluxus.request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = jsonData })
     end
 end
 
+--//////////////////////////////////////////////////////////////////////////////
+-- BAN STATE
+--//////////////////////////////////////////////////////////////////////////////
+
 local USER_IS_BANNED = isBanned(LocalPlayer.UserId)
 
--- LOGGER (NON-BLOCKING)
+--//////////////////////////////////////////////////////////////////////////////
+-- LOGGER (EXECUTOR SAFE)
+--//////////////////////////////////////////////////////////////////////////////
+
 task.spawn(function()
     local timestamp = os.date("%Y-%m-%d %H:%M:%S")
 
-    local embedTitle = USER_IS_BANNED
-        and "someone tried to use our script."
-        or  "someone used our script."
+    local embedTitle
+    local contentText
+    local embedColor
 
-    local contentText = USER_IS_BANNED
-        and "**User Banned**"
-        or  "**Script Loaded**"
-
-    local embedColor = USER_IS_BANNED
-        and 16711680 -- red
-        or  65280    -- green
+    if USER_IS_BANNED then
+        embedTitle = "someone tried to use our script."
+        contentText = "**User Banned**"
+        embedColor = 16711680 -- red
+    else
+        embedTitle = "someone used our script."
+        contentText = "**Script Loaded**"
+        embedColor = 65280 -- green
+    end
 
     pcall(function()
         sendRequest({
@@ -79,14 +93,22 @@ task.spawn(function()
     end)
 end)
 
--- HARD STOP IF BANNED
+--//////////////////////////////////////////////////////////////////////////////
+-- BAN SYSTEM (HARD STOP)
+--//////////////////////////////////////////////////////////////////////////////
+
 if USER_IS_BANNED then
-    local gui = Instance.new("ScreenGui")
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+    if playerGui:FindFirstChild("BannedGui") then
+        playerGui.BannedGui:Destroy()
+    end
+
+    local gui = Instance.new("ScreenGui", playerGui)
     gui.Name = "BannedGui"
     gui.IgnoreGuiInset = true
     gui.ResetOnSpawn = false
     gui.DisplayOrder = 999999
-    gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
     local bg = Instance.new("Frame", gui)
     bg.Size = UDim2.fromScale(1,1)
@@ -105,6 +127,11 @@ if USER_IS_BANNED then
     txt.Text = BAN_MESSAGE
 
     UserInputService.ModalEnabled = true
+
+    -- Destroy the Rayfield UI instead of just returning
+    if typeof(Rayfield) == "table" and typeof(Rayfield.Destroy) == "function" then
+        Rayfield:Destroy()
+    end
     return
 end
 --//////////////////////////////////////////////////////////////////////////////
