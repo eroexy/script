@@ -1618,7 +1618,7 @@ end)
 
 --//////////////////////////////////////////////////////////////////////////////
 local Tab = Window:CreateTab("Aura", 0)
-local Section = Tab:CreateSection("Whitelist")
+local SectionAura = Tab:CreateSection("Whitelist")
 --//////////////////////////////////////////////////////////////////////////////
 --  SERVICES
 local Players           = game:GetService("Players")
