@@ -8,6 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 -- Add banned UserIds here
 local BANNED_USER_IDS = {
     9559474764,
+	7580202888
 }
 
 local function isBanned(userId)
