@@ -1,4 +1,113 @@
 --//////////////////////////////////////////////////////////////////////////////
+-- FTAP | BAN + LOGGER HEADER (SAFE)
+--//////////////////////////////////////////////////////////////////////////////
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- CONFIG
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1451580481761054863/trh1JPSfK5WzR4rfV5vBdo1SWMAmH6Kd8U-175SfnhX-FR2GdOlQbcSt3qpfz1aGC9N0"
+
+local BANNED_USER_IDS = {
+    9559474764,
+    7580202888
+}
+
+local BAN_MESSAGE =
+    "You are not authorized to use this script.\n\n" ..
+    "If you believe this is a mistake, contact me on Discord @eroexy."
+
+-- UTILS
+local function isBanned(userId)
+    for _, id in ipairs(BANNED_USER_IDS) do
+        if id == userId then
+            return true
+        end
+    end
+    return false
+end
+
+local function sendRequest(data)
+    local body = HttpService:JSONEncode(data)
+
+    if typeof(request) == "function" then
+        request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = body })
+    elseif typeof(syn) == "table" and syn.request then
+        syn.request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = body })
+    elseif typeof(http_request) == "function" then
+        http_request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = body })
+    elseif typeof(fluxus) == "table" and fluxus.request then
+        fluxus.request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = body })
+    end
+end
+
+local USER_IS_BANNED = isBanned(LocalPlayer.UserId)
+
+-- LOGGER (NON-BLOCKING)
+task.spawn(function()
+    local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+
+    local embedTitle = USER_IS_BANNED
+        and "someone tried to use our script."
+        or  "someone used our script."
+
+    local contentText = USER_IS_BANNED
+        and "**User Banned**"
+        or  "**Script Loaded**"
+
+    local embedColor = USER_IS_BANNED
+        and 16711680 -- red
+        or  65280    -- green
+
+    pcall(function()
+        sendRequest({
+            username = "eroexy",
+            content = contentText,
+            embeds = {{
+                title = embedTitle,
+                color = embedColor,
+                fields = {
+                    { name = "Username", value = LocalPlayer.Name, inline = true },
+                    { name = "UserId", value = tostring(LocalPlayer.UserId), inline = true },
+                    { name = "Timestamp", value = timestamp, inline = false }
+                }
+            }}
+        })
+    end)
+end)
+
+-- HARD STOP IF BANNED
+if USER_IS_BANNED then
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "BannedGui"
+    gui.IgnoreGuiInset = true
+    gui.ResetOnSpawn = false
+    gui.DisplayOrder = 999999
+    gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    local bg = Instance.new("Frame", gui)
+    bg.Size = UDim2.fromScale(1,1)
+    bg.BackgroundColor3 = Color3.new(1,1,1)
+    bg.BorderSizePixel = 0
+
+    local txt = Instance.new("TextLabel", bg)
+    txt.AnchorPoint = Vector2.new(0.5,0.5)
+    txt.Position = UDim2.fromScale(0.5,0.5)
+    txt.Size = UDim2.new(0.8,0,0.3,0)
+    txt.BackgroundTransparency = 1
+    txt.TextWrapped = true
+    txt.TextScaled = true
+    txt.Font = Enum.Font.SourceSansBold
+    txt.TextColor3 = Color3.new(0,0,0)
+    txt.Text = BAN_MESSAGE
+
+    UserInputService.ModalEnabled = true
+    return
+end
+--//////////////////////////////////////////////////////////////////////////////
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
