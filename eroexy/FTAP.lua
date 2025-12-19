@@ -1,4 +1,61 @@
 --//////////////////////////////////////////////////////////////////////////////
+--  USERS BANNED
+--//////////////////////////////////////////////////////////////////////////////
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Add banned UserIds here
+local BANNED_USER_IDS = {
+    9559474764,
+	7580202888,
+}
+
+local function isBanned(userId)
+    for _, bannedId in ipairs(BANNED_USER_IDS) do
+        if userId == bannedId then
+            return true
+        end
+    end
+    return false
+end
+
+if isBanned(LocalPlayer.UserId) then
+	
+    local BannedGui = Instance.new("ScreenGui")
+    local BanFrame = Instance.new("Frame")
+    local BanText = Instance.new("TextLabel")
+
+    BannedGui.Name = "BannedGui"
+    BannedGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    BannedGui.ResetOnSpawn = false
+    BannedGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    BanFrame.Name = "BanFrame"
+    BanFrame.Parent = BannedGui
+    BanFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    BanFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    BanFrame.BorderSizePixel = 0
+    BanFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    BanFrame.Size = UDim2.new(1, 0, 1, 0)
+
+    BanText.Name = "BanText"
+    BanText.Parent = BanFrame
+    BanText.AnchorPoint = Vector2.new(0.5, 0.5)
+    BanText.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    BanText.BorderSizePixel = 0
+    BanText.Position = UDim2.new(0.5, 0, 0.5, 0)
+    BanText.Size = UDim2.new(0, 500, 0, 200)
+    BanText.Font = Enum.Font.SourceSansBold
+    BanText.Text = "If you are seeing this, you are not authorized to use this script.\n\nIf you believe this is a mistake, contact me on Discord @eroexy."
+    BanText.TextColor3 = Color3.fromRGB(0, 0, 0)
+    BanText.TextScaled = true
+    BanText.TextWrapped = true
+
+    -- HARD STOP: script dies here
+    return
+end
+--//////////////////////////////////////////////////////////////////////////////
 -- User logger
 --//////////////////////////////////////////////////////////////////////////////
 
