@@ -474,9 +474,9 @@ local heartbeatConn = nil
 -- TOGGLE
 --////////////////////////////////////////////////////////////
 Tab:CreateToggle({
-    Name = "Enable Grab Tracking",
+    Name = "Ragdoll Grab",
     CurrentValue = false,
-    Flag = "GrabToggle",
+    Flag = "Ragdoll",
     Callback = function(v)
         Enabled = v
 
