@@ -1454,7 +1454,7 @@ local WhitelistDropdown = Tab:CreateDropdown({
     Options = getDisplayNames(),
     CurrentOption = {},
     MultipleOptions = true,
-    Flag = "WhitelistPlayers",
+    Flag = "WhitelistPlayersDEF",
     Callback = function(options)
         whitelistedPlayers = {}
         for _, name in ipairs(options) do
