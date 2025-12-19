@@ -445,7 +445,170 @@ local Toggle = Tab:CreateToggle({
 -- Ragdoll Grab
 --//////////////////////////////////////////////////////////////////////////////
 
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
+local LP = Players.LocalPlayer
+local Character = LP.Character or LP.CharacterAdded:Wait()
+local HRP = Character:WaitForChild("HumanoidRootPart")
+
+local SpawnToyRemoteFunction = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
+local DestroyToy = ReplicatedStorage.MenuToys.DestroyToy
+local toysFolder = Workspace:WaitForChild(LP.Name .. "SpawnedInToys")
+
+----------------------------------------------------------------
+-- Rayfield Setup (your existing Window and Tab)
+----------------------------------------------------------------
+local ToggleEnabled = false
+local trackedNumber = nil
+local grabbedHRP = nil
+local processedWelds = {}
+
+local Toggle = Tab:CreateToggle({
+    Name = "Enable Grab Tracking",
+    CurrentValue = false,
+    Flag = "GrabToggle",
+    Callback = function(value)
+        ToggleEnabled = value
+
+        if not value and trackedNumber then
+            -- Toggle turned OFF, destroy tracked pallet
+            for _, toy in pairs(toysFolder:GetChildren()) do
+                if toy.Name == "PalletLightBrown" then
+                    local num = toy:FindFirstChild("ThisToysNumber")
+                    if num and num.Value == trackedNumber then
+                        DestroyToy:FireServer(toy)
+                        trackedNumber = nil
+                        break
+                    end
+                end
+            end
+            grabbedHRP = nil
+            table.clear(processedWelds)
+        end
+    end
+})
+
+----------------------------------------------------------------
+-- Grab detection
+----------------------------------------------------------------
+RunService.RenderStepped:Connect(function()
+    if not ToggleEnabled then return end
+
+    local grabFolder = Workspace:FindFirstChild("GrabParts")
+    if not grabFolder then
+        grabbedHRP = nil
+        table.clear(processedWelds)
+        return
+    end
+
+    for _, obj in ipairs(grabFolder:GetChildren()) do
+        local weld = obj:FindFirstChildWhichIsA("WeldConstraint")
+        if weld and not processedWelds[weld] then
+            local p1 = weld.Part1
+            if p1 then
+                local humanoid = p1.Parent:FindFirstChild("Humanoid")
+                local hrp = p1.Parent:FindFirstChild("HumanoidRootPart")
+                if humanoid and hrp then
+                    grabbedHRP = hrp
+                    processedWelds[weld] = true
+                end
+            end
+        end
+    end
+end)
+
+----------------------------------------------------------------
+-- SoundPart handling
+----------------------------------------------------------------
+function setupSoundPart(pallet)
+    local soundPart = pallet:FindFirstChild("SoundPart", true)
+    if not soundPart or not soundPart:IsA("BasePart") then return end
+
+    soundPart.Size = Vector3.new(0.1, 0.1, 0.1)
+    soundPart.Anchored = true
+
+    RunService.Heartbeat:Connect(function()
+        if not ToggleEnabled then return end
+        if grabbedHRP and soundPart.Parent then
+            soundPart.Anchored = false
+            soundPart.CFrame = grabbedHRP.CFrame
+        end
+    end)
+end
+
+----------------------------------------------------------------
+-- Weld cleanup
+----------------------------------------------------------------
+function cleanSoundPartWelds(pallet)
+    local function check(inst)
+        if inst:IsA("WeldConstraint") and inst.Part1 and inst.Part1.Name == "SoundPart" then
+            inst:Destroy()
+        end
+    end
+
+    for _, d in ipairs(pallet:GetDescendants()) do
+        check(d)
+    end
+
+    pallet.DescendantAdded:Connect(check)
+end
+
+----------------------------------------------------------------
+-- Spawn and track pallet
+----------------------------------------------------------------
+local function spawnAndTrack()
+    if not ToggleEnabled then return nil end
+
+    local before = {}
+    for _, v in ipairs(toysFolder:GetChildren()) do
+        if v.Name == "PalletLightBrown" then
+            local num = v:FindFirstChild("ThisToysNumber")
+            if num then before[num.Value] = true end
+        end
+    end
+
+    SpawnToyRemoteFunction:InvokeServer(
+        "PalletLightBrown",
+        CFrame.new(HRP.Position + Vector3.new(0, 1e20, 0)),
+        Vector3.new(0, 0, 0)
+    )
+
+    while ToggleEnabled and not trackedNumber do
+        for _, v in ipairs(toysFolder:GetChildren()) do
+            if v.Name == "PalletLightBrown" then
+                local num = v:FindFirstChild("ThisToysNumber")
+                if num and not before[num.Value] then
+                    trackedNumber = num.Value
+                    cleanSoundPartWelds(v)
+                    setupSoundPart(v)
+                    return trackedNumber
+                end
+            end
+        end
+        RunService.Heartbeat:Wait()
+    end
+end
+
+----------------------------------------------------------------
+-- Heartbeat loop to monitor pallet presence
+----------------------------------------------------------------
+RunService.Heartbeat:Connect(function()
+    if ToggleEnabled and (not trackedNumber or not (function()
+        for _, v in ipairs(toysFolder:GetChildren()) do
+            if v.Name == "PalletLightBrown" then
+                local num = v:FindFirstChild("ThisToysNumber")
+                if num and num.Value == trackedNumber then return true end
+            end
+        end
+        return false
+    end)()) then
+        trackedNumber = nil
+        spawnAndTrack()
+    end
+end)
 
 
 
