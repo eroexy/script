@@ -1309,27 +1309,11 @@ Tab:CreateToggle({
 local Section = Tab:CreateSection("Protect Others")
 --//////////////////////////////////////////////////////////////////////////////
 
-
-
-
-
-
-
-
-
-
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
-local LocalPlayer = Players.LocalPlayer
 local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
+local CreateGrabLine = GrabEvents:WaitForChild("CreateGrabLine")
 local SetNetworkOwner = GrabEvents:WaitForChild("SetNetworkOwner")
-local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
 local ExtendGrabLine = GrabEvents:WaitForChild("ExtendGrabLine")
-
+local DestroyGrabLine = GrabEvents:FindFirstChild("DestroyGrabLine")
 
 local MAX_REACH = 30
 local LAUNCH_FORCE = 10000
@@ -1357,12 +1341,13 @@ local function getDisplayNames()
     return list
 end
 
-Tab:CreateDropdown({
+-- Dropdowns and toggles
+local WhitelistDropdown = Tab:CreateDropdown({
     Name = "Whitelist",
     Options = getDisplayNames(),
     CurrentOption = {},
     MultipleOptions = true,
-    Flag = "Whitelist",
+    Flag = "WhitelistPlayers",
     Callback = function(options)
         whitelistedPlayers = {}
         for _, name in ipairs(options) do
@@ -1372,12 +1357,12 @@ Tab:CreateDropdown({
     end,
 })
 
-Tab:CreateDropdown({
+local ProtectDropdown = Tab:CreateDropdown({
     Name = "Protected Players",
     Options = getDisplayNames(),
     CurrentOption = {},
     MultipleOptions = true,
-    Flag = "Protected",
+    Flag = "ProtectedList",
     Callback = function(selected)
         protectedPlayers = {}
         for _, name in ipairs(selected) do
@@ -1387,22 +1372,23 @@ Tab:CreateDropdown({
     end,
 })
 
-Tab:CreateToggle({
+local ProtectToggle = Tab:CreateToggle({
     Name = "Protect Players",
     CurrentValue = false,
-    Flag = "Protection",
+    Flag = "ProtectionEnabled",
     Callback = function(v) protectionEnabled = v end,
 })
 
-Tab:CreateDropdown({
+local AutoAttackDropdown = Tab:CreateDropdown({
     Name = "Auto Attack",
-    Options = {"Nothing", "Death"}, -- method dropdown stays
+    Options = {"Nothing", "Kick", "Heaven"},
     MultipleOptions = false,
     CurrentOption = {"Nothing"},
     Flag = "AutoAttackMode",
     Callback = function(option) autoAttackMode = option[1] end,
 })
 
+-- Refresh dynamically
 local function refreshDropdowns()
     ProtectDropdown:Refresh(getDisplayNames(), {})
     WhitelistDropdown:Refresh(getDisplayNames(), {})
@@ -1446,105 +1432,81 @@ local function ghostRestoreSoon()
     end)
 end
 
+-- Helpers for grabbing and attacks
 local function resolveAttacker(value)
     if typeof(value) == "Instance" and value:IsA("Player") then return value end
     if typeof(value) == "string" then return Players:FindFirstChild(value) end
     return nil
 end
 
+local function instantGrab(target)
+    if not target.Character then return end
+    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+    local head = target.Character:FindFirstChild("Head")
+    if not hrp or not head then return end
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+    local dist = (myRoot.Position - hrp.Position).Magnitude
+    if dist <= MAX_REACH then
+        pcall(function() CreateGrabLine:FireServer(hrp, myRoot.CFrame) end)
+        pcall(function() DestroyGrabLine:FireServer(hrp) end)
+        pcall(function() SetNetworkOwner:FireServer(hrp, myRoot.CFrame) end)
+        pcall(function() ExtendGrabLine:FireServer(dist) end)
+        return
+    end
+    ghostTeleport(hrp.CFrame * CFrame.new(0, -3, -2))
+    task.wait()
+    pcall(function() SetNetworkOwner:FireServer(hrp, hrp.CFrame) end)
+    pcall(function() DestroyGrabLine:FireServer(hrp) end)
+    ghostRestoreSoon()
+end
+
+local function Heaven(attacker)
+    if not attacker.Character then return end
+    local hrp = attacker.Character:FindFirstChild("HumanoidRootPart")
+    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp or not myRoot then return end
+    local distance = (hrp.Position - myRoot.Position).Magnitude
+    if distance > MAX_REACH then return end
+    pcall(function() CreateGrabLine:FireServer(hrp, myRoot.CFrame) end)
+    if DestroyGrabLine then pcall(function() DestroyGrabLine:FireServer(hrp) end) end
+    pcall(function() SetNetworkOwner:FireServer(hrp, myRoot.CFrame) end)
+    pcall(function() ExtendGrabLine:FireServer(distance) end)
+    local bv = Instance.new("BodyVelocity")
+    bv.Name = "LaunchVelocity"
+    bv.Velocity = Vector3.new(0, LAUNCH_FORCE, 0)
+    bv.MaxForce = Vector3.new(0, math.huge, 0)
+    bv.P = 1250
+    bv.Parent = hrp
+    Debris:AddItem(bv, 1)
+end
+
 local function Death(attacker)
     if not attacker.Character then return end
     local enemyRoot = attacker.Character:FindFirstChild("HumanoidRootPart")
-    local enemyHead = attacker.Character:FindFirstChild("Head")
-    local humanoid = attacker.Character:FindFirstChildOfClass("Humanoid")
-    if not enemyRoot or not enemyHead or not humanoid or humanoid.Health <= 0 then return end
-
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-
-    if (enemyRoot.Position - myRoot.Position).Magnitude > 25 then return end -- only close targets
-
+    if not enemyRoot then return end
     pcall(function()
         SetNetworkOwner:FireServer(enemyRoot, enemyRoot.CFrame)
-        task.wait(0.1)
         if DestroyGrabLine then DestroyGrabLine:FireServer(enemyRoot) end
-
-        if enemyHead:FindFirstChild("PartOwner") and enemyHead.PartOwner.Value == LocalPlayer.Name then
-            for _, part in ipairs(attacker.Character:GetChildren()) do
-                if part:IsA("BasePart") then
-                    part.CFrame = CFrame.new(-1e9, 1e9, -1e9)
-                end
-            end
-
-            local bv = Instance.new("BodyVelocity")
-            bv.Velocity = Vector3.new(0, -9999999, 0)
-            bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-            bv.P = 100000075
-            bv.Parent = enemyRoot
-
-            humanoid:ChangeState(Enum.HumanoidStateType.Dead)
-            task.delay(2, function() if bv and bv.Parent then bv:Destroy() end end)
-        end
     end)
+    for _, part in ipairs(attacker.Character:GetChildren()) do
+        if part:IsA("BasePart") then part.CFrame = CFrame.new(-1e9, 1e9, -1e9) end
+    end
+    local bv = Instance.new("BodyVelocity")
+    bv.Velocity = Vector3.new(0, -9e17, 0)
+    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bv.P = 100000075
+    bv.Parent = enemyRoot
+    Debris:AddItem(bv, 1)
 end
 
 local function performAutoAttack(attacker)
     if autoAttackMode == "Nothing" then return end
-    if autoAttackMode == "Death" then Death(attacker) end
+    if autoAttackMode == "Heaven" then Heaven(attacker)
+    elseif autoAttackMode == "Kick" then Death(attacker) end
 end
 
-local function instantGrab(target)
-    if not target.Character then return end
-    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not myRoot then return end
-
-    local dist = (myRoot.Position - hrp.Position).Magnitude
-    if dist <= MAX_REACH then
-        pcall(function() SetNetworkOwner:FireServer(hrp, myRoot.CFrame) end)
-        if DestroyGrabLine then pcall(function() DestroyGrabLine:FireServer(hrp) end) end
-
-        local ownerInst = target.Character:FindFirstChild("Head") and target.Character.Head:FindFirstChild("PartOwner")
-        local attacker = ownerInst and resolveAttacker(ownerInst.Value)
-        if attacker and attacker ~= LocalPlayer and autoAttackMode ~= "Nothing" then
-            local enemyRoot = attacker.Character and attacker.Character:FindFirstChild("HumanoidRootPart")
-            if enemyRoot then
-                local distanceToAttacker = (myRoot.Position - enemyRoot.Position).Magnitude
-                if distanceToAttacker > 30 then
-                    ghostTeleport(enemyRoot.CFrame * CFrame.new(0, 0, -3))
-                    task.wait()
-                end
-                performAutoAttack(attacker)
-            end
-        end
-
-        return
-    end
-
-    ghostTeleport(hrp.CFrame * CFrame.new(0, -3, -2))
-    task.wait()
-    pcall(function() SetNetworkOwner:FireServer(hrp, hrp.CFrame) end)
-    if DestroyGrabLine then pcall(function() DestroyGrabLine:FireServer(hrp) end) end
-
-    local ownerInst = target.Character:FindFirstChild("Head") and target.Character.Head:FindFirstChild("PartOwner")
-    local attacker = ownerInst and resolveAttacker(ownerInst.Value)
-    if attacker and attacker ~= LocalPlayer and autoAttackMode ~= "Nothing" then
-        local enemyRoot = attacker.Character and attacker.Character:FindFirstChild("HumanoidRootPart")
-        if enemyRoot then
-            local distanceToAttacker = (myRoot.Position - enemyRoot.Position).Magnitude
-            if distanceToAttacker > 30 then
-                ghostTeleport(enemyRoot.CFrame * CFrame.new(0, 0, -3))
-                task.wait()
-            end
-            performAutoAttack(attacker)
-        end
-    end
-
-    ghostRestoreSoon()
-end
-
+-- Main protection loop
 RunService.Heartbeat:Connect(function()
     if not protectionEnabled or #protectedPlayers == 0 then return end
 
@@ -1558,6 +1520,7 @@ RunService.Heartbeat:Connect(function()
         local attacker = resolveAttacker(ownerInst.Value)
         if not attacker or attacker == LocalPlayer then continue end
 
+        -- Skip whitelisted attackers
         local skip = false
         for _, w in ipairs(whitelistedPlayers) do
             if attacker == w then skip = true break end
@@ -1565,8 +1528,12 @@ RunService.Heartbeat:Connect(function()
         if skip then continue end
 
         instantGrab(protected)
+        performAutoAttack(attacker)
     end
 end)
+
+
+
 
 
 
@@ -1590,7 +1557,146 @@ end)
 local Tab = Window:CreateTab("Aura", 0)
 --//////////////////////////////////////////////////////////////////////////////
 
+local autoFriendWhitelist = true
+local manualWhitelist = {}
 
+local function isFriend(plr)
+    return autoFriendWhitelist and localPlayer:IsFriendsWith(plr.UserId)
+end
+
+local function isWhitelisted(plr)
+    if isFriend(plr) then return true end
+    if table.find(manualWhitelist, plr.Name) then return true end
+    return false
+end
+
+Tab:CreateToggle({
+    Name = "Whitelist Friends",
+    CurrentValue = true,
+    Flag = "AutoFriendWhitelist",
+    Callback = function(Value)
+        autoFriendWhitelist = Value
+    end,
+})
+
+local WhitelistDropdown
+local function RefreshWhitelistDropdown()
+    local options = {}
+    local map = {}
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= localPlayer then
+            local label = string.format("%s (@%s)", plr.DisplayName, plr.Name)
+            table.insert(options, label)
+            map[label] = plr.Name
+        end
+    end
+
+    if WhitelistDropdown and WhitelistDropdown.Refresh then
+        WhitelistDropdown:Refresh(options)
+    end
+
+    WhitelistDropdown.Callback = function(selected)
+        manualWhitelist = {}
+        for _, label in ipairs(selected) do
+            table.insert(manualWhitelist, map[label])
+        end
+    end
+end
+
+WhitelistDropdown = Tab:CreateDropdown({
+    Name = "Whitelist Players",
+    Options = {},
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "PlayerWhitelist",
+    Callback = function() end,
+})
+
+task.delay(1, RefreshWhitelistDropdown)
+Players.PlayerAdded:Connect(RefreshWhitelistDropdown)
+Players.PlayerRemoving:Connect(RefreshWhitelistDropdown)
+
+local GrabEventsFolder = ReplicatedStorage:WaitForChild("GrabEvents")
+local SetNetworkOwner  = GrabEventsFolder:WaitForChild("SetNetworkOwner")
+local DestroyGrabLine  = GrabEventsFolder:FindFirstChild("DestroyGrabLine")
+
+local DeathEnabled = false
+local DeathConnection
+
+local function startDeathAura()
+    DeathConnection = RunService.Heartbeat:Connect(function()
+        local char = localPlayer.Character
+        if not char then return end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= localPlayer and not isWhitelisted(plr) and plr.Character then
+                local enemy = plr.Character
+                local enemyRoot = enemy:FindFirstChild("HumanoidRootPart")
+                local enemyHead = enemy:FindFirstChild("Head")
+                local humanoid = enemy:FindFirstChildOfClass("Humanoid")
+
+                if enemyRoot and enemyHead and humanoid and humanoid.Health > 0 then
+                    if (enemyRoot.Position - root.Position).Magnitude <= 25 then
+                        pcall(function()
+                            SetNetworkOwner:FireServer(enemyRoot, enemyRoot.CFrame)
+                            task.wait(0.1)
+
+                            if DestroyGrabLine then
+                                DestroyGrabLine:FireServer(enemyRoot)
+                            end
+
+                            if enemyHead:FindFirstChild("PartOwner")
+                               and enemyHead.PartOwner.Value == localPlayer.Name then
+
+                                for _, part in ipairs(enemy:GetChildren()) do
+                                    if part:IsA("BasePart") then
+                                        part.CFrame = CFrame.new(-1e9, 1e9, -1e9)
+                                    end
+                                end
+
+                                local bv = Instance.new("BodyVelocity")
+                                bv.Velocity = Vector3.new(0, -9e6, 0)
+                                bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                                bv.P = 100000075
+                                bv.Parent = enemyRoot
+
+                                humanoid:ChangeState(Enum.HumanoidStateType.Dead)
+                                task.delay(2, function()
+                                    if bv.Parent then bv:Destroy() end
+                                end)
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function stopDeathAura()
+    if DeathConnection then
+        DeathConnection:Disconnect()
+        DeathConnection = nil
+    end
+end
+
+Tab:CreateToggle({
+    Name = "Death Aura",
+    CurrentValue = false,
+    Flag = "DeathAura",
+    Callback = function(Value)
+        DeathEnabled = Value
+        if Value then
+            startDeathAura()
+        else
+            stopDeathAura()
+        end
+    end,
+})
 
 
 
