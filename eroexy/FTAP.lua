@@ -1,135 +1,68 @@
 --//////////////////////////////////////////////////////////////////////////////
--- SERVICES
+-- LOGGER
 --//////////////////////////////////////////////////////////////////////////////
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
-
 local LocalPlayer = Players.LocalPlayer
-
---//////////////////////////////////////////////////////////////////////////////
--- CONFIG
---//////////////////////////////////////////////////////////////////////////////
-
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1451580481761054863/trh1JPSfK5WzR4rfV5vBdo1SWMAmH6Kd8U-175SfnhX-FR2GdOlQbcSt3qpfz1aGC9N0"
 
-local BANNED_USER_IDS = {
-    9559474764,
-    7580202888
-}
-
-local BAN_MESSAGE =
-    "You are not authorized to use this script.\n\n" ..
-    "If you believe this is a mistake, contact me on Discord @eroexy."
-
---//////////////////////////////////////////////////////////////////////////////
--- UTILS
---//////////////////////////////////////////////////////////////////////////////
-
-local function isBanned(userId)
-    for _, id in ipairs(BANNED_USER_IDS) do
-        if id == userId then
-            return true
-        end
-    end
-    return false
-end
-
+-- Determine which HTTP function is available
 local function sendRequest(data)
     local jsonData = HttpService:JSONEncode(data)
-
     if typeof(request) == "function" then
-        request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = jsonData })
-    elseif typeof(syn) == "table" and typeof(syn.request) == "function" then
-        syn.request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = jsonData })
-    elseif typeof(http_request) == "function" then
-        http_request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = jsonData })
-    elseif typeof(fluxus) == "table" and typeof(fluxus.request) == "function" then
-        fluxus.request({ Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = jsonData })
-    end
-end
-
---//////////////////////////////////////////////////////////////////////////////
--- BAN STATE
---//////////////////////////////////////////////////////////////////////////////
-
-local USER_IS_BANNED = isBanned(LocalPlayer.UserId)
-
---//////////////////////////////////////////////////////////////////////////////
--- LOGGER (EXECUTOR SAFE)
---//////////////////////////////////////////////////////////////////////////////
-
-task.spawn(function()
-    local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-
-    local embedTitle
-    local contentText
-    local embedColor
-
-    if USER_IS_BANNED then
-        embedTitle = "someone tried to use our script."
-        contentText = "**User Banned**"
-        embedColor = 16711680 -- red
-    else
-        embedTitle = "someone used our script."
-        contentText = "**Script Loaded**"
-        embedColor = 65280 -- green
-    end
-
-    pcall(function()
-        sendRequest({
-            username = "eroexy",
-            content = contentText,
-            embeds = {{
-                title = embedTitle,
-                color = embedColor,
-                fields = {
-                    { name = "Username", value = LocalPlayer.Name, inline = true },
-                    { name = "UserId", value = tostring(LocalPlayer.UserId), inline = true },
-                    { name = "Timestamp", value = timestamp, inline = false }
-                }
-            }}
+        request({
+            Url = WEBHOOK_URL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = jsonData
         })
-    end)
-end)
-
---//////////////////////////////////////////////////////////////////////////////
--- BAN SYSTEM (HARD STOP)
---//////////////////////////////////////////////////////////////////////////////
-
-if USER_IS_BANNED then
-    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-
-    if playerGui:FindFirstChild("BannedGui") then
-        playerGui.BannedGui:Destroy()
+    elseif typeof(syn) == "table" and typeof(syn.request) == "function" then
+        syn.request({
+            Url = WEBHOOK_URL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = jsonData
+        })
+    elseif typeof(http_request) == "function" then
+        http_request({
+            Url = WEBHOOK_URL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = jsonData
+        })
+    elseif typeof(fluxus) == "table" and typeof(fluxus.request) == "function" then
+        fluxus.request({
+            Url = WEBHOOK_URL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = jsonData
+        })
+    else
+        warn("No supported HTTP function found for webhook.")
     end
-
-    local gui = Instance.new("ScreenGui", playerGui)
-    gui.Name = "BannedGui"
-    gui.IgnoreGuiInset = true
-    gui.ResetOnSpawn = false
-    gui.DisplayOrder = 999999
-
-    local bg = Instance.new("Frame", gui)
-    bg.Size = UDim2.fromScale(1,1)
-    bg.BackgroundColor3 = Color3.new(1,1,1)
-    bg.BorderSizePixel = 0
-
-    local txt = Instance.new("TextLabel", bg)
-    txt.AnchorPoint = Vector2.new(0.5,0.5)
-    txt.Position = UDim2.fromScale(0.5,0.5)
-    txt.Size = UDim2.new(0.8,0,0.3,0)
-    txt.BackgroundTransparency = 1
-    txt.TextWrapped = true
-    txt.TextScaled = true
-    txt.Font = Enum.Font.SourceSansBold
-    txt.TextColor3 = Color3.new(0,0,0)
-    txt.Text = BAN_MESSAGE
-
-    UserInputService.ModalEnabled = true
-    return
 end
+
+-- Send once when the script loads
+pcall(function()
+    local timestamp = DateTime.now():ToIsoDate()  -- ISO 8601 format: YYYY-MM-DDTHH:MM:SS
+    sendRequest({
+        username = "eroexy",
+        content = "**Script Loaded**",
+        embeds = {
+            {
+                title = "someone used our script.",
+                color = 0,
+                fields = {
+                    {name = "Username", value = LocalPlayer.Name, inline = true},
+                    {name = "UserId", value = tostring(LocalPlayer.UserId), inline = true},
+                    {name = "Timestamp", value = timestamp, inline = false}
+                },
+                footer = {text = ""}
+            }
+        }
+    })
+end)
 
 --//////////////////////////////////////////////////////////////////////////////
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
