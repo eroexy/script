@@ -2135,7 +2135,363 @@ local Toggle = Tab:CreateToggle({
 local Tab = Window:CreateTab("ESP", 0)
 --//////////////////////////////////////////////////////////////////////////////
 
+--//////////////////////////////////////////////////////////////////////////////
+-- Services
+--//////////////////////////////////////////////////////////////////////////////
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
+--//////////////////////////////////////////////////////////////////////////////
+-- Config
+--//////////////////////////////////////////////////////////////////////////////
+local HIGHLIGHT_DURATION = 120 -- default 2 minutes
+
+local NonFriendCharESPEnabled = true
+local NonFriendNameESPEnabled = true
+local NonFriendToyESPEnabled = true
+local RedESPEnabled = true
+
+local processedWelds = {}
+local normalESPs = {}
+local activeRedESPs = {}
+
+local function isMyCharacterPart(part)
+	local char = LocalPlayer.Character
+	return char and part and part:IsDescendantOf(char)
+end
+
+local function createToyHighlights(player, color)
+	local folderName = player.Name.."SpawnedInToys"
+	local folder = Workspace:FindFirstChild(folderName)
+	local highlights = {}
+	if folder then
+		for _, toy in ipairs(folder:GetChildren()) do
+			if not toy:IsA("Model") then continue end
+			local highlight = Instance.new("Highlight")
+			highlight.Adornee = toy
+			highlight.FillColor = color
+			highlight.OutlineColor = color
+			highlight.FillTransparency = 0.5
+			highlight.OutlineTransparency = 0.2
+			highlight.Parent = toy
+			highlights[toy] = highlight
+		end
+	end
+	return highlights
+end
+
+local function createNormalESP(player)
+	if normalESPs[player] then return end
+
+	local function apply(character)
+		if not character then return end
+
+		local charHighlight
+		if NonFriendCharESPEnabled then
+			charHighlight = Instance.new("Highlight")
+			charHighlight.Adornee = character
+			charHighlight.FillColor = Color3.fromRGB(220,220,220)
+			charHighlight.OutlineColor = Color3.fromRGB(200,200,200)
+			charHighlight.FillTransparency = 0.5
+			charHighlight.OutlineTransparency = 0.2
+			charHighlight.Parent = character
+		end
+
+		local head = character:FindFirstChild("Head")
+		local billboard
+		if head and NonFriendNameESPEnabled then
+			billboard = Instance.new("BillboardGui")
+			billboard.Name = "NonFriendNameESP"
+			billboard.Adornee = head
+			billboard.AlwaysOnTop = true
+			billboard.Size = UDim2.fromScale(3,0.8)
+			billboard.StudsOffsetWorldSpace = Vector3.new(0,2.5,0)
+
+			local text = Instance.new("TextLabel")
+			text.Size = UDim2.fromScale(1,1)
+			text.BackgroundTransparency = 1
+			text.Text = player.Name
+			text.TextColor3 = Color3.fromRGB(230,230,230)
+			text.TextStrokeColor3 = Color3.fromRGB(160,160,160)
+			text.TextStrokeTransparency = 0.1
+			text.Font = Enum.Font.Ubuntu
+			text.TextScaled = true
+			text.Parent = billboard
+			billboard.Parent = head
+		end
+
+		local toyHighlights
+		if NonFriendToyESPEnabled then
+			toyHighlights = createToyHighlights(player, Color3.fromRGB(220,220,220))
+		end
+
+		normalESPs[player] = {
+			charHighlight = charHighlight,
+			nameBillboard = billboard,
+			toyHighlights = toyHighlights
+		}
+	end
+
+	if player.Character then
+		apply(player.Character)
+	end
+
+	player.CharacterAdded:Connect(function(char)
+		if activeRedESPs[player] then
+			updateRedESPTypes(player)
+		else
+			apply(char)
+		end
+	end)
+end
+
+function updateRedESPTypes(player)
+	local data = activeRedESPs[player]
+	if not data then return end
+	local char = player.Character
+	if not char then return end
+
+	if NonFriendCharESPEnabled and not data.charHighlight then
+		local charHighlight = Instance.new("Highlight")
+		charHighlight.Adornee = char
+		charHighlight.FillColor = Color3.fromRGB(255,0,0)
+		charHighlight.OutlineColor = Color3.fromRGB(180,0,0)
+		charHighlight.FillTransparency = 0.7
+		charHighlight.OutlineTransparency = 0
+		charHighlight.Parent = char
+		data.charHighlight = charHighlight
+	elseif not NonFriendCharESPEnabled and data.charHighlight then
+		data.charHighlight:Destroy()
+		data.charHighlight = nil
+	end
+
+	local head = char:FindFirstChild("Head")
+	if head then
+		if NonFriendNameESPEnabled and not data.nameBillboard then
+			local billboard = Instance.new("BillboardGui")
+			billboard.Name = "RedESP"
+			billboard.Adornee = head
+			billboard.AlwaysOnTop = true
+			billboard.Size = UDim2.fromScale(3,0.8)
+			billboard.StudsOffsetWorldSpace = Vector3.new(0,2.5,0)
+
+			local text = Instance.new("TextLabel")
+			text.Size = UDim2.fromScale(1,1)
+			text.BackgroundTransparency = 1
+			text.Text = player.Name
+			text.TextColor3 = Color3.fromRGB(255,0,0)
+			text.TextStrokeColor3 = Color3.fromRGB(180,0,0)
+			text.TextStrokeTransparency = 0.1
+			text.Font = Enum.Font.Ubuntu
+			text.TextScaled = true
+			text.Parent = billboard
+			billboard.Parent = head
+
+			data.nameBillboard = billboard
+		elseif not NonFriendNameESPEnabled and data.nameBillboard then
+			data.nameBillboard:Destroy()
+			data.nameBillboard = nil
+		end
+	end
+
+	if NonFriendToyESPEnabled and not data.toyHighlights then
+		data.toyHighlights = createToyHighlights(player, Color3.fromRGB(255,0,0))
+	elseif not NonFriendToyESPEnabled and data.toyHighlights then
+		for _, h in pairs(data.toyHighlights) do h:Destroy() end
+		data.toyHighlights = nil
+	end
+end
+
+function applyRedESP(player)
+	if not RedESPEnabled then return end
+
+	local now = os.clock()
+
+	if normalESPs[player] then
+		local old = normalESPs[player]
+		if old.charHighlight then old.charHighlight:Destroy() end
+		if old.nameBillboard then old.nameBillboard:Destroy() end
+		if old.toyHighlights then for _, h in pairs(old.toyHighlights) do h:Destroy() end end
+		normalESPs[player] = nil
+	end
+
+	if activeRedESPs[player] then
+		activeRedESPs[player].timer = now + HIGHLIGHT_DURATION
+		updateRedESPTypes(player)
+		return
+	end
+
+	activeRedESPs[player] = {timer = now + HIGHLIGHT_DURATION}
+	updateRedESPTypes(player)
+end
+
+function removeRedESP(player)
+	local data = activeRedESPs[player]
+	if not data then return end
+	if data.charHighlight then data.charHighlight:Destroy() end
+	if data.nameBillboard then data.nameBillboard:Destroy() end
+	if data.toyHighlights then for _, h in pairs(data.toyHighlights) do h:Destroy() end end
+	activeRedESPs[player] = nil
+
+	createNormalESP(player)
+end
+
+RunService.Heartbeat:Connect(function()
+	local now = os.clock()
+	for player, data in pairs(activeRedESPs) do
+		if now >= data.timer then
+			removeRedESP(player)
+		end
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player == LocalPlayer then continue end
+		if LocalPlayer:IsFriendsWith(player.UserId) then continue end
+
+		local char = player.Character
+		if not char then continue end
+		local grabFolder = char:FindFirstChild("GrabParts")
+		if not grabFolder then continue end
+
+		for _, weld in ipairs(grabFolder:GetDescendants()) do
+			if weld:IsA("WeldConstraint") and not processedWelds[weld] then
+				if isMyCharacterPart(weld.Part0) or isMyCharacterPart(weld.Part1) then
+					processedWelds[weld] = true
+					applyRedESP(player)
+				end
+			end
+		end
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	for _, data in pairs(normalESPs) do
+		if data and data.nameBillboard and data.nameBillboard.Adornee then
+			local distance = (Camera.CFrame.Position - data.nameBillboard.Adornee.Position).Magnitude
+			local scale = math.clamp(distance/200,1,4.5)
+			data.nameBillboard.Size = UDim2.fromScale(5*scale,1.2*scale)
+		end
+	end
+end)
+
+for _, player in ipairs(Players:GetPlayers()) do
+	if player ~= LocalPlayer and not LocalPlayer:IsFriendsWith(player.UserId) then
+		createNormalESP(player)
+	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+	if player ~= LocalPlayer and not LocalPlayer:IsFriendsWith(player.UserId) then
+		createNormalESP(player)
+	end
+	player.CharacterAdded:Connect(function()
+		if activeRedESPs[player] then
+			updateRedESPTypes(player)
+		end
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	if normalESPs[player] then
+		local old = normalESPs[player]
+		if old.charHighlight then old.charHighlight:Destroy() end
+		if old.nameBillboard then old.nameBillboard:Destroy() end
+		if old.toyHighlights then for _, h in pairs(old.toyHighlights) do h:Destroy() end end
+		normalESPs[player] = nil
+	end
+	if activeRedESPs[player] then
+		removeRedESP(player)
+	end
+end)
+
+--//////////////////////////////////////////////////////////////////////////////
+-- GUI Toggles & Slider
+local non-friends = Tab:CreateSection("Non-Friends")
+--//////////////////////////////////////////////////////////////////////////////
+local ShowRPlayers = Tab:CreateToggle({
+	Name = "Show non-friends",
+	CurrentValue = false,
+	Flag = "RCharESP",
+	Callback = function(Value)
+		NonFriendCharESPEnabled = Value
+		for player, data in pairs(normalESPs) do
+			if data.charHighlight then data.charHighlight.Enabled = Value end
+		end
+		for player, _ in pairs(activeRedESPs) do
+			updateRedESPTypes(player)
+		end
+	end
+})
+
+local ShowNames = Tab:CreateToggle({
+	Name = "Show names",
+	CurrentValue = false,
+	Flag = "RNameESP",
+	Callback = function(Value)
+		NonFriendNameESPEnabled = Value
+		for player, data in pairs(normalESPs) do
+			if data.nameBillboard then data.nameBillboard.Enabled = Value end
+		end
+		for player, _ in pairs(activeRedESPs) do
+			updateRedESPTypes(player)
+		end
+	end
+})
+
+local ShowToys = Tab:CreateToggle({
+	Name = "Show toys",
+	CurrentValue = false,
+	Flag = "RToyESP",
+	Callback = function(Value)
+		NonFriendToyESPEnabled = Value
+		for player, data in pairs(normalESPs) do
+			if data.toyHighlights then
+				for _, h in pairs(data.toyHighlights) do h.Enabled = Value end
+			end
+		end
+		for player, _ in pairs(activeRedESPs) do
+			updateRedESPTypes(player)
+		end
+	end
+})
+
+--//////////////////////////////////////////////////////////////////////////////
+local Section = Tab:CreateSection("Hostile")
+--//////////////////////////////////////////////////////////////////////////////
+
+local ShowHostile = Tab:CreateToggle({
+	Name = "Show hostile",
+	CurrentValue = false,
+	Flag = "RHostileESP",
+	Callback = function(Value)
+		RedESPEnabled = Value
+		if not Value then
+			for player, _ in pairs(activeRedESPs) do
+				removeRedESP(player)
+			end
+		end
+	end
+})
+
+local Slider = Tab:CreateSlider({
+	Name = "Threat Timer",
+	Range = {10,120},
+	Increment = 5,
+	Suffix = "Seconds",
+	CurrentValue = HIGHLIGHT_DURATION,
+	Flag = "RThreatTimer",
+	Callback = function(Value)
+		HIGHLIGHT_DURATION = Value
+		for player, data in pairs(activeRedESPs) do
+			data.timer = os.clock() + HIGHLIGHT_DURATION
+		end
+	end
+})
 
 
 
