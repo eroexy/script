@@ -1,7 +1,7 @@
 return {
 	BannedUsers = {
 		-- UserIds
-		[7580202888] = true,
+		[758020288] = true,
 		[123456789] = true,
 
 		-- Usernames
