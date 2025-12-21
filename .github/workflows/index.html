@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Key Generator</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 50px; background: #111; color: #fff; }
+    input, button { padding: 10px; margin: 10px; font-size: 16px; }
+    #key { color: #0f0; margin-top: 20px; word-break: break-word; }
+    #timer { color: #ff0; margin-top: 10px; }
+  </style>
+</head>
+<body>
+<h1>Get Your Key</h1>
+<p>Enter your Roblox UserId:</p>
+<input id="uid" placeholder="UserId"/>
+<br>
+<button onclick="generate()">Generate Key</button>
+
+<div id="key"></div>
+<div id="timer"></div>
+
+<script>
+const APP = "NIL";
+const SALT = "x9!Kp#2@"; // Must match your LocalScript
+const DURATION = 24 * 60 * 60; // 24 hours in seconds
+
+function hash(str) {
+    let h = 7;
+    for (let i = 0; i < str.length; i++) {
+        h = (h * 31 + str.charCodeAt(i) * (i+1)) % 1000000;
+    }
+    return h.toString(16).toUpperCase().padStart(6,"0");
+}
+
+function generate() {
+    const uid = document.getElementById("uid").value.trim();
+    if(!uid || isNaN(uid)) { alert("Invalid UserId"); return; }
+
+    const now = Math.floor(Date.now()/1000);
+    const expiry = now + DURATION;
+    
+    // Random-ish key, unique per user per 24h
+    const randPart = Math.floor(Math.random()*9000+1000);
+    const checksum = hash(APP + uid + expiry + SALT + randPart);
+
+    const key = `${APP}-${uid}-${expiry}-${randPart}-${checksum}`;
+    document.getElementById("key").innerText = key;
+
+    // Countdown timer
+    function updateTimer() {
+        const t = expiry - Math.floor(Date.now()/1000);
+        if(t <= 0) {
+            document.getElementById("timer").innerText = "Key expired!";
+        } else {
+            const hours = Math.floor(t/3600);
+            const mins = Math.floor((t%3600)/60);
+            const secs = t%60;
+            document.getElementById("timer").innerText = `Expires in ${hours}h ${mins}m ${secs}s`;
+            requestAnimationFrame(updateTimer);
+        }
+    }
+    updateTimer();
+}
+</script>
+</body>
+</html>
