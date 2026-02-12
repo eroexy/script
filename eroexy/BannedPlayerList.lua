@@ -1,11 +1,11 @@
 return {
 	BannedUsers = {
 		-- UserIds
-		[] = true,
-		[] = true,
+		[1234] = true,
+		[1313] = true,
 
 		-- Usernames
-		[""] = true,
-		[""] = true,
+		["badboi123"] = true,
+		["badboi123444"] = true,
 	}
 }
