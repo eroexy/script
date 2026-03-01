@@ -541,7 +541,7 @@ Tab:AddToggle({
     Default = false,
     Color = Color3.fromRGB(128,128,128),
     Flag = "GeneratorESP",
-    Save = false,
+    Save = true,
     Callback = function(Value)
         ESPTypes.Generator.Enabled = Value
         updateType("Generator")
@@ -553,7 +553,7 @@ Tab:AddToggle({
     Default = false,
     Color = Color3.fromRGB(255,0,0),
     Flag = "HookESP",
-    Save = false,
+    Save = true,
     Callback = function(Value)
         ESPTypes.Hook.Enabled = Value
         updateType("Hook")
@@ -565,7 +565,7 @@ Tab:AddToggle({
     Default = false,
     Color = Color3.fromRGB(255,255,0),
     Flag = "PalletwrongESP",
-    Save = false,
+    Save = true,
     Callback = function(Value)
         ESPTypes.Palletwrong.Enabled = Value
         updateType("Palletwrong")
@@ -574,7 +574,7 @@ Tab:AddToggle({
 
 Tab:AddToggle({
     Name = "Window Chams",
-    Default = false,
+    Default = true,
     Color = Color3.fromRGB(0,0,255),
     Flag = "WindowESP",
     Save = false,
