@@ -383,48 +383,67 @@ local CachedModels = {
 }
 
 local ESPTypes = {
-    Generator = {Color = Color3.fromRGB(128,128,128), Enabled = false},
+    Generator = {Color = Color3.fromRGB(235,235,235), Enabled = false},
     Hook = {Color = Color3.fromRGB(255,0,0), Enabled = false},
     Palletwrong = {Color = Color3.fromRGB(255,255,0), Enabled = false},
     Window = {Color = Color3.fromRGB(0,0,255), Enabled = false},
 }
 
-local function addHighlight(model, color)
-    if ActiveHighlights[model] then return end
+local function addHighlight(obj, color)
+    if ActiveHighlights[obj] then return end
     local hl = Instance.new("Highlight")
     hl.FillColor = color
     hl.FillTransparency = 0.7
     hl.OutlineTransparency = 1
-    hl.Adornee = model
-    hl.Parent = model
-    ActiveHighlights[model] = hl
+    hl.Adornee = obj
+    hl.Parent = obj
+    ActiveHighlights[obj] = hl
 end
 
-local function removeHighlight(model)
-    local hl = ActiveHighlights[model]
+local function removeHighlight(obj)
+    local hl = ActiveHighlights[obj]
     if hl then
         hl:Destroy()
-        ActiveHighlights[model] = nil
+        ActiveHighlights[obj] = nil
     end
 end
 
+local function getWindowBottom(windowModel)
+    return windowModel:FindFirstChild("Bottom", true)
+end
+
 local function cacheModel(model)
-    if CachedModels[model.Name] then
-        table.insert(CachedModels[model.Name], model)
-        if ESPTypes[model.Name].Enabled then
+    if not CachedModels[model.Name] then return end
+    if table.find(CachedModels[model.Name], model) then return end
+
+    table.insert(CachedModels[model.Name], model)
+
+    if ESPTypes[model.Name].Enabled then
+        if model.Name == "Window" then
+            local bottom = getWindowBottom(model)
+            if bottom and bottom:IsA("BasePart") then
+                addHighlight(bottom, ESPTypes.Window.Color)
+            end
+        else
             addHighlight(model, ESPTypes[model.Name].Color)
         end
     end
 end
 
 local function uncacheModel(model)
-    if CachedModels[model.Name] then
-        for i, v in ipairs(CachedModels[model.Name]) do
-            if v == model then
-                table.remove(CachedModels[model.Name], i)
-                break
-            end
+    if not CachedModels[model.Name] then return end
+
+    local index = table.find(CachedModels[model.Name], model)
+    if index then
+        table.remove(CachedModels[model.Name], index)
+    end
+
+    if model.Name == "Window" then
+        local bottom = getWindowBottom(model)
+        if bottom then
+            removeHighlight(bottom)
         end
+    else
         removeHighlight(model)
     end
 end
@@ -441,10 +460,21 @@ local function updateType(typeName)
     local config = ESPTypes[typeName]
     for _, model in ipairs(CachedModels[typeName]) do
         if model and model.Parent then
-            if config.Enabled then
-                addHighlight(model, config.Color)
+            if typeName == "Window" then
+                local bottom = getWindowBottom(model)
+                if bottom and bottom:IsA("BasePart") then
+                    if config.Enabled then
+                        addHighlight(bottom, config.Color)
+                    else
+                        removeHighlight(bottom)
+                    end
+                end
             else
-                removeHighlight(model)
+                if config.Enabled then
+                    addHighlight(model, config.Color)
+                else
+                    removeHighlight(model)
+                end
             end
         end
     end
@@ -455,8 +485,8 @@ Map.ChildRemoved:Connect(function()
         for k in pairs(CachedModels) do
             CachedModels[k] = {}
         end
-        for model in pairs(ActiveHighlights) do
-            removeHighlight(model)
+        for obj in pairs(ActiveHighlights) do
+            removeHighlight(obj)
         end
     end
 end)
@@ -507,7 +537,7 @@ Tab:AddToggle({
 local Section = Tab:AddSection({Name = "Map"})
 
 Tab:AddToggle({
-    Name = "Generator ESP",
+    Name = "Generator Chams",
     Default = false,
     Color = Color3.fromRGB(128,128,128),
     Flag = "GeneratorESP",
@@ -519,7 +549,7 @@ Tab:AddToggle({
 })
 
 Tab:AddToggle({
-    Name = "Hook ESP",
+    Name = "Hook Chams",
     Default = false,
     Color = Color3.fromRGB(255,0,0),
     Flag = "HookESP",
@@ -531,7 +561,7 @@ Tab:AddToggle({
 })
 
 Tab:AddToggle({
-    Name = "Palletwrong ESP",
+    Name = "Pallet Chams",
     Default = false,
     Color = Color3.fromRGB(255,255,0),
     Flag = "PalletwrongESP",
@@ -543,7 +573,7 @@ Tab:AddToggle({
 })
 
 Tab:AddToggle({
-    Name = "Window ESP",
+    Name = "Window Chams",
     Default = false,
     Color = Color3.fromRGB(0,0,255),
     Flag = "WindowESP",
