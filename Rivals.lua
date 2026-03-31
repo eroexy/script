@@ -36,5 +36,11 @@ local Tab = Window:MakeTab({
   PremiumOnly = false
 })
 
+local Tab = Window:MakeTab({
+  Name = "Map",
+  Icon = "rbxassetid://10734886202",
+  PremiumOnly = false
+})
+
 --// init
 Orion:Init()
