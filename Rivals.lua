@@ -11,7 +11,7 @@ local Window = Orion:MakeWindow({
   Name = "Rivals | by X3D",
 
   ConfigFolder = "X3D_Rivals",
-  SaveConfig = false,
+  SaveConfig = true,
 
   HidePremium = false,
 
@@ -20,7 +20,7 @@ local Window = Orion:MakeWindow({
   IntroIcon = "rbxassetid://8834748103",
 
   FreeMouse = false,
-  KeyToOpenWindow = "RightShift",
+  KeyToOpenWindow = "M",
   
   CloseCallback = function()
     
