@@ -38,12 +38,14 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local mouse = player:GetMouse()
 
-local Settings = {
+_G.ESP_Settings = _G.ESP_Settings or {
     ESP = false,
 
     Box = true,
     Tracers = true,
     Health_Bar = true,
+
+    TeamBoxes = true,
 
     Box_Color = Color3.fromRGB(255, 0, 0),
     Tracer_Color = Color3.fromRGB(255, 0, 0),
@@ -55,45 +57,87 @@ local Settings = {
     Tracer_FollowMouse = false
 }
 
-local Team_Settings = {
-    TeamCheck = false,
-    Green = Color3.fromRGB(0, 255, 0),
-    Red = Color3.fromRGB(255, 0, 0)
-}
+local Settings = _G.ESP_Settings
 
-local TeamColor = true
+local TeamColor = false
+local black = Color3.fromRGB(0, 0, 0)
 
---// Drawing helpers
-local function NewQuad(thickness, color)
+local ESP_CACHE = {}
+local OFF = Vector2.new(-9999, -9999)
+
+--// Drawing constructors
+local function NewQuad(t, c)
     local q = Drawing.new("Quad")
     q.Visible = false
     q.Filled = false
-    q.Thickness = thickness
-    q.Color = color
-    q.Transparency = 1
+    q.Thickness = t
+    q.Color = c
     return q
 end
 
-local function NewLine(thickness, color)
+local function NewLine(t, c)
     local l = Drawing.new("Line")
     l.Visible = false
-    l.Thickness = thickness
-    l.Color = color
-    l.Transparency = 1
+    l.Thickness = t
+    l.Color = c
     return l
 end
 
-local function Reset(lib)
-    for _, v in pairs(lib) do
-        v.Visible = false
+--// HARD HIDE
+local function Hide(lib)
+    if lib.box then lib.box.Visible = false end
+    if lib.boxBlack then lib.boxBlack.Visible = false end
+
+    if lib.tracer then lib.tracer.Visible = false end
+    if lib.tracerBlack then lib.tracerBlack.Visible = false end
+
+    if lib.health then lib.health.Visible = false end
+    if lib.healthBG then lib.healthBG.Visible = false end
+
+    if lib.box then
+        lib.box.PointA, lib.box.PointB, lib.box.PointC, lib.box.PointD = OFF, OFF, OFF, OFF
+    end
+
+    if lib.boxBlack then
+        lib.boxBlack.PointA, lib.boxBlack.PointB, lib.boxBlack.PointC, lib.boxBlack.PointD = OFF, OFF, OFF, OFF
+    end
+
+    if lib.tracer then
+        lib.tracer.From, lib.tracer.To = OFF, OFF
+    end
+
+    if lib.tracerBlack then
+        lib.tracerBlack.From, lib.tracerBlack.To = OFF, OFF
+    end
+
+    if lib.health then
+        lib.health.From, lib.health.To = OFF, OFF
+    end
+
+    if lib.healthBG then
+        lib.healthBG.From, lib.healthBG.To = OFF, OFF
     end
 end
 
-local black = Color3.fromRGB(0, 0, 0)
+--// COLOR SYSTEM (FIX)
+local function ApplyColors(lib, plr)
+    lib.box.Color = Settings.Box_Color
+    lib.tracer.Color = Settings.Tracer_Color
 
---// ESP CORE
-local function ESP(plr)
-    local library = {
+    lib.boxBlack.Color = lib.box.Color
+    lib.tracerBlack.Color = lib.tracer.Color
+    lib.healthBG.Color = black
+
+    if TeamColor and plr.TeamColor then
+        local c = plr.TeamColor.Color
+        lib.box.Color = c
+        lib.tracer.Color = c
+    end
+end
+
+--// CREATE ESP
+local function CreateESP(plr)
+    ESP_CACHE[plr] = {
         tracer = NewLine(Settings.Tracer_Thickness, Settings.Tracer_Color),
         tracerBlack = NewLine(Settings.Tracer_Thickness * 2, black),
 
@@ -101,42 +145,75 @@ local function ESP(plr)
         boxBlack = NewQuad(Settings.Box_Thickness * 2, black),
 
         healthBG = NewLine(3, black),
-        health = NewLine(1.5, Color3.fromRGB(0, 255, 0))
+        health = NewLine(1.5, Color3.fromRGB(0,255,0))
     }
 
-    local connection
+    ApplyColors(ESP_CACHE[plr], plr)
 
-    connection = RunService.RenderStepped:Connect(function()
-        if not Settings.ESP then
-            Reset(library)
-            return
+    plr.CharacterAdded:Connect(function()
+        task.wait(0.2)
+        if ESP_CACHE[plr] then
+            ApplyColors(ESP_CACHE[plr], plr)
         end
+    end)
 
-        local character = plr.Character
-        if not character then return Reset(library) end
+    plr:GetPropertyChangedSignal("TeamColor"):Connect(function()
+        if ESP_CACHE[plr] then
+            ApplyColors(ESP_CACHE[plr], plr)
+        end
+    end)
+end
 
-        local humanoid = character:FindFirstChild("Humanoid")
-        local root = character:FindFirstChild("HumanoidRootPart")
-        local head = character:FindFirstChild("Head")
+local function RemoveESP(plr)
+    local lib = ESP_CACHE[plr]
+    if lib then
+        for _, v in pairs(lib) do
+            v:Remove()
+        end
+        ESP_CACHE[plr] = nil
+    end
+end
 
-        if not humanoid or not root or not head or humanoid.Health <= 0 then
-            return Reset(library)
+--// INITIAL PLAYERS
+for _, v in pairs(Players:GetPlayers()) do
+    if v ~= player then
+        CreateESP(v)
+    end
+end
+
+Players.PlayerAdded:Connect(function(v)
+    if v ~= player then
+        CreateESP(v)
+    end
+end)
+
+Players.PlayerRemoving:Connect(RemoveESP)
+
+RunService.RenderStepped:Connect(function()
+
+    if not Settings.ESP then
+        for _, lib in pairs(ESP_CACHE) do
+            Hide(lib)
+        end
+        return
+    end
+
+    for plr, lib in pairs(ESP_CACHE) do
+
+        local char = plr.Character
+        local hum = char and char:FindFirstChild("Humanoid")
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local head = char and char:FindFirstChild("Head")
+
+        if not char or not hum or not root or not head or hum.Health <= 0 then
+            Hide(lib)
+            continue
         end
 
         local rootPos, onScreen = camera:WorldToViewportPoint(root.Position)
-
-        local camPos = camera.CFrame.Position
-        local toTarget = root.Position - camPos
-
-        if not onScreen or toTarget.Magnitude <= 0 then
-            Reset(library)
-            return
-        end
-
-        local facing = camera.CFrame.LookVector:Dot(toTarget.Unit)
-        if facing <= 0.15 then
-            Reset(library)
-            return
+        if not onScreen or rootPos.Z <= 0 then
+            Hide(lib)
+            continue
         end
 
         local headPos = camera:WorldToViewportPoint(head.Position)
@@ -148,36 +225,24 @@ local function ESP(plr)
         )
 
         -- BOX
-
         if Settings.Box then
-            local function setBox(obj)
-                obj.PointA = Vector2.new(rootPos.X + size, rootPos.Y - size * 2)
-                obj.PointB = Vector2.new(rootPos.X - size, rootPos.Y - size * 2)
-                obj.PointC = Vector2.new(rootPos.X - size, rootPos.Y + size * 2)
-                obj.PointD = Vector2.new(rootPos.X + size, rootPos.Y + size * 2)
-                obj.Visible = true
-            end
+            lib.box.PointA = Vector2.new(rootPos.X + size, rootPos.Y - size * 2)
+            lib.box.PointB = Vector2.new(rootPos.X - size, rootPos.Y - size * 2)
+            lib.box.PointC = Vector2.new(rootPos.X - size, rootPos.Y + size * 2)
+            lib.box.PointD = Vector2.new(rootPos.X + size, rootPos.Y + size * 2)
+            lib.box.Visible = true
 
-            if not library.box then
-                library.box = NewQuad(Settings.Box_Thickness, Settings.Box_Color)
-                library.boxBlack = NewQuad(Settings.Box_Thickness * 2, Color3.fromRGB(0,0,0))
-            end
-
-            setBox(library.box)
-            setBox(library.boxBlack)
-
+            lib.boxBlack.PointA = lib.box.PointA
+            lib.boxBlack.PointB = lib.box.PointB
+            lib.boxBlack.PointC = lib.box.PointC
+            lib.boxBlack.PointD = lib.box.PointD
+            lib.boxBlack.Visible = true
         else
-            if library.box then
-                library.box:Remove()
-                library.boxBlack:Remove()
-
-                library.box = nil
-                library.boxBlack = nil
-            end
+            lib.box.Visible = false
+            lib.boxBlack.Visible = false
         end
 
         -- TRACERS
-
         if Settings.Tracers then
             local origin = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
 
@@ -191,85 +256,39 @@ local function ESP(plr)
 
             local target = Vector2.new(rootPos.X, rootPos.Y + size * 2)
 
-            library.tracer.From = origin
-            library.tracer.To = target
-            library.tracer.Visible = true
+            lib.tracer.From = origin
+            lib.tracer.To = target
+            lib.tracer.Visible = true
 
-            library.tracerBlack.From = origin
-            library.tracerBlack.To = target
-            library.tracerBlack.Visible = true
+            lib.tracerBlack.From = origin
+            lib.tracerBlack.To = target
+            lib.tracerBlack.Visible = true
         else
-            library.tracer.Visible = false
-            library.tracerBlack.Visible = false
+            lib.tracer.Visible = false
+            lib.tracerBlack.Visible = false
         end
 
         -- HEALTH
-
         if Settings.Health_Bar then
             local height = size * 4
-            local ratio = humanoid.Health / humanoid.MaxHealth
+            local ratio = hum.Health / hum.MaxHealth
             local fill = height * ratio
 
-            library.healthBG.From = Vector2.new(rootPos.X - size - 4, rootPos.Y + size * 2)
-            library.healthBG.To = Vector2.new(rootPos.X - size - 4, rootPos.Y - size * 2)
-            library.healthBG.Visible = true
+            lib.healthBG.From = Vector2.new(rootPos.X - size - 4, rootPos.Y + size * 2)
+            lib.healthBG.To = Vector2.new(rootPos.X - size - 4, rootPos.Y - size * 2)
+            lib.healthBG.Visible = true
 
-            library.health.From = Vector2.new(rootPos.X - size - 4, rootPos.Y + size * 2)
-            library.health.To = Vector2.new(rootPos.X - size - 4, rootPos.Y + size * 2 - fill)
-            library.health.Visible = true
+            lib.health.From = Vector2.new(rootPos.X - size - 4, rootPos.Y + size * 2)
+            lib.health.To = Vector2.new(rootPos.X - size - 4, rootPos.Y + size * 2 - fill)
+            lib.health.Visible = true
 
-            library.health.Color =
-                Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), ratio)
+            lib.health.Color = Color3.fromRGB(255,0,0):Lerp(Color3.fromRGB(0,255,0), ratio)
         else
-            library.healthBG.Visible = false
-            library.health.Visible = false
+            lib.health.Visible = false
+            lib.healthBG.Visible = false
         end
 
-        -- TEAM COLORING
-
-        if TeamColor then
-            for _, v in pairs(library) do
-                if v ~= library.health and v ~= library.healthBG and v ~= library.tracerBlack and v ~= library.boxBlack then
-                    v.Color = plr.TeamColor.Color
-                end
-            end
-        end
-    end)
-
-    plr.CharacterAdded:Connect(function()
-        Reset(library)
-    end)
-
-    plr.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            Reset(library)
-            if connection then connection:Disconnect() end
-        end
-    end)
-end
-
---// INIT PLAYERS
-for _, v in pairs(Players:GetPlayers()) do
-    if v ~= player then
-        ESP(v)
-    end
-end
-
-Players.PlayerAdded:Connect(function(v)
-    if v ~= player then
-        ESP(v)
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(plr)
-    if library and library.box then
-        library.box:Remove()
-        library.box = nil
-    end
-
-    if library and library.boxBlack then
-        library.boxBlack:Remove()
-        library.boxBlack = nil
+        ApplyColors(lib, plr)
     end
 end)
 
@@ -322,7 +341,7 @@ local Toggle = Tab:AddToggle({
 })
 
 local Toggle = Tab:AddToggle({
-  Name = "Toggle Tracer",
+  Name = "Toggle Tracers",
   Default = false,
   Icon = "",
   Color = Color3.fromRGB(9, 99, 195),
@@ -337,21 +356,54 @@ local Section = Tab:AddSection({
   Name = "Team-Check"
 })
 
+local Toggle = Tab:AddToggle({
+  Name = "Team (Colors)",
+  Default = false,
+  Icon = "",
+  Color = Color3.fromRGB(9, 99, 195),
+  Flag = "TeamColors",
+  Save = true,
+  Callback = function(Value)
+    TeamColor = Value
+  end
+})
+
+local Toggle = Tab:AddToggle({
+  Name = "Team (Boxes)",
+  Default = false,
+  Icon = "",
+  Color = Color3.fromRGB(9, 99, 195),
+  Flag = "TeamCheckBox",
+  Save = true,
+  Callback = function(Value)
+    Settings.TeamBoxes = Value
+  end
+})
+
 
 local Section = Tab:AddSection({
   Name = "Color"
 })
 
 local ColorPicker = Tab:AddColorpicker({
-  Name = "Box Color",
+  Name = "Box (General)",
   Default = Color3.fromRGB(255,255,255),
-  Flag = "BoxColor",
+  Flag = "BoxColorGeneral",
   Save = true,
   Callback = function(Value)
     Settings.Box_Color = Value
   end
 })
 
+local ColorPicker = Tab:AddColorpicker({
+  Name = "Tracers",
+  Default = Color3.fromRGB(255,255,255),
+  Flag = "TracersColor",
+  Save = true,
+  Callback = function(Value)
+    Settings.Tracer_Color = Value
+  end
+})
 
 
 local Tab = Window:MakeTab({
