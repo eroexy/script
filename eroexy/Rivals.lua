@@ -1,8 +1,8 @@
-// Services
+--// Services
 
-// Locals
+--// Locals
 
-// libary
+--// libary
 
 local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/Polinorsik/Orion-Z-Library/refs/heads/main/README.md"))()
 
@@ -10,10 +10,10 @@ Orion.SelectedTheme = "Default"
 local Window = Orion:MakeWindow({
   Name = "Rivals | by X3D",
 
-  ConfigFolder = "X3D_Rivals", -- Name Config Folder
-  SaveConfig = true, -- true/false
+  ConfigFolder = "X3D_Rivals",
+  SaveConfig = false,
 
-  HidePremium = false, -- Hiding Premium buttons or toggles
+  HidePremium = false,
 
   IntroText = "Orion intro text",
   IntroEnabled = false,
@@ -36,5 +36,5 @@ local Tab = Window:MakeTab({
   PremiumOnly = false
 })
 
-// init
+--// init
 Orion:Init()
