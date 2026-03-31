@@ -6,19 +6,24 @@
 
 local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/Polinorsik/Orion-Z-Library/refs/heads/main/README.md"))()
 
+Orion.SelectedTheme = "Default"
 local Window = Orion:MakeWindow({
-  Name = "Orion",
+  Name = "Rivals | by X3D",
 
-  ConfigFolder = "X3Drivals",
-  SaveConfig = true,
+  ConfigFolder = "X3D_Rivals", -- Name Config Folder
+  SaveConfig = true, -- true/false
 
-  HidePremium = false,
+  HidePremium = false, -- Hiding Premium buttons or toggles
+
+  IntroText = "Orion intro text",
   IntroEnabled = false,
+  IntroIcon = "rbxassetid://8834748103",
 
   FreeMouse = false,
   KeyToOpenWindow = "RightShift",
   
   CloseCallback = function()
+    
   end,
 
   ShowIcon = false,
