@@ -28,7 +28,20 @@ local OrionLib = {
 	SelectedTheme = "Bliz_T",
 	Folder = nil,
 	SaveCfg = false
+
+	RGBStroke = false,
+	_hue = 0,
+	StrokeOverride = nil,
 }
+
+RunService.RenderStepped:Connect(function(dt)
+	if not OrionLib.RGBStroke then return end
+
+	OrionLib._hue = (OrionLib._hue + dt * 0.2) % 1
+	local rgb = Color3.fromHSV(OrionLib._hue, 1, 1)
+
+	OrionLib.StrokeOverride = rgb
+end)
 
 --Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
 local Icons = {}
