@@ -23,7 +23,24 @@ local OrionLib = {
 			Text = Color3.fromRGB(255, 255, 255),
 			TextDark = Color3.fromRGB(230, 230, 230)
 		},
-		
+
+		Bliz_T = {
+			Main = Color3.fromRGB(0, 0, 0), -- xd
+			Second = Color3.fromRGB(20, 20, 20), -- xd
+			Stroke = Color3.fromRGB(100, 150, 255), -- xd
+			Divider = Color3.fromRGB(80, 120, 200), -- xd
+			Text = Color3.fromRGB(180, 220, 255), -- xd
+			TextDark = Color3.fromRGB(150, 180, 230) --xd
+		},
+         WhiteCustom = {
+			Main = Color3.fromRGB(190,195,198),
+			Second = Color3.fromRGB(219,226,233),
+			Stroke = Color3.fromRGB(20,20,20),
+			Divider = Color3.fromRGB(0,0,0),
+			Text = Color3.fromRGB(203,161,53),
+			TextDark = Color3.fromRGB(131,145,161)
+		}
+
 	},
 	SelectedTheme = "Bliz_T",
 	Folder = nil,
@@ -1463,7 +1480,7 @@ function OrionLib:MakeWindow(WindowConfig)
 						TweenService:Create(Dropdown.Buttons[Value],TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 0}):Play()
 						TweenService:Create(Dropdown.Buttons[Value].Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0}):Play()
 					else
-						print("Player Remove")
+						print("Player Removed")
 						table.remove(SelectedValues, n)
 						TweenService:Create(Dropdown.Buttons[Value],TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 1}):Play()
 						TweenService:Create(Dropdown.Buttons[Value].Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0.4}):Play()
@@ -2588,6 +2605,8 @@ end
 function OrionLib:Destroy()
 	Orion:Destroy()
 end
+
+--[[
 
 local Window = OrionLib:MakeWindow({Name = "aaa", HidePremium = true, SaveConfig = false, ConfigFolder = "hentai", IntroEnabled = false, KeyToOpenWindow = "M", FreeMouse = true})
 
