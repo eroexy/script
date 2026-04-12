@@ -15,28 +15,37 @@ local OrionLib = {
 	Connections = {},
 	Flags = {},
 	Themes = {
-		X3D = {
+		Default = {
+			Main = Color3.fromRGB(25, 25, 25),
+			Second = Color3.fromRGB(32, 32, 32),
+			Stroke = Color3.fromRGB(60, 60, 60),
+			Divider = Color3.fromRGB(60, 60, 60),
+			Text = Color3.fromRGB(240, 240, 240),
+			TextDark = Color3.fromRGB(150, 150, 150)
+		},
+
+		Bliz_T = {
 			Main = Color3.fromRGB(0, 0, 0), -- xd
 			Second = Color3.fromRGB(20, 20, 20), -- xd
 			Stroke = Color3.fromRGB(100, 150, 255), -- xd
 			Divider = Color3.fromRGB(80, 120, 200), -- xd
 			Text = Color3.fromRGB(180, 220, 255), -- xd
 			TextDark = Color3.fromRGB(150, 180, 230) --xd
+		},
+         WhiteCustom = {
+			Main = Color3.fromRGB(190,195,198),
+			Second = Color3.fromRGB(219,226,233),
+			Stroke = Color3.fromRGB(20,20,20),
+			Divider = Color3.fromRGB(0,0,0),
+			Text = Color3.fromRGB(203,161,53),
+			TextDark = Color3.fromRGB(131,145,161)
 		}
+
 	},
-	SelectedTheme = "X3D",
+	SelectedTheme = "Bliz_T",
 	Folder = nil,
 	SaveCfg = false
 }
-
-
-local hue = 0
-RunService.RenderStepped:Connect(function(dt)
-	hue = (hue + dt * 0.2) % 1
-
-	local rgb = Color3.fromHSV(hue, 1, 1)
-	Stroke.Color = rgb
-end)
 
 --Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
 local Icons = {}
