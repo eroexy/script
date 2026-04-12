@@ -17,29 +17,13 @@ local OrionLib = {
 	Themes = {
 		Default = {
 			Main = Color3.fromRGB(5, 5, 5),
-			Second = Color3.fromRGB(16, 16, 16),
+			Second = Color3.fromRGB(5, 5, 5),
 			Stroke = Color3.fromRGB(255, 255, 255),
 			Divider = Color3.fromRGB(60, 60, 60),
 			Text = Color3.fromRGB(255, 255, 255),
-			TextDark = Color3.fromRGB(120, 120, 120)
+			TextDark = Color3.fromRGB(230, 230, 230)
 		},
-
-		Bliz_T = {
-			Main = Color3.fromRGB(0, 0, 0), -- xd
-			Second = Color3.fromRGB(20, 20, 20), -- xd
-			Stroke = Color3.fromRGB(100, 150, 255), -- xd
-			Divider = Color3.fromRGB(80, 120, 200), -- xd
-			Text = Color3.fromRGB(180, 220, 255), -- xd
-			TextDark = Color3.fromRGB(150, 180, 230) --xd
-		},
-         WhiteCustom = {
-			Main = Color3.fromRGB(190,195,198),
-			Second = Color3.fromRGB(219,226,233),
-			Stroke = Color3.fromRGB(20,20,20),
-			Divider = Color3.fromRGB(0,0,0),
-			Text = Color3.fromRGB(203,161,53),
-			TextDark = Color3.fromRGB(131,145,161)
-		}
+		
 	},
 	SelectedTheme = "Bliz_T",
 	Folder = nil,
