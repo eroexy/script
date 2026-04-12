@@ -27,11 +27,11 @@ local OrionLib = {
 	},
 	SelectedTheme = "Bliz_T",
 	Folder = nil,
-	SaveCfg = false
+	SaveCfg = false,
 
 	RGBStroke = false,
 	_hue = 0,
-	StrokeOverride = nil,
+	StrokeOverride = nil
 }
 
 RunService.RenderStepped:Connect(function(dt)
