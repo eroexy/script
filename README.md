@@ -23,7 +23,14 @@ local OrionLib = {
 			Text = Color3.fromRGB(240, 240, 240),
 			TextDark = Color3.fromRGB(150, 150, 150)
 		},
-
+		X3D = {
+			Main = Color3.fromRGB(0, 0, 0), -- xd
+			Second = Color3.fromRGB(20, 20, 20), -- xd
+			Stroke = Color3.fromRGB(100, 150, 255), -- xd
+			Divider = Color3.fromRGB(80, 120, 200), -- xd
+			Text = Color3.fromRGB(180, 220, 255), -- xd
+			TextDark = Color3.fromRGB(150, 180, 230) --xd
+		},
 		Bliz_T = {
 			Main = Color3.fromRGB(0, 0, 0), -- xd
 			Second = Color3.fromRGB(20, 20, 20), -- xd
@@ -46,6 +53,15 @@ local OrionLib = {
 	Folder = nil,
 	SaveCfg = false
 }
+
+
+local hue = 0
+RunService.RenderStepped:Connect(function(dt)
+	hue = (hue + dt * 0.2) % 1
+
+	local rgb = Color3.fromHSV(hue, 1, 1)
+	Stroke.Color = rgb
+end)
 
 --Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
 local Icons = {}
