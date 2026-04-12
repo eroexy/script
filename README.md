@@ -19,7 +19,7 @@ local OrionLib = {
 			Main = Color3.fromRGB(5, 5, 5),
 			Second = Color3.fromRGB(5, 5, 5),
 			Stroke = Color3.fromRGB(255, 255, 255),
-			Divider = Color3.fromRGB(60, 60, 60),
+			Divider = Color3.fromRGB(5, 5, 5),
 			Text = Color3.fromRGB(255, 255, 255),
 			TextDark = Color3.fromRGB(230, 230, 230)
 		},
@@ -1457,13 +1457,13 @@ function OrionLib:MakeWindow(WindowConfig)
 					local text = ""
 
 					if not n then
-						print("Adicionado")
+						print("Player Added")
 						table.insert(SelectedValues, Value)
 						DropdownFrame.F.Selected.Text = Dropdown.Value
 						TweenService:Create(Dropdown.Buttons[Value],TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 0}):Play()
 						TweenService:Create(Dropdown.Buttons[Value].Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0}):Play()
 					else
-						print("Removido")
+						print("Player Remove")
 						table.remove(SelectedValues, n)
 						TweenService:Create(Dropdown.Buttons[Value],TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 1}):Play()
 						TweenService:Create(Dropdown.Buttons[Value].Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0.4}):Play()
@@ -1712,13 +1712,13 @@ function OrionLib:MakeWindow(WindowConfig)
 					if Button then
 						if Dropdown.MultipleSelection then
 							if not n then
-								print("Adicionado")
+								print("Player Added")
 								table.insert(SelectedValues, Value)
 								DropdownFrame.F.Selected.Text = Dropdown.Value
 								TweenService:Create(Dropdown.Buttons[Value],TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 0.5}):Play()
 								TweenService:Create(Dropdown.Buttons[Value].Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0}):Play()
 							elseif n and not Once then
-								print("Removido")
+								print("Player Removed")
 								table.remove(SelectedValues, n)
 		
 								if Dropdown.Buttons[Value].State.Visible then
@@ -1788,7 +1788,7 @@ function OrionLib:MakeWindow(WindowConfig)
 
 					if Button then
 						if not n then
-							print("Adicionado")
+							print("Player Added")
 							table.insert(SelectedValues, Value)
 							DropdownFrame.F.Selected.Text = Dropdown.Value
 							TweenService:Create(Dropdown.Buttons[Value],TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 0.5}):Play()
@@ -2588,8 +2588,6 @@ end
 function OrionLib:Destroy()
 	Orion:Destroy()
 end
-
---[[
 
 local Window = OrionLib:MakeWindow({Name = "aaa", HidePremium = true, SaveConfig = false, ConfigFolder = "hentai", IntroEnabled = false, KeyToOpenWindow = "M", FreeMouse = true})
 
