@@ -27,11 +27,7 @@ local OrionLib = {
 	},
 	SelectedTheme = "Bliz_T",
 	Folder = nil,
-	SaveCfg = false,
-
-	RGBStroke = false,
-	_hue = 0,
-	StrokeOverride = nil
+	SaveCfg = false
 }
 
 --Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
