@@ -488,7 +488,7 @@ function OrionLib:MakeNotification(NotificationConfig)
 				Font = Enum.Font.GothamSemibold,
 				Name = "Content",
 				AutomaticSize = Enum.AutomaticSize.Y,
-				TextColor3 = Color3.fromRGB(200, 200, 200),
+				TextColor3 = Color3.fromRGB(255, 255, 255),
 				TextWrapped = true
 			})
 		})
@@ -562,7 +562,7 @@ function OrionLib:MakeWindow(WindowConfig)
 	local MobileOpenButton = SetChildren(SetProps(MakeElement("Button"), 
 	
 	{
-		BackgroundTransparency = 0, 
+		BackgroundTransparency = 0.7, 
 		Parent = Orion, 
 		Text =  "Open",
 		TextScaled = true,
