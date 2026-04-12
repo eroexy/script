@@ -24,15 +24,6 @@ local OrionLib = {
 			TextDark = Color3.fromRGB(150, 150, 150)
 		},
 
-        X3D = {
-			Main = Color3.fromRGB(0, 0, 0),
-			Second = Color3.fromRGB(20, 20, 20),
-			Stroke = Color3.fromRGB(100, 150, 255),
-			Divider = Color3.fromRGB(80, 120, 200),
-			Text = Color3.fromRGB(180, 220, 255),
-			TextDark = Color3.fromRGB(150, 180, 230)
-		},
-
 		Bliz_T = {
 			Main = Color3.fromRGB(0, 0, 0), -- xd
 			Second = Color3.fromRGB(20, 20, 20), -- xd
@@ -41,18 +32,20 @@ local OrionLib = {
 			Text = Color3.fromRGB(180, 220, 255), -- xd
 			TextDark = Color3.fromRGB(150, 180, 230) --xd
 		},
+         WhiteCustom = {
+			Main = Color3.fromRGB(190,195,198),
+			Second = Color3.fromRGB(219,226,233),
+			Stroke = Color3.fromRGB(20,20,20),
+			Divider = Color3.fromRGB(0,0,0),
+			Text = Color3.fromRGB(203,161,53),
+			TextDark = Color3.fromRGB(131,145,161)
+		}
 
 	},
 	SelectedTheme = "Bliz_T",
 	Folder = nil,
 	SaveCfg = false
 }
-
-local hue = 0
-RunService.RenderStepped:Connect(function(dt)
-	hue = (hue + dt * 0.2) % 1
-	strokeObject.Color = Color3.fromHSV(hue, 1, 1)
-end)
 
 --Feather Icons https://github.com/evoincorp/lucideblox/tree/master/src/modules/util - Created by 7kayoh
 local Icons = {}
