@@ -33,15 +33,6 @@ local OrionLib = {
 			TextDark = Color3.fromRGB(150, 180, 230)
 		},
 
-        local hue = 0
-
-        RunService.RenderStepped:Connect(function(dt)
-	        hue = (hue + dt * 0.2) % 1
-
-	        local rgb = Color3.fromHSV(hue, 1, 1)
-	        Stroke.Color = rgb
-        end)
-
 		Bliz_T = {
 			Main = Color3.fromRGB(0, 0, 0), -- xd
 			Second = Color3.fromRGB(20, 20, 20), -- xd
