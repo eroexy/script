@@ -440,7 +440,7 @@ local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
-		Padding = UDim.new(0, 6)
+		Padding = UDim.new(0, 5)
 	})
 }), {
 	Position = UDim2.new(1, -25, 1, -25),
@@ -463,28 +463,25 @@ function OrionLib:MakeNotification(NotificationConfig)
 			Parent = NotificationHolder
 		})
 
-		local NotificationFrame = SetProps(MakeElement("TFrame"), {
+		local NotificationFrame = SetProps(MakeElement("RoundFrame", Color3.fromRGB(5, 5, 5), 0, 10), {
 			Parent = NotificationParent,
 			Size = UDim2.new(1, 0, 0, 0),
+			Position = UDim2.new(1, -55, 0, 0),
+			BackgroundTransparency = 1,
 			AutomaticSize = Enum.AutomaticSize.Y,
-			BackgroundTransparency = 1
+			ClipsDescendants = true
 		})
 
 		local Corner = Instance.new("UICorner")
 		Corner.CornerRadius = UDim.new(0, 10)
 		Corner.Parent = NotificationFrame
 
-		local BackgroundMask = SetProps(MakeElement("Image", "rbxassetid://97235979976671"), {
+		local Background = SetProps(MakeElement("Image", "rbxassetid://97235979976671"), {
 			Parent = NotificationFrame,
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundTransparency = 1,
-			ImageTransparency = 0,
 			ZIndex = 1
 		})
-
-		local BackgroundCorner = Instance.new("UICorner")
-		BackgroundCorner.CornerRadius = UDim.new(0, 10)
-		BackgroundCorner.Parent = BackgroundMask
 
 		MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2).Parent = NotificationFrame
 
@@ -531,16 +528,16 @@ function OrionLib:MakeNotification(NotificationConfig)
 
 		local BarHolder = SetProps(MakeElement("Frame"), {
 			Parent = NotificationFrame,
-			Size = UDim2.new(1, 0, 0, 12),
-			Position = UDim2.new(0, 0, 1, -12),
+			Size = UDim2.new(1, 0, 0, 10),
+			Position = UDim2.new(0, 0, 1, -10),
 			BackgroundTransparency = 1,
 			ZIndex = 3
 		})
 
 		local BarContainer = SetProps(MakeElement("Frame"), {
 			Parent = BarHolder,
-			Size = UDim2.new(1, -28, 0, 3),
-			Position = UDim2.new(0, 14, 1, -3),
+			Size = UDim2.new(1, -20, 0, 3),
+			Position = UDim2.new(0, 10, 1, -6),
 			BackgroundTransparency = 1,
 			ZIndex = 3
 		})
@@ -556,20 +553,20 @@ function OrionLib:MakeNotification(NotificationConfig)
 		})
 
 		TweenService:Create(
+			NotificationFrame,
+			TweenInfo.new(0.5, Enum.EasingStyle.Quint),
+			{Position = UDim2.new(0, 0, 0, 0)}
+		):Play()
+
+		TweenService:Create(
 			BarFill,
 			TweenInfo.new(NotificationConfig.Time, Enum.EasingStyle.Linear),
 			{Size = UDim2.new(0, 0, 1, 0)}
 		):Play()
 
-		TweenService:Create(
-			BackgroundMask,
-			TweenInfo.new(NotificationConfig.Time, Enum.EasingStyle.Quint),
-			{ImageTransparency = 1}
-		):Play()
-
-		task.wait(NotificationConfig.Time)
-
-		NotificationFrame:Destroy()
+		task.delay(NotificationConfig.Time, function()
+			NotificationFrame:Destroy()
+		end)
 	end)
 end
 
