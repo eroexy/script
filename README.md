@@ -530,23 +530,6 @@ function OrionLib:MakeWindow(WindowConfig)
 	local Minimized = false
 	local Loaded = false
 	local UIHidden = false
-
-
-	local Background = Instance.new("ImageLabel")
-	Background.Name = "SpaceBackground"
-	Background.Size = UDim2.new(1, 0, 1, 0)
-	Background.Position = UDim2.new(0, 0, 0, 0)
-	Background.BackgroundTransparency = 1
-	Background.Image = "rbxassetid://97235979976671"
-	Background.ImageTransparency = 0
-	Background.ZIndex = 0
-	Background.Parent = MainWindow
-
-	Background:Lower()
-
-	Background.BackgroundTransparency = 1
-	Background.Active = false
-	Background.Selectable = false
 	
 
 	WindowConfig = WindowConfig or {}
@@ -2613,6 +2596,24 @@ function OrionLib:MakeWindow(WindowConfig)
 	--		writefile("NewLibraryNotification1.txt","The value for the notification having been sent to you.")
 	--	end
 	--end
+
+
+
+	local Background = Instance.new("ImageLabel")
+	Background.Name = "SpaceBackground"
+	Background.Size = UDim2.new(1, 0, 1, 0)
+	Background.Position = UDim2.new(0, 0, 0, 0)
+	Background.BackgroundTransparency = 1
+	Background.Image = "rbxassetid://97235979976671"
+	Background.ImageTransparency = 0
+	Background.ZIndex = 0
+	Background.Parent = MainWindow
+
+	Background:Lower()
+
+	Background.BackgroundTransparency = 1
+	Background.Active = false
+	Background.Selectable = false
 	
 
 	
