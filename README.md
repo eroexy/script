@@ -2638,7 +2638,7 @@ for _, obj in ipairs(Orion:GetDescendants()) do
 end
 
 AddConnection(RunService.Heartbeat, function(dt)
-	RainbowHue = (RainbowHue + dt * 0.4) % 1   -- Slow & smooth (lower = even slower)
+	RainbowHue = (RainbowHue + dt * 0.7) % 1   -- Slow & smooth (lower = even slower)
 
 	local Brightness = 0.82 + math.sin(RainbowHue * math.pi * 3.2) * 0.18
 
