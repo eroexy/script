@@ -440,11 +440,11 @@ local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
-		Padding = UDim.new(0, 5)
+		Padding = UDim.new(0, 8) -- 🔥 slightly bigger spacing between notifications
 	})
 }), {
 	Position = UDim2.new(1, -25, 1, -25),
-	Size = UDim2.new(0, 300, 1, -25),
+	Size = UDim2.new(0, 320, 1, -25), -- 🔥 slightly wider holder
 	AnchorPoint = Vector2.new(1, 1),
 	Parent = Orion
 })
@@ -462,7 +462,6 @@ function OrionLib:MakeNotification(NotificationConfig)
 			Parent = NotificationHolder
 		})
 
-		-- Main frame
 		local NotificationFrame = SetProps(MakeElement("RoundFrame", Color3.fromRGB(5, 5, 5), 0, 10), {
 			Parent = NotificationParent, 
 			Size = UDim2.new(1, 0, 0, 0),
@@ -471,10 +470,9 @@ function OrionLib:MakeNotification(NotificationConfig)
 			AutomaticSize = Enum.AutomaticSize.Y
 		})
 
-		-- Stroke
 		MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2).Parent = NotificationFrame
 
-		-- ✅ CONTENT HOLDER (handles padding ONLY)
+		-- ✅ CONTENT
 		local ContentHolder = SetProps(MakeElement("Frame"), {
 			Parent = NotificationFrame,
 			Size = UDim2.new(1, 0, 0, 0),
@@ -509,24 +507,30 @@ function OrionLib:MakeNotification(NotificationConfig)
 			})
 		})
 
-		-- ✅ BAR (FULL WIDTH, OUTSIDE PADDING)
+		-- ✅ BAR HOLDER (5px below content)
 		local BarHolder = SetProps(MakeElement("Frame"), {
 			Name = "BarHolder",
 			Parent = NotificationFrame,
-			Size = UDim2.new(1, 0, 0, 3),
-			Position = UDim2.new(0, 0, 1, -3),
-			BackgroundTransparency = 1,
-			ZIndex = 2
+			Size = UDim2.new(1, 0, 0, 8), -- includes spacing
+			Position = UDim2.new(0, 0, 1, -8),
+			BackgroundTransparency = 1
+		})
+
+		-- actual bar container (shorter width)
+		local BarContainer = SetProps(MakeElement("Frame"), {
+			Parent = BarHolder,
+			Size = UDim2.new(1, -10, 0, 3), -- 🔥 shortened by 10px
+			Position = UDim2.new(0, 5, 1, -3), -- 🔥 centered + 5px gap
+			BackgroundTransparency = 1
 		})
 
 		local BarFill = SetProps(MakeElement("Frame"), {
-			Name = "BarFill",
-			Parent = BarHolder,
+			Parent = BarContainer,
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 			BorderSizePixel = 0,
 
-			-- 🔥 LOCK RIGHT SIDE (this guarantees direction)
+			-- 🔥 RIGHT → LEFT LOCK
 			AnchorPoint = Vector2.new(1, 0),
 			Position = UDim2.new(1, 0, 0, 0)
 		})
@@ -538,50 +542,36 @@ function OrionLib:MakeNotification(NotificationConfig)
 			{Position = UDim2.new(0, 0, 0, 0)}
 		):Play()
 
-		-- ✅ RIGHT → LEFT DRAIN (guaranteed)
-		TweenService:Create(
+		-- ✅ PERFECT SYNC: destroy when bar finishes
+		local tween = TweenService:Create(
 			BarFill,
 			TweenInfo.new(NotificationConfig.Time, Enum.EasingStyle.Linear),
 			{Size = UDim2.new(0, 0, 1, 0)}
-		):Play()
-
-		-- Timing (unchanged behavior)
-		wait(NotificationConfig.Time - 0.88)
-
-		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
-			ImageTransparency = 1
-		}):Play()
-
-		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {
-			BackgroundTransparency = 0.6
-		}):Play()
-
-		wait(0.3)
-
-		TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
-			Transparency = 0.9
-		}):Play()
-
-		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
-			TextTransparency = 0.4
-		}):Play()
-
-		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
-			TextTransparency = 0.5
-		}):Play()
-
-		wait(0.05)
-
-		NotificationFrame:TweenPosition(
-			UDim2.new(1, 20, 0, 0),
-			'In',
-			'Quint',
-			0.8,
-			true
 		)
 
-		wait(1.35)
-		NotificationFrame:Destroy()
+		tween:Play()
+
+		tween.Completed:Connect(function()
+			-- fade out quick (optional but clean)
+			TweenService:Create(NotificationFrame, TweenInfo.new(0.4), {
+				BackgroundTransparency = 1
+			}):Play()
+
+			TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.4), {
+				TextTransparency = 1
+			}):Play()
+
+			TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.4), {
+				TextTransparency = 1
+			}):Play()
+
+			TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4), {
+				ImageTransparency = 1
+			}):Play()
+
+			wait(0.4)
+			NotificationFrame:Destroy()
+		end)
 	end)
 end    
 
