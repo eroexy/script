@@ -533,8 +533,6 @@ function OrionLib:MakeNotification(NotificationConfig)
 			BackgroundTransparency = 1,
 			ZIndex = 3
 		})
-
-		MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2).Parent = BarHolder
 		
 		local Corner = Instance.new("UICorner")
 		Corner.CornerRadius = UDim.new(0, 16)
@@ -547,6 +545,8 @@ function OrionLib:MakeNotification(NotificationConfig)
 			BackgroundTransparency = 1,
 			ZIndex = 3
 		})
+
+		MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2).Parent = BarContainer
 
 		local Corner = Instance.new("UICorner")
 		Corner.CornerRadius = UDim.new(0, 16)
