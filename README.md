@@ -462,26 +462,42 @@ function OrionLib:MakeNotification(NotificationConfig)
 			Parent = NotificationHolder
 		})
 
-		local NotificationFrame = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(5, 5, 5), 0, 10), {
+		-- Main frame
+		local NotificationFrame = SetProps(MakeElement("RoundFrame", Color3.fromRGB(5, 5, 5), 0, 10), {
 			Parent = NotificationParent, 
 			Size = UDim2.new(1, 0, 0, 0),
 			Position = UDim2.new(1, -55, 0, 0),
 			BackgroundTransparency = 0,
 			AutomaticSize = Enum.AutomaticSize.Y
-		}), {
-			MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2),
+		})
+
+		-- Stroke
+		MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2).Parent = NotificationFrame
+
+		-- ✅ CONTENT HOLDER (handles padding ONLY)
+		local ContentHolder = SetProps(MakeElement("Frame"), {
+			Parent = NotificationFrame,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1
+		})
+
+		SetChildren(ContentHolder, {
 			MakeElement("Padding", 12, 12, 12, 12),
+
 			SetProps(MakeElement("Image", NotificationConfig.Image), {
 				Size = UDim2.new(0, 20, 0, 20),
 				ImageColor3 = Color3.fromRGB(240, 240, 240),
 				Name = "Icon"
 			}),
+
 			SetProps(MakeElement("Label", NotificationConfig.Name, 15), {
 				Size = UDim2.new(1, -30, 0, 20),
 				Position = UDim2.new(0, 30, 0, 0),
 				Font = Enum.Font.GothamBold,
 				Name = "Title"
 			}),
+
 			SetProps(MakeElement("Label", NotificationConfig.Content, 14), {
 				Size = UDim2.new(1, 0, 0, 0),
 				Position = UDim2.new(0, 0, 0, 25),
@@ -493,18 +509,77 @@ function OrionLib:MakeNotification(NotificationConfig)
 			})
 		})
 
-		TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 0, 0)}):Play()
+		-- ✅ BAR (FULL WIDTH, OUTSIDE PADDING)
+		local BarHolder = SetProps(MakeElement("Frame"), {
+			Name = "BarHolder",
+			Parent = NotificationFrame,
+			Size = UDim2.new(1, 0, 0, 3),
+			Position = UDim2.new(0, 0, 1, -3),
+			BackgroundTransparency = 1,
+			ZIndex = 2
+		})
 
+		local BarFill = SetProps(MakeElement("Frame"), {
+			Name = "BarFill",
+			Parent = BarHolder,
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			BorderSizePixel = 0,
+
+			-- 🔥 LOCK RIGHT SIDE (this guarantees direction)
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, 0, 0, 0)
+		})
+
+		-- Slide in
+		TweenService:Create(
+			NotificationFrame,
+			TweenInfo.new(0.5, Enum.EasingStyle.Quint),
+			{Position = UDim2.new(0, 0, 0, 0)}
+		):Play()
+
+		-- ✅ RIGHT → LEFT DRAIN (guaranteed)
+		TweenService:Create(
+			BarFill,
+			TweenInfo.new(NotificationConfig.Time, Enum.EasingStyle.Linear),
+			{Size = UDim2.new(0, 0, 1, 0)}
+		):Play()
+
+		-- Timing (unchanged behavior)
 		wait(NotificationConfig.Time - 0.88)
-		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {ImageTransparency = 1}):Play()
-		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {BackgroundTransparency = 0.6}):Play()
+
+		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
+			ImageTransparency = 1
+		}):Play()
+
+		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {
+			BackgroundTransparency = 0.6
+		}):Play()
+
 		wait(0.3)
-		TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {Transparency = 0.9}):Play()
-		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.4}):Play()
-		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.5}):Play()
+
+		TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
+			Transparency = 0.9
+		}):Play()
+
+		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
+			TextTransparency = 0.4
+		}):Play()
+
+		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
+			TextTransparency = 0.5
+		}):Play()
+
 		wait(0.05)
 
-		NotificationFrame:TweenPosition(UDim2.new(1, 20, 0, 0),'In','Quint',0.8,true)
+		NotificationFrame:TweenPosition(
+			UDim2.new(1, 20, 0, 0),
+			'In',
+			'Quint',
+			0.8,
+			true
+		)
+
 		wait(1.35)
 		NotificationFrame:Destroy()
 	end)
