@@ -2627,20 +2627,18 @@ Main_Tab:AddToggle({
 
 local RainbowHue = 0
 
+local RainbowHue = 0
+
 AddConnection(RunService.Heartbeat, function(dt)
-	RainbowHue = (RainbowHue + dt * 0.8) % 1
+	RainbowHue = (RainbowHue + dt * 1.2) % 1   -- Speed (higher = faster)
 	
-	-- Makes it brighter in the "moving direction" and darker at the trailing end
-	local Brightness = 0.7 + math.sin(RainbowHue * math.pi * 3.5) * 0.3
+	local Brightness = 0.75 + math.sin(RainbowHue * math.pi * 4) * 0.25
 	
 	local RainbowColor = Color3.fromHSV(RainbowHue, 1, Brightness)
 	
-	-- Apply to every stroke
-	if OrionLib.ThemeObjects["Stroke"] then
-		for _, Stroke in pairs(OrionLib.ThemeObjects["Stroke"]) do
-			if Stroke and Stroke.Parent then
-				Stroke.Color = RainbowColor
-			end
+	for _, obj in ipairs(Orion:GetDescendants()) do
+		if obj:IsA("UIStroke") and obj.Parent then
+			obj.Color = RainbowColor
 		end
 	end
 end)
