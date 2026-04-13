@@ -448,13 +448,16 @@ function OrionLib:MakeNotification(NotificationConfig)
 			Parent = NotificationHolder
 		})
 
-		local NotificationFrame = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(5, 5, 5), 0, 10), {
+		local NotificationFrame = SetProps(MakeElement("RoundFrame", Color3.fromRGB(5, 5, 5), 0, 10), {
 			Parent = NotificationParent, 
 			Size = UDim2.new(1, 0, 0, 0),
 			Position = UDim2.new(1, -55, 0, 0),
 			BackgroundTransparency = 0,
 			AutomaticSize = Enum.AutomaticSize.Y
-		}), {
+		})
+
+		-- Core UI
+		SetChildren(NotificationFrame, {
 			MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2),
 			MakeElement("Padding", 12, 12, 12, 12),
 
@@ -479,23 +482,26 @@ function OrionLib:MakeNotification(NotificationConfig)
 				AutomaticSize = Enum.AutomaticSize.Y,
 				TextColor3 = Color3.fromRGB(255, 255, 255),
 				TextWrapped = true
-			}),
-
-			-- Progress Bar Holder (invisible)
-			SetProps(MakeElement("Frame"), {
-				Name = "BarHolder",
-				Size = UDim2.new(1, 0, 0, 3),
-				Position = UDim2.new(0, 0, 1, -3),
-				BackgroundTransparency = 1
-			}),
-
-			-- Progress Fill (white)
-			SetProps(MakeElement("Frame"), {
-				Name = "BarFill",
-				Size = UDim2.new(1, 0, 1, 0),
-				BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-				BorderSizePixel = 0
 			})
+		})
+
+		-- ✅ Proper Progress Bar Setup (parented correctly)
+		local BarHolder = SetProps(MakeElement("Frame"), {
+			Name = "BarHolder",
+			Parent = NotificationFrame,
+			Size = UDim2.new(1, 0, 0, 3),
+			Position = UDim2.new(0, 0, 1, -3),
+			BackgroundTransparency = 1
+		})
+
+		local BarFill = SetProps(MakeElement("Frame"), {
+			Name = "BarFill",
+			Parent = BarHolder, -- THIS was your issue
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			BorderSizePixel = 0,
+			AnchorPoint = Vector2.new(1, 0), -- makes it shrink RIGHT → LEFT
+			Position = UDim2.new(1, 0, 0, 0)
 		})
 
 		-- Slide in
@@ -505,20 +511,17 @@ function OrionLib:MakeNotification(NotificationConfig)
 			{Position = UDim2.new(0, 0, 0, 0)}
 		):Play()
 
-		-- Progress bar drain (right -> left)
-		local bar = NotificationFrame:FindFirstChild("BarFill")
-		if bar then
-			TweenService:Create(
-				bar,
-				TweenInfo.new(NotificationConfig.Time, Enum.EasingStyle.Linear),
-				{Size = UDim2.new(0, 0, 1, 0)}
-			):Play()
-		end
+		-- ✅ Drain correctly (right → left)
+		TweenService:Create(
+			BarFill,
+			TweenInfo.new(NotificationConfig.Time, Enum.EasingStyle.Linear),
+			{Size = UDim2.new(0, 0, 1, 0)}
+		):Play()
 
 		-- Lifetime
 		wait(NotificationConfig.Time)
 
-		-- Fade sequence
+		-- Fade
 		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
 			ImageTransparency = 1
 		}):Play()
