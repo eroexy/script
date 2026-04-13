@@ -588,11 +588,11 @@ end
 function OrionLib:Init()
 	if OrionLib.SaveCfg then	
 		pcall(function()
-			if isfile(OrionLib.Folder .. "/" .. game.MarketplaceService:GetProductInfo(game.PlaceId).Name .. ".txt") then
-				LoadCfg(readfile(OrionLib.Folder .. "/" .. game.MarketplaceService:GetProductInfo(game.PlaceId).Name .. ".txt"))
+			if isfile(OrionLib.Folder .. "/" .. game.PlaceId.Name .. ".txt") then
+				LoadCfg(readfile(OrionLib.Folder .. "/" .. game.PlaceId.Name .. ".txt"))
 				OrionLib:MakeNotification({
 					Name = "Configuration",
-					Content = "Auto-loaded configuration for the game " .. game.MarketplaceService:GetProductInfo(game.PlaceId).Name .. ".",
+					Content = "Auto-loaded configuration for the game " .. game.PlaceId.Name .. ".",
 					Time = 5
 				})
 			end
