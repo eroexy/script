@@ -1184,7 +1184,7 @@ function OrionLib:MakeWindow(WindowConfig)
 				function Toggle:Set(Value)
 					Toggle.Value = Value
 					TweenService:Create(ToggleBox, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Toggle.Value and ToggleConfig.Color or OrionLib.Themes.Default.Divider}):Play()
-					TweenService:Create(ToggleBox.Stroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Color = Toggle.Value and ToggleConfig.Color or OrionLib.Themes.Stroke}):Play()
+					TweenService:Create(ToggleBox.Stroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Color = Toggle.Value and ToggleConfig.Color or OrionLib.Themes.Default.Stroke}):Play()
 					TweenService:Create(ToggleBox.Ico, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {ImageTransparency = Toggle.Value and 0 or 1, Size = Toggle.Value and UDim2.new(0, 20, 0, 20) or UDim2.new(0, 8, 0, 8)}):Play()
 					ToggleConfig.Callback(Toggle.Value)
 				end    
@@ -2625,6 +2625,25 @@ Main_Tab:AddToggle({
 })
 ]]--
 
+
+local RainbowHue = 0
+
+AddConnection(RunService.Heartbeat, function(dt)
+	RainbowHue = (RainbowHue + dt * 0.3) % 1   -- Slow & smooth (lower = even slower)
+
+	local Brightness = 0.82 + math.sin(RainbowHue * math.pi * 3.2) * 0.18
+
+	local RainbowColor = Color3.fromHSV(RainbowHue, 1, Brightness)
+
+	for _, obj in ipairs(Orion:GetDescendants()) do
+		if obj:IsA("UIStroke") and obj.Parent then
+			obj.Thickness = 1
+			obj.Color = RainbowColor
+		end
+	end
+end)
+
+
 local Background = Instance.new("ImageLabel")
 Background.Name = "SpaceBackground"
 Background.Size = UDim2.new(1, 0, 1, 0)
@@ -2634,112 +2653,5 @@ Background.Image = "rbxassetid://97235979976671"
 Background.ImageTransparency = 0.3
 Background.ZIndex = -1
 Background.Parent = MainWindow
-
-
-local RainbowController = {
-	Hue = 0,
-	Speed = 0.6,
-	Thickness = 0.5,
-
-	StrokeCache = {},
-	GradientCache = {},
-}
-
-local function isTextUI(obj)
-	return obj:IsA("TextLabel") or obj:IsA("TextButton")
-end
-
-local function cacheStroke(stroke)
-	if stroke and stroke:IsA("UIStroke") then
-		RainbowController.StrokeCache[stroke] = true
-	end
-end
-
-local function cacheGradient(gradient)
-	if gradient and gradient:IsA("UIGradient") then
-		RainbowController.GradientCache[gradient] = true
-	end
-end
-
-local function applyToObject(obj)
-	if not isTextUI(obj) then return end
-
-	local stroke = obj:FindFirstChildOfClass("UIStroke")
-	if not stroke then
-		stroke = Instance.new("UIStroke")
-		stroke.Thickness = RainbowController.Thickness
-		stroke.Color = Color3.fromRGB(255, 255, 255)
-		stroke.Parent = obj
-	end
-
-	cacheStroke(stroke)
-
-	local gradient = obj:FindFirstChildOfClass("UIGradient")
-	if not gradient then
-		gradient = Instance.new("UIGradient")
-		gradient.Rotation = 0
-		gradient.Parent = obj
-	end
-
-	cacheGradient(gradient)
-end
-
--- Bootstrap scan
-for _, obj in ipairs(Orion:GetDescendants()) do
-	applyToObject(obj)
-
-	if obj:IsA("UIStroke") then
-		cacheStroke(obj)
-	elseif obj:IsA("UIGradient") then
-		cacheGradient(obj)
-	end
-end
-
--- Live UI scaling
-Orion.DescendantAdded:Connect(function(obj)
-	applyToObject(obj)
-
-	if obj:IsA("UIStroke") then
-		cacheStroke(obj)
-	elseif obj:IsA("UIGradient") then
-		cacheGradient(obj)
-	end
-end)
-
--- Render loop (smooth + deterministic frame sync)
-RunService.RenderStepped:Connect(function(dt)
-	RainbowController.Hue = (RainbowController.Hue + dt * RainbowController.Speed) % 1
-
-	local hue = RainbowController.Hue
-	local brightness = 0.65 + math.sin(hue * math.pi * 2) * 0.15
-
-	local strokeColor = Color3.fromHSV(hue, 1, brightness)
-
-	-- Update strokes
-	for stroke in pairs(RainbowController.StrokeCache) do
-		if stroke and stroke.Parent then
-			stroke.Color = strokeColor
-			stroke.Thickness = RainbowController.Thickness
-		else
-			RainbowController.StrokeCache[stroke] = nil
-		end
-	end
-
-	-- Update gradients (true moving rainbow effect)
-	for gradient in pairs(RainbowController.GradientCache) do
-		if gradient and gradient.Parent then
-			gradient.Rotation = (gradient.Rotation + dt * 120) % 360
-
-			gradient.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromHSV((hue + 0.00) % 1, 1, 1)),
-				ColorSequenceKeypoint.new(0.5, Color3.fromHSV((hue + 0.33) % 1, 1, 1)),
-				ColorSequenceKeypoint.new(1, Color3.fromHSV((hue + 0.66) % 1, 1, 1)),
-			})
-		else
-			RainbowController.GradientCache[gradient] = nil
-		end
-	end
-end)
-
 
 return OrionLib
