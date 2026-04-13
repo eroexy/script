@@ -2625,61 +2625,107 @@ Main_Tab:AddToggle({
 })
 ]]--
 
-local RunService = game:GetService("RunService")
-
 local RainbowController = {
 	Hue = 0,
+	Speed = 0.6,
+	Thickness = 0.5,
+
 	StrokeCache = {},
-	Thickness = 1,
-	Speed = 0.7,
+	GradientCache = {},
 }
 
-local function isTargetUI(obj)
+local function isTextUI(obj)
 	return obj:IsA("TextLabel") or obj:IsA("TextButton")
 end
 
-local function createStroke(obj)
-	local existing = obj:FindFirstChildOfClass("UIStroke")
-	if existing then
-		return existing
-	end
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = RainbowController.Thickness
-	stroke.Color = Color3.fromRGB(255, 255, 255)
-	stroke.Parent = obj
-
-	RainbowController.StrokeCache[stroke] = true
-	return stroke
-end
-
-local function registerObject(obj)
-	if isTargetUI(obj) then
-		createStroke(obj)
+local function cacheStroke(stroke)
+	if stroke and stroke:IsA("UIStroke") then
+		RainbowController.StrokeCache[stroke] = true
 	end
 end
 
--- Initial scan (bootstrap phase)
+local function cacheGradient(gradient)
+	if gradient and gradient:IsA("UIGradient") then
+		RainbowController.GradientCache[gradient] = true
+	end
+end
+
+local function applyToObject(obj)
+	if not isTextUI(obj) then return end
+
+	local stroke = obj:FindFirstChildOfClass("UIStroke")
+	if not stroke then
+		stroke = Instance.new("UIStroke")
+		stroke.Thickness = RainbowController.Thickness
+		stroke.Color = Color3.fromRGB(255, 255, 255)
+		stroke.Parent = obj
+	end
+
+	cacheStroke(stroke)
+
+	local gradient = obj:FindFirstChildOfClass("UIGradient")
+	if not gradient then
+		gradient = Instance.new("UIGradient")
+		gradient.Rotation = 0
+		gradient.Parent = obj
+	end
+
+	cacheGradient(gradient)
+end
+
+-- Bootstrap scan
 for _, obj in ipairs(Orion:GetDescendants()) do
-	registerObject(obj)
+	applyToObject(obj)
+
+	if obj:IsA("UIStroke") then
+		cacheStroke(obj)
+	elseif obj:IsA("UIGradient") then
+		cacheGradient(obj)
+	end
 end
 
--- Dynamic UI growth support (hot reload behavior)
-Orion.DescendantAdded:Connect(registerObject)
+-- Live UI scaling
+Orion.DescendantAdded:Connect(function(obj)
+	applyToObject(obj)
 
--- Core update loop (decoupled rendering pass)
-AddConnection(RunService.Heartbeat, function(dt)
+	if obj:IsA("UIStroke") then
+		cacheStroke(obj)
+	elseif obj:IsA("UIGradient") then
+		cacheGradient(obj)
+	end
+end)
+
+-- Render loop (smooth + deterministic frame sync)
+RunService.RenderStepped:Connect(function(dt)
 	RainbowController.Hue = (RainbowController.Hue + dt * RainbowController.Speed) % 1
 
-	local brightness = 0.82 + math.sin(RainbowController.Hue * math.pi * 3.2) * 0.18
-	local color = Color3.fromHSV(RainbowController.Hue, 1, brightness)
+	local hue = RainbowController.Hue
+	local brightness = 0.85 + math.sin(hue * math.pi * 2) * 0.15
 
+	local strokeColor = Color3.fromHSV(hue, 1, brightness)
+
+	-- Update strokes
 	for stroke in pairs(RainbowController.StrokeCache) do
 		if stroke and stroke.Parent then
-			stroke.Color = color
+			stroke.Color = strokeColor
 			stroke.Thickness = RainbowController.Thickness
 		else
 			RainbowController.StrokeCache[stroke] = nil
+		end
+	end
+
+	-- Update gradients (true moving rainbow effect)
+	for gradient in pairs(RainbowController.GradientCache) do
+		if gradient and gradient.Parent then
+			gradient.Rotation = (gradient.Rotation + dt * 120) % 360
+
+			gradient.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromHSV((hue + 0.00) % 1, 1, 1)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromHSV((hue + 0.33) % 1, 1, 1)),
+				ColorSequenceKeypoint.new(1, Color3.fromHSV((hue + 0.66) % 1, 1, 1)),
+			})
+		else
+			RainbowController.GradientCache[gradient] = nil
 		end
 	end
 end)
