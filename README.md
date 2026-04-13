@@ -2654,4 +2654,6 @@ Background.ImageTransparency = 0
 Background.ZIndex = 1
 Background.Parent = MainWindow
 
+Background:MoveBefore(MainWindow:GetChildren()[1])
+
 return OrionLib
