@@ -470,13 +470,21 @@ function OrionLib:MakeNotification(NotificationConfig)
 			BackgroundTransparency = 1
 		})
 
-		local Background = SetProps(MakeElement("Image", "rbxassetid://97235979976671"), {
+		local Corner = Instance.new("UICorner")
+		Corner.CornerRadius = UDim.new(0, 10)
+		Corner.Parent = NotificationFrame
+
+		local BackgroundMask = SetProps(MakeElement("Image", "rbxassetid://97235979976671"), {
 			Parent = NotificationFrame,
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundTransparency = 1,
 			ImageTransparency = 0,
 			ZIndex = 1
 		})
+
+		local BackgroundCorner = Instance.new("UICorner")
+		BackgroundCorner.CornerRadius = UDim.new(0, 10)
+		BackgroundCorner.Parent = BackgroundMask
 
 		MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2).Parent = NotificationFrame
 
@@ -554,7 +562,7 @@ function OrionLib:MakeNotification(NotificationConfig)
 		):Play()
 
 		TweenService:Create(
-			Background,
+			BackgroundMask,
 			TweenInfo.new(NotificationConfig.Time, Enum.EasingStyle.Quint),
 			{ImageTransparency = 1}
 		):Play()
