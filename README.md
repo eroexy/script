@@ -2628,15 +2628,25 @@ Main_Tab:AddToggle({
 
 local RainbowHue = 0
 
+for _, obj in ipairs(Orion:GetDescendants()) do
+	if (obj:IsA("TextLabel") or obj:IsA("TextButton")) and not obj:FindFirstChildOfClass("UIStroke") then
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 1
+		stroke.Color = Color3.fromRGB(255, 255, 255)
+		stroke.Parent = obj
+	end
+end
+
 AddConnection(RunService.Heartbeat, function(dt)
-	RainbowHue = (RainbowHue + dt * 0.35) % 1   -- Very slow & smooth
-	
-	local Brightness = 0.8 + math.sin(RainbowHue * math.pi * 3) * 0.2
-	
+	RainbowHue = (RainbowHue + dt * 0.4) % 1   -- Slow & smooth (lower = even slower)
+
+	local Brightness = 0.82 + math.sin(RainbowHue * math.pi * 3.2) * 0.18
+
 	local RainbowColor = Color3.fromHSV(RainbowHue, 1, Brightness)
-	
+
 	for _, obj in ipairs(Orion:GetDescendants()) do
 		if obj:IsA("UIStroke") and obj.Parent then
+			obj.Thickness = 1
 			obj.Color = RainbowColor
 		end
 	end
