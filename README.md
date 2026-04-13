@@ -2625,14 +2625,13 @@ Main_Tab:AddToggle({
 })
 ]]--
 
-local RainbowHue = 0
 
 local RainbowHue = 0
 
 AddConnection(RunService.Heartbeat, function(dt)
-	RainbowHue = (RainbowHue + dt * 1.2) % 1   -- Speed (higher = faster)
+	RainbowHue = (RainbowHue + dt * 0.35) % 1   -- Very slow & smooth
 	
-	local Brightness = 0.75 + math.sin(RainbowHue * math.pi * 4) * 0.25
+	local Brightness = 0.8 + math.sin(RainbowHue * math.pi * 3) * 0.2
 	
 	local RainbowColor = Color3.fromHSV(RainbowHue, 1, Brightness)
 	
