@@ -435,20 +435,6 @@ CreateElement("Label", function(Text, TextSize, Transparency)
 	return Label
 end)
 
-local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
-	SetProps(MakeElement("List"), {
-		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		VerticalAlignment = Enum.VerticalAlignment.Bottom,
-		Padding = UDim.new(0, 5)
-	})
-}), {
-	Position = UDim2.new(1, -25, 1, -25),
-	Size = UDim2.new(0, 300, 1, -25),
-	AnchorPoint = Vector2.new(1, 1),
-	Parent = Orion
-})
-
 function OrionLib:MakeNotification(NotificationConfig)
 	spawn(function()
 		NotificationConfig.Name = NotificationConfig.Name or "Notification"
@@ -471,17 +457,20 @@ function OrionLib:MakeNotification(NotificationConfig)
 		}), {
 			MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2),
 			MakeElement("Padding", 12, 12, 12, 12),
+
 			SetProps(MakeElement("Image", NotificationConfig.Image), {
 				Size = UDim2.new(0, 20, 0, 20),
 				ImageColor3 = Color3.fromRGB(240, 240, 240),
 				Name = "Icon"
 			}),
+
 			SetProps(MakeElement("Label", NotificationConfig.Name, 15), {
 				Size = UDim2.new(1, -30, 0, 20),
 				Position = UDim2.new(0, 30, 0, 0),
 				Font = Enum.Font.GothamBold,
 				Name = "Title"
 			}),
+
 			SetProps(MakeElement("Label", NotificationConfig.Content, 14), {
 				Size = UDim2.new(1, 0, 0, 0),
 				Position = UDim2.new(0, 0, 0, 25),
@@ -490,39 +479,82 @@ function OrionLib:MakeNotification(NotificationConfig)
 				AutomaticSize = Enum.AutomaticSize.Y,
 				TextColor3 = Color3.fromRGB(255, 255, 255),
 				TextWrapped = true
+			}),
+
+			-- Progress Bar Holder (invisible)
+			SetProps(MakeElement("Frame"), {
+				Name = "BarHolder",
+				Size = UDim2.new(1, 0, 0, 3),
+				Position = UDim2.new(0, 0, 1, -3),
+				BackgroundTransparency = 1
+			}),
+
+			-- Progress Fill (white)
+			SetProps(MakeElement("Frame"), {
+				Name = "BarFill",
+				Size = UDim2.new(1, 0, 1, 0),
+				BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+				BorderSizePixel = 0
 			})
 		})
 
-		TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 0, 0)}):Play()
+		-- Slide in
+		TweenService:Create(
+			NotificationFrame,
+			TweenInfo.new(0.5, Enum.EasingStyle.Quint),
+			{Position = UDim2.new(0, 0, 0, 0)}
+		):Play()
 
-		wait(NotificationConfig.Time - 0.88)
-		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {ImageTransparency = 1}):Play()
-		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {BackgroundTransparency = 0.6}):Play()
+		-- Progress bar drain (right -> left)
+		local bar = NotificationFrame:FindFirstChild("BarFill")
+		if bar then
+			TweenService:Create(
+				bar,
+				TweenInfo.new(NotificationConfig.Time, Enum.EasingStyle.Linear),
+				{Size = UDim2.new(0, 0, 1, 0)}
+			):Play()
+		end
+
+		-- Lifetime
+		wait(NotificationConfig.Time)
+
+		-- Fade sequence
+		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
+			ImageTransparency = 1
+		}):Play()
+
+		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {
+			BackgroundTransparency = 0.6
+		}):Play()
+
 		wait(0.3)
-		TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {Transparency = 0.9}):Play()
-		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.4}):Play()
-		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.5}):Play()
+
+		TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
+			Transparency = 0.9
+		}):Play()
+
+		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
+			TextTransparency = 0.4
+		}):Play()
+
+		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
+			TextTransparency = 0.5
+		}):Play()
+
 		wait(0.05)
 
-		NotificationFrame:TweenPosition(UDim2.new(1, 20, 0, 0),'In','Quint',0.8,true)
+		-- Slide out
+		NotificationFrame:TweenPosition(
+			UDim2.new(1, 20, 0, 0),
+			'In',
+			'Quint',
+			0.8,
+			true
+		)
+
 		wait(1.35)
 		NotificationFrame:Destroy()
 	end)
-end    
-
-function OrionLib:Init()
-	if OrionLib.SaveCfg then	
-		pcall(function()
-			if isfile(OrionLib.Folder .. "/" .. game.GameId .. ".txt") then
-				LoadCfg(readfile(OrionLib.Folder .. "/" .. game.GameId .. ".txt"))
-				OrionLib:MakeNotification({
-					Name = "Configuration",
-					Content = "Auto-loaded configuration for the game " .. game.GameId .. ".",
-					Time = 5
-				})
-			end
-		end)		
-	end	
 end
 
 function OrionLib:MakeWindow(WindowConfig)
@@ -2596,25 +2628,6 @@ function OrionLib:MakeWindow(WindowConfig)
 	--		writefile("NewLibraryNotification1.txt","The value for the notification having been sent to you.")
 	--	end
 	--end
-
-    local Background = Instance.new("ImageLabel")
-    Background.Name = "SpaceBackground"
-    Background.Size = UDim2.new(1, 0, 1, 0)
-    Background.Position = UDim2.new(0, 0, 0, 0)
-    Background.BackgroundTransparency = 1
-    Background.Image = "rbxassetid://97235979976671"
-    Background.ImageTransparency = 0
-    Background.ZIndex = 0
-    Background.Parent = MainWindow
-    Background:Lower()
-    Background.Active = false
-    Background.Selectable = false
-    
-    MainWindow.BackgroundTransparency = 1
-    
-    if WindowStuff then
-        WindowStuff.BackgroundTransparency = 0.8
-    end
 
     return TabFunction
 end
