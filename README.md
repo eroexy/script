@@ -476,7 +476,7 @@ function OrionLib:MakeNotification(NotificationConfig)
 		Corner.CornerRadius = UDim.new(0, 10)
 		Corner.Parent = NotificationFrame
 
-		local Background = SetProps(MakeElement("Image", "rbxassetid://97235979976671"), {
+		local Background = SetProps(MakeElement("Image", "rbxassetid://508197089"), {
 			Parent = NotificationFrame,
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundTransparency = 1,
