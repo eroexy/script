@@ -2650,8 +2650,8 @@ Background.Size = UDim2.new(1, 0, 1, 0)
 Background.Position = UDim2.new(0, 0, 0, 0)
 Background.BackgroundTransparency = 1
 Background.Image = "rbxassetid://97235979976671"
-Background.ImageTransparency = 0.3
-Background.ZIndex = -1
+Background.ImageTransparency = 0
+Background.ZIndex = 1
 Background.Parent = MainWindow
 
 return OrionLib
