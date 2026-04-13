@@ -2625,31 +2625,64 @@ Main_Tab:AddToggle({
 })
 ]]--
 
+local RunService = game:GetService("RunService")
 
-local RainbowHue = 0
+local RainbowController = {
+	Hue = 0,
+	StrokeCache = {},
+	Thickness = 1,
+	Speed = 0.7,
+}
 
-for _, obj in ipairs(Orion:GetDescendants()) do
-	if (obj:IsA("TextLabel") or obj:IsA("TextButton")) and not obj:FindFirstChildOfClass("UIStroke") then
-		local stroke = Instance.new("UIStroke")
-		stroke.Thickness = 1
-		stroke.Color = Color3.fromRGB(255, 255, 255)
-		stroke.Parent = obj
+local function isTargetUI(obj)
+	return obj:IsA("TextLabel") or obj:IsA("TextButton")
+end
+
+local function createStroke(obj)
+	local existing = obj:FindFirstChildOfClass("UIStroke")
+	if existing then
+		return existing
+	end
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = RainbowController.Thickness
+	stroke.Color = Color3.fromRGB(255, 255, 255)
+	stroke.Parent = obj
+
+	RainbowController.StrokeCache[stroke] = true
+	return stroke
+end
+
+local function registerObject(obj)
+	if isTargetUI(obj) then
+		createStroke(obj)
 	end
 end
 
+-- Initial scan (bootstrap phase)
+for _, obj in ipairs(Orion:GetDescendants()) do
+	registerObject(obj)
+end
+
+-- Dynamic UI growth support (hot reload behavior)
+Orion.DescendantAdded:Connect(registerObject)
+
+-- Core update loop (decoupled rendering pass)
 AddConnection(RunService.Heartbeat, function(dt)
-	RainbowHue = (RainbowHue + dt * 0.7) % 1   -- Slow & smooth (lower = even slower)
+	RainbowController.Hue = (RainbowController.Hue + dt * RainbowController.Speed) % 1
 
-	local Brightness = 0.82 + math.sin(RainbowHue * math.pi * 3.2) * 0.18
+	local brightness = 0.82 + math.sin(RainbowController.Hue * math.pi * 3.2) * 0.18
+	local color = Color3.fromHSV(RainbowController.Hue, 1, brightness)
 
-	local RainbowColor = Color3.fromHSV(RainbowHue, 1, Brightness)
-
-	for _, obj in ipairs(Orion:GetDescendants()) do
-		if obj:IsA("UIStroke") and obj.Parent then
-			obj.Thickness = 1
-			obj.Color = RainbowColor
+	for stroke in pairs(RainbowController.StrokeCache) do
+		if stroke and stroke.Parent then
+			stroke.Color = color
+			stroke.Thickness = RainbowController.Thickness
+		else
+			RainbowController.StrokeCache[stroke] = nil
 		end
 	end
 end)
+
 
 return OrionLib
