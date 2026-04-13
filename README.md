@@ -2625,4 +2625,24 @@ Main_Tab:AddToggle({
 })
 ]]--
 
+local RainbowHue = 0
+
+AddConnection(RunService.Heartbeat, function(dt)
+	RainbowHue = (RainbowHue + dt * 0.8) % 1
+	
+	-- Makes it brighter in the "moving direction" and darker at the trailing end
+	local Brightness = 0.7 + math.sin(RainbowHue * math.pi * 3.5) * 0.3
+	
+	local RainbowColor = Color3.fromHSV(RainbowHue, 1, Brightness)
+	
+	-- Apply to every stroke
+	if OrionLib.ThemeObjects["Stroke"] then
+		for _, Stroke in pairs(OrionLib.ThemeObjects["Stroke"]) do
+			if Stroke and Stroke.Parent then
+				Stroke.Color = RainbowColor
+			end
+		end
+	end
+end)
+
 return OrionLib
