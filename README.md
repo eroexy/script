@@ -528,14 +528,14 @@ function OrionLib:MakeNotification(NotificationConfig)
 
 		local BarHolder = SetProps(MakeElement("Frame"), {
 			Parent = NotificationFrame,
-			Size = UDim2.new(1, 0, 0, 10),
+			Size = UDim2.new(1, 0, 0, 15),
 			Position = UDim2.new(0, 0, 1, -10),
 			BackgroundTransparency = 1,
 			ZIndex = 3
 		})
 		
 		local Corner = Instance.new("UICorner")
-		Corner.CornerRadius = UDim.new(0, 14)
+		Corner.CornerRadius = UDim.new(0, 16)
 		Corner.Parent = BarHolder
 
 		local BarContainer = SetProps(MakeElement("Frame"), {
@@ -547,7 +547,7 @@ function OrionLib:MakeNotification(NotificationConfig)
 		})
 
 		local Corner = Instance.new("UICorner")
-		Corner.CornerRadius = UDim.new(0, 14)
+		Corner.CornerRadius = UDim.new(0, 16)
 		Corner.Parent = BarContainer
 
 		local BarFill = SetProps(MakeElement("Frame"), {
@@ -561,7 +561,7 @@ function OrionLib:MakeNotification(NotificationConfig)
 		})
 
 		local Corner = Instance.new("UICorner")
-		Corner.CornerRadius = UDim.new(0, 14)
+		Corner.CornerRadius = UDim.new(0, 16)
 		Corner.Parent = BarFill
 
 		TweenService:Create(
