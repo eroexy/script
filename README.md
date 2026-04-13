@@ -435,6 +435,20 @@ CreateElement("Label", function(Text, TextSize, Transparency)
 	return Label
 end)
 
+local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
+	SetProps(MakeElement("List"), {
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		Padding = UDim.new(0, 5)
+	})
+}), {
+	Position = UDim2.new(1, -25, 1, -25),
+	Size = UDim2.new(0, 300, 1, -25),
+	AnchorPoint = Vector2.new(1, 1),
+	Parent = Orion
+})
+
 function OrionLib:MakeNotification(NotificationConfig)
 	spawn(function()
 		NotificationConfig.Name = NotificationConfig.Name or "Notification"
@@ -448,26 +462,32 @@ function OrionLib:MakeNotification(NotificationConfig)
 			Parent = NotificationHolder
 		})
 
-		local NotificationFrame = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(5, 5, 5), 0, 10), {
+		local NotificationFrame = SetProps(MakeElement("RoundFrame", Color3.fromRGB(5, 5, 5), 0, 10), {
 			Parent = NotificationParent, 
 			Size = UDim2.new(1, 0, 0, 0),
 			Position = UDim2.new(1, -55, 0, 0),
 			BackgroundTransparency = 0,
 			AutomaticSize = Enum.AutomaticSize.Y
-		}), {
+		})
+
+		-- Core UI
+		SetChildren(NotificationFrame, {
 			MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2),
 			MakeElement("Padding", 12, 12, 12, 12),
+
 			SetProps(MakeElement("Image", NotificationConfig.Image), {
 				Size = UDim2.new(0, 20, 0, 20),
 				ImageColor3 = Color3.fromRGB(240, 240, 240),
 				Name = "Icon"
 			}),
+
 			SetProps(MakeElement("Label", NotificationConfig.Name, 15), {
 				Size = UDim2.new(1, -30, 0, 20),
 				Position = UDim2.new(0, 30, 0, 0),
 				Font = Enum.Font.GothamBold,
 				Name = "Title"
 			}),
+
 			SetProps(MakeElement("Label", NotificationConfig.Content, 14), {
 				Size = UDim2.new(1, 0, 0, 0),
 				Position = UDim2.new(0, 0, 0, 25),
@@ -479,21 +499,94 @@ function OrionLib:MakeNotification(NotificationConfig)
 			})
 		})
 
-		TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint), {Position = UDim2.new(0, 0, 0, 0)}):Play()
+		-- ✅ Proper Progress Bar Setup (parented correctly)
+		local BarHolder = SetProps(MakeElement("Frame"), {
+			Name = "BarHolder",
+			Parent = NotificationFrame,
+			Size = UDim2.new(1, 0, 0, 3),
+			Position = UDim2.new(0, 0, 1, -3),
+			BackgroundTransparency = 1
+		})
 
-		wait(NotificationConfig.Time - 0.88)
-		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {ImageTransparency = 1}):Play()
-		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {BackgroundTransparency = 0.6}):Play()
+		local BarFill = SetProps(MakeElement("Frame"), {
+			Name = "BarFill",
+			Parent = BarHolder, -- THIS was your issue
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			BorderSizePixel = 0,
+			AnchorPoint = Vector2.new(1, 0), -- makes it shrink RIGHT → LEFT
+			Position = UDim2.new(1, 0, 0, 0)
+		})
+
+		-- Slide in
+		TweenService:Create(
+			NotificationFrame,
+			TweenInfo.new(0.5, Enum.EasingStyle.Quint),
+			{Position = UDim2.new(0, 0, 0, 0)}
+		):Play()
+
+		-- ✅ Drain correctly (right → left)
+		TweenService:Create(
+			BarFill,
+			TweenInfo.new(NotificationConfig.Time, Enum.EasingStyle.Linear),
+			{Size = UDim2.new(0, 0, 1, 0)}
+		):Play()
+
+		-- Lifetime
+		wait(NotificationConfig.Time)
+
+		-- Fade
+		TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
+			ImageTransparency = 1
+		}):Play()
+
+		TweenService:Create(NotificationFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quint), {
+			BackgroundTransparency = 0.6
+		}):Play()
+
 		wait(0.3)
-		TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {Transparency = 0.9}):Play()
-		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.4}):Play()
-		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {TextTransparency = 0.5}):Play()
+
+		TweenService:Create(NotificationFrame.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
+			Transparency = 0.9
+		}):Play()
+
+		TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
+			TextTransparency = 0.4
+		}):Play()
+
+		TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.6, Enum.EasingStyle.Quint), {
+			TextTransparency = 0.5
+		}):Play()
+
 		wait(0.05)
 
-		NotificationFrame:TweenPosition(UDim2.new(1, 20, 0, 0),'In','Quint',0.8,true)
+		-- Slide out
+		NotificationFrame:TweenPosition(
+			UDim2.new(1, 20, 0, 0),
+			'In',
+			'Quint',
+			0.8,
+			true
+		)
+
 		wait(1.35)
 		NotificationFrame:Destroy()
 	end)
+end    
+
+function OrionLib:Init()
+	if OrionLib.SaveCfg then	
+		pcall(function()
+			if isfile(OrionLib.Folder .. "/" .. game.MarketplaceService:GetProductInfo(game.PlaceId).Name .. ".txt") then
+				LoadCfg(readfile(OrionLib.Folder .. "/" .. game.MarketplaceService:GetProductInfo(game.PlaceId).Name .. ".txt"))
+				OrionLib:MakeNotification({
+					Name = "Configuration",
+					Content = "Auto-loaded configuration for the game " .. game.MarketplaceService:GetProductInfo(game.PlaceId).Name .. ".",
+					Time = 5
+				})
+			end
+		end)		
+	end	
 end
 
 function OrionLib:MakeWindow(WindowConfig)
@@ -533,7 +626,7 @@ function OrionLib:MakeWindow(WindowConfig)
 	local MobileOpenButton = SetChildren(SetProps(MakeElement("Button"), 
 	
 	{
-		BackgroundTransparency = 1, 
+		BackgroundTransparency = 0.7, 
 		Parent = Orion, 
 		Text =  "Open",
 		TextScaled = true,
@@ -2567,8 +2660,10 @@ function OrionLib:MakeWindow(WindowConfig)
 	--		writefile("NewLibraryNotification1.txt","The value for the notification having been sent to you.")
 	--	end
 	--end
+	
 
-    return TabFunction
+	
+	return TabFunction
 end
 
 function OrionLib:Destroy()
@@ -2593,23 +2688,5 @@ Main_Tab:AddToggle({
 	end    
 })
 ]]--
-
-
-local RainbowHue = 0
-
-AddConnection(RunService.Heartbeat, function(dt)
-	RainbowHue = (RainbowHue + dt * 0.3) % 1   -- Slow & smooth (lower = even slower)
-
-	local Brightness = 0.82 + math.sin(RainbowHue * math.pi * 3.2) * 0.18
-
-	local RainbowColor = Color3.fromHSV(RainbowHue, 1, Brightness)
-
-	for _, obj in ipairs(Orion:GetDescendants()) do
-		if obj:IsA("UIStroke") and obj.Parent then
-			obj.Thickness = 1
-			obj.Color = RainbowColor
-		end
-	end
-end)
 
 return OrionLib
