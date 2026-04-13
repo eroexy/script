@@ -562,7 +562,7 @@ function OrionLib:MakeWindow(WindowConfig)
 	local MobileOpenButton = SetChildren(SetProps(MakeElement("Button"), 
 	
 	{
-		BackgroundTransparency = 0.7, 
+		BackgroundTransparency = 1, 
 		Parent = Orion, 
 		Text =  "Open",
 		TextScaled = true,
