@@ -440,11 +440,11 @@ local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
-		Padding = UDim.new(0, 8)
+		Padding = UDim.new(0, 6)
 	})
 }), {
 	Position = UDim2.new(1, -25, 1, -25),
-	Size = UDim2.new(0, 320, 1, -25),
+	Size = UDim2.new(0, 380, 1, -25),
 	AnchorPoint = Vector2.new(1, 1),
 	Parent = Orion
 })
@@ -459,15 +459,23 @@ function OrionLib:MakeNotification(NotificationConfig)
 		local NotificationParent = SetProps(MakeElement("TFrame"), {
 			Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1,
 			Parent = NotificationHolder
 		})
 
-		local NotificationFrame = SetProps(MakeElement("RoundFrame", Color3.fromRGB(5, 5, 5), 0, 10), {
-			Parent = NotificationParent, 
+		local NotificationFrame = SetProps(MakeElement("TFrame"), {
+			Parent = NotificationParent,
 			Size = UDim2.new(1, 0, 0, 0),
-			Position = UDim2.new(1, -55, 0, 0),
-			BackgroundTransparency = 0,
-			AutomaticSize = Enum.AutomaticSize.Y
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1
+		})
+
+		local Background = SetProps(MakeElement("Image", "rbxassetid://97235979976671"), {
+			Parent = NotificationFrame,
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			ImageTransparency = 0,
+			ZIndex = 1
 		})
 
 		MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2).Parent = NotificationFrame
@@ -476,7 +484,8 @@ function OrionLib:MakeNotification(NotificationConfig)
 			Parent = NotificationFrame,
 			Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
-			BackgroundTransparency = 1
+			BackgroundTransparency = 1,
+			ZIndex = 2
 		})
 
 		SetChildren(ContentHolder, {
@@ -485,40 +494,47 @@ function OrionLib:MakeNotification(NotificationConfig)
 			SetProps(MakeElement("Image", NotificationConfig.Image), {
 				Size = UDim2.new(0, 20, 0, 20),
 				ImageColor3 = Color3.fromRGB(240, 240, 240),
-				Name = "Icon"
+				BackgroundTransparency = 1,
+				Name = "Icon",
+				ZIndex = 3
 			}),
 
 			SetProps(MakeElement("Label", NotificationConfig.Name, 15), {
 				Size = UDim2.new(1, -30, 0, 20),
 				Position = UDim2.new(0, 30, 0, 0),
 				Font = Enum.Font.GothamBold,
-				Name = "Title"
+				BackgroundTransparency = 1,
+				Name = "Title",
+				ZIndex = 3
 			}),
 
 			SetProps(MakeElement("Label", NotificationConfig.Content, 14), {
 				Size = UDim2.new(1, 0, 0, 0),
 				Position = UDim2.new(0, 0, 0, 25),
 				Font = Enum.Font.GothamSemibold,
+				BackgroundTransparency = 1,
 				Name = "Content",
 				AutomaticSize = Enum.AutomaticSize.Y,
 				TextColor3 = Color3.fromRGB(255, 255, 255),
-				TextWrapped = true
+				TextWrapped = true,
+				ZIndex = 3
 			})
 		})
 
 		local BarHolder = SetProps(MakeElement("Frame"), {
-			Name = "BarHolder",
 			Parent = NotificationFrame,
-			Size = UDim2.new(1, 0, 0, 8), -- includes spacing
-			Position = UDim2.new(0, 0, 1, -8),
-			BackgroundTransparency = 1
+			Size = UDim2.new(1, 0, 0, 12),
+			Position = UDim2.new(0, 0, 1, -12),
+			BackgroundTransparency = 1,
+			ZIndex = 3
 		})
 
 		local BarContainer = SetProps(MakeElement("Frame"), {
 			Parent = BarHolder,
-			Size = UDim2.new(1, -10, 0, 3), -- shortened by 10px
-			Position = UDim2.new(0, 5, 1, -3), -- centered + 5px gap
-			BackgroundTransparency = 1
+			Size = UDim2.new(1, -28, 0, 3),
+			Position = UDim2.new(0, 14, 1, -3),
+			BackgroundTransparency = 1,
+			ZIndex = 3
 		})
 
 		local BarFill = SetProps(MakeElement("Frame"), {
@@ -526,61 +542,27 @@ function OrionLib:MakeNotification(NotificationConfig)
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 			BorderSizePixel = 0,
-
 			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, 0, 0, 0)
+			Position = UDim2.new(1, 0, 0, 0),
+			ZIndex = 3
 		})
 
 		TweenService:Create(
-			NotificationFrame,
-			TweenInfo.new(0.5, Enum.EasingStyle.Quint),
-			{Position = UDim2.new(0, 0, 0, 0)}
-		):Play()
-
-		local tween = TweenService:Create(
 			BarFill,
 			TweenInfo.new(NotificationConfig.Time, Enum.EasingStyle.Linear),
 			{Size = UDim2.new(0, 0, 1, 0)}
-		)
+		):Play()
 
-		tween:Play()
+		TweenService:Create(
+			Background,
+			TweenInfo.new(NotificationConfig.Time, Enum.EasingStyle.Quint),
+			{ImageTransparency = 1}
+		):Play()
 
-		tween.Completed:Connect(function()
-			TweenService:Create(NotificationFrame, TweenInfo.new(0.4), {
-				BackgroundTransparency = 1
-			}):Play()
+		task.wait(NotificationConfig.Time)
 
-			TweenService:Create(NotificationFrame.Title, TweenInfo.new(0.4), {
-				TextTransparency = 1
-			}):Play()
-
-			TweenService:Create(NotificationFrame.Content, TweenInfo.new(0.4), {
-				TextTransparency = 1
-			}):Play()
-
-			TweenService:Create(NotificationFrame.Icon, TweenInfo.new(0.4), {
-				ImageTransparency = 1
-			}):Play()
-
-			wait(0.4)
-			NotificationFrame:Destroy()
-		end)
+		NotificationFrame:Destroy()
 	end)
-end    
-
-function OrionLib:Init()
-	if OrionLib.SaveCfg then	
-		pcall(function()
-			if isfile(OrionLib.Folder .. "/" .. "Fling Things And People" .. ".txt") then
-				LoadCfg(readfile(OrionLib.Folder .. "/" .. "Fling Things And People" .. ".txt"))
-				OrionLib:MakeNotification({
-					Name = "Configuration",
-					Content = "Auto-loaded configuration for the game " .. "Fling Things And People" .. ".",
-					Time = 5
-				})
-			end
-		end)		
-	end	
 end
 
 function OrionLib:MakeWindow(WindowConfig)
