@@ -2625,6 +2625,17 @@ Main_Tab:AddToggle({
 })
 ]]--
 
+local Background = Instance.new("ImageLabel")
+Background.Name = "SpaceBackground"
+Background.Size = UDim2.new(1, 0, 1, 0)
+Background.Position = UDim2.new(0, 0, 0, 0)
+Background.BackgroundTransparency = 1
+Background.Image = "rbxassetid://97235979976671"
+Background.ImageTransparency = 0.3
+Background.ZIndex = -1
+Background.Parent = MainWindow
+
+
 local RainbowController = {
 	Hue = 0,
 	Speed = 0.6,
