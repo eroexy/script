@@ -530,6 +530,23 @@ function OrionLib:MakeWindow(WindowConfig)
 	local Minimized = false
 	local Loaded = false
 	local UIHidden = false
+
+
+	local Background = Instance.new("ImageLabel")
+	Background.Name = "SpaceBackground"
+	Background.Size = UDim2.new(1, 0, 1, 0)
+	Background.Position = UDim2.new(0, 0, 0, 0)
+	Background.BackgroundTransparency = 1
+	Background.Image = "rbxassetid://97235979976671"
+	Background.ImageTransparency = 0
+	Background.ZIndex = 0
+	Background.Parent = MainWindow
+
+	Background:Lower()
+
+	Background.BackgroundTransparency = 1
+	Background.Active = false
+	Background.Selectable = false
 	
 
 	WindowConfig = WindowConfig or {}
@@ -2643,17 +2660,23 @@ AddConnection(RunService.Heartbeat, function(dt)
 	end
 end)
 
+task.wait(0.5)
 
-local Background = Instance.new("ImageLabel")
-Background.Name = "SpaceBackground"
-Background.Size = UDim2.new(1, 0, 1, 0)
-Background.Position = UDim2.new(0, 0, 0, 0)
-Background.BackgroundTransparency = 1
-Background.Image = "rbxassetid://97235979976671"
-Background.ImageTransparency = 0
-Background.ZIndex = 1
-Background.Parent = MainWindow
-
-Background:MoveBefore(MainWindow:GetChildren()[1])
+local MainWindow = Orion:FindFirstChild("OrionBliz")
+if MainWindow then
+    local Background = Instance.new("ImageLabel")
+    Background.Name = "SpaceBackground"
+    Background.Size = UDim2.new(1, 0, 1, 0)
+    Background.Position = UDim2.new(0, 0, 0, 0)
+    Background.BackgroundTransparency = 1
+    Background.Image = "rbxassetid://97235979976671"
+    Background.ImageTransparency = 0
+    Background.ZIndex = 0  -- Behind everything
+    Background.Parent = MainWindow
+    Background:Lower()  -- Move to bottom of rendering order
+    
+    Background.Active = false
+    Background.Selectable = false
+end
 
 return OrionLib
