@@ -2597,27 +2597,26 @@ function OrionLib:MakeWindow(WindowConfig)
 	--	end
 	--end
 
+    local Background = Instance.new("ImageLabel")
+    Background.Name = "SpaceBackground"
+    Background.Size = UDim2.new(1, 0, 1, 0)
+    Background.Position = UDim2.new(0, 0, 0, 0)
+    Background.BackgroundTransparency = 1
+    Background.Image = "rbxassetid://97235979976671"
+    Background.ImageTransparency = 0
+    Background.ZIndex = 0
+    Background.Parent = MainWindow
+    Background:Lower()
+    Background.Active = false
+    Background.Selectable = false
+    
+    MainWindow.BackgroundTransparency = 1
+    
+    if WindowStuff then
+        WindowStuff.BackgroundTransparency = 0.8
+    end
 
-
-	local Background = Instance.new("ImageLabel")
-	Background.Name = "SpaceBackground"
-	Background.Size = UDim2.new(1, 0, 1, 0)
-	Background.Position = UDim2.new(0, 0, 0, 0)
-	Background.BackgroundTransparency = 1
-	Background.Image = "rbxassetid://97235979976671"
-	Background.ImageTransparency = 0
-	Background.ZIndex = 0
-	Background.Parent = MainWindow
-
-	Background:Lower()
-
-	Background.BackgroundTransparency = 1
-	Background.Active = false
-	Background.Selectable = false
-	
-
-	
-	return TabFunction
+    return TabFunction
 end
 
 function OrionLib:Destroy()
