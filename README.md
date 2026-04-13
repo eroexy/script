@@ -528,11 +528,13 @@ function OrionLib:MakeNotification(NotificationConfig)
 
 		local BarHolder = SetProps(MakeElement("Frame"), {
 			Parent = NotificationFrame,
-			Size = UDim2.new(1, 0, 0, 15),
+			Size = UDim2.new(1, 0, 0, 10),
 			Position = UDim2.new(0, 0, 1, -10),
 			BackgroundTransparency = 1,
 			ZIndex = 3
 		})
+
+		MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1.2).Parent = BarHolder
 		
 		local Corner = Instance.new("UICorner")
 		Corner.CornerRadius = UDim.new(0, 16)
