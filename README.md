@@ -444,7 +444,7 @@ local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 	})
 }), {
 	Position = UDim2.new(1, -25, 1, -25),
-	Size = UDim2.new(0, 380, 1, -25),
+	Size = UDim2.new(0, 300, 1, -25),
 	AnchorPoint = Vector2.new(1, 1),
 	Parent = Orion
 })
@@ -568,6 +568,21 @@ function OrionLib:MakeNotification(NotificationConfig)
 			NotificationFrame:Destroy()
 		end)
 	end)
+end
+
+function OrionLib:Init()
+	if OrionLib.SaveCfg then	
+		pcall(function()
+			if isfile(OrionLib.Folder .. "/" .. game.GameId .. ".txt") then
+				LoadCfg(readfile(OrionLib.Folder .. "/" .. game.GameId .. ".txt"))
+				OrionLib:MakeNotification({
+					Name = "Configuration",
+					Content = "Loaded configuration for the game " .. game.GameId .. ".",
+					Time = 5
+				})
+			end
+		end)		
+	end	
 end
 
 function OrionLib:MakeWindow(WindowConfig)
