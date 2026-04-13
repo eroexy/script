@@ -2700,7 +2700,7 @@ RunService.RenderStepped:Connect(function(dt)
 	RainbowController.Hue = (RainbowController.Hue + dt * RainbowController.Speed) % 1
 
 	local hue = RainbowController.Hue
-	local brightness = 0.85 + math.sin(hue * math.pi * 2) * 0.15
+	local brightness = 0.65 + math.sin(hue * math.pi * 2) * 0.15
 
 	local strokeColor = Color3.fromHSV(hue, 1, brightness)
 
