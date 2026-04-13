@@ -2660,23 +2660,4 @@ AddConnection(RunService.Heartbeat, function(dt)
 	end
 end)
 
-task.wait(0.5)
-
-local MainWindow = Orion:FindFirstChild("OrionBliz")
-if MainWindow then
-    local Background = Instance.new("ImageLabel")
-    Background.Name = "SpaceBackground"
-    Background.Size = UDim2.new(1, 0, 1, 0)
-    Background.Position = UDim2.new(0, 0, 0, 0)
-    Background.BackgroundTransparency = 1
-    Background.Image = "rbxassetid://97235979976671"
-    Background.ImageTransparency = 0
-    Background.ZIndex = 0  -- Behind everything
-    Background.Parent = MainWindow
-    Background:Lower()  -- Move to bottom of rendering order
-    
-    Background.Active = false
-    Background.Selectable = false
-end
-
 return OrionLib
