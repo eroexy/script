@@ -636,7 +636,7 @@ function OrionLib:MakeWindow(WindowConfig)
 	local MobileOpenButton = SetChildren(SetProps(MakeElement("Button"), 
 	
 	{
-		BackgroundTransparency = 0.7, 
+		BackgroundTransparency = 1, 
 		Parent = Orion, 
 		Text =  "Open",
 		TextScaled = true,
@@ -1227,9 +1227,9 @@ function OrionLib:MakeWindow(WindowConfig)
 					AnchorPoint = Vector2.new(0.5, 0.5)
 				}), {
 					SetProps(MakeElement("Stroke"), {
-						Color = ToggleConfig.Color,
+						Color = Color3.fromRGB(255, 255, 255),
 						Name = "Stroke",
-						Transparency = 0.5
+						Transparency = 0
 					}),
 					SetProps(MakeElement("Image", "rbxassetid://3944680095"), {
 						Size = UDim2.new(0, 20, 0, 20),
@@ -1325,7 +1325,7 @@ function OrionLib:MakeWindow(WindowConfig)
 					BackgroundTransparency = 0.9
 				}), {
 					SetProps(MakeElement("Stroke"), {
-						Color = SliderConfig.Color
+						Color = Color3.fromRGB(255, 255, 255)
 					}),
 					AddThemeObject(SetProps(MakeElement("Label", "value", 13), {
 						Size = UDim2.new(1, -12, 0, 14),
