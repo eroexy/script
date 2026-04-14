@@ -1227,7 +1227,7 @@ function OrionLib:MakeWindow(WindowConfig)
 					AnchorPoint = Vector2.new(0.5, 0.5)
 				}), {
 					SetProps(MakeElement("Stroke"), {
-						Color = Color3.fromRGB(0, 0, 0),
+						Color = Color3.fromRGB(255, 255, 255),
 						Name = "Stroke",
 						Transparency = 0
 					}),
