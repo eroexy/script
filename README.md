@@ -72,7 +72,7 @@ local Orion = Instance.new("ScreenGui")
 
 local FocusDrag = nil
 
-Orion.Name = "OrionBliz"
+Orion.Name = "OrionX3D"
 
 getgenv().gethui = function() return game.CoreGui end
 
@@ -453,7 +453,7 @@ function OrionLib:MakeNotification(NotificationConfig)
 	spawn(function()
 		NotificationConfig.Name = NotificationConfig.Name or "Notification"
 		NotificationConfig.Content = NotificationConfig.Content or "Test"
-		NotificationConfig.Image = NotificationConfig.Image or "rbxassetid://122312553422879"
+		NotificationConfig.Image = NotificationConfig.Image or "rbxassetid://4384403532"
 		NotificationConfig.Time = NotificationConfig.Time or 15
 
 		local NotificationParent = SetProps(MakeElement("TFrame"), {
