@@ -2705,34 +2705,4 @@ Main_Tab:AddToggle({
 })
 ]]--
 
-
-	local function CreateRGBStroke(object, thickness, speed)
-    	if not object or not object:IsA("UIStroke") then return end
-    	local hue = 0
-    	task.spawn(function()
-       		while object and object.Parent do
-            	hue = (hue + 1) % 360
-            	object.Color = Color3.fromHSV(hue / 360, 1, 1)
-            	task.wait(speed or 0.025)
-        	end
-    	end)
-	end
-
-	for _, frame in ipairs(MainWindow:GetDescendants()) do
-   		if frame:IsA("Frame") then
-        	local size = frame.Size
-        	if (size.X.Scale == 1 and size.Y.Scale == 0 and size.X.Offset == 0 and size.Y.Offset == 1) or
-           		(size.X.Scale == 0 and size.Y.Scale == 1 and size.X.Offset == 1 and size.Y.Offset == 0) then
-            
-            	local stroke = Instance.new("UIStroke")
-            	stroke.Thickness = 2
-            	stroke.Transparency = 0
-            	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-            	stroke.Parent = frame
-            	CreateRGBStroke(stroke, 2, 0.025)
-        	end
-   		end
-	end
-
-
 return OrionLib
