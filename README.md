@@ -769,6 +769,12 @@ function OrionLib:MakeWindow(WindowConfig)
 		Size = UDim2.new(0, 615, 0, 344),
 		ClipsDescendants = true,
 	}), {
+	
+		AddThemeObject(
+        MakeElement("Stroke", Color3.fromRGB(255, 255, 255), 1),
+        "Stroke"
+    ),
+	
 		--SetProps(MakeElement("Image", "rbxassetid://3523728077"), {
 		--	AnchorPoint = Vector2.new(0.5, 0.5),
 		--	Position = UDim2.new(0.5, 0, 0.5, 0),
