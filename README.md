@@ -2706,53 +2706,33 @@ Main_Tab:AddToggle({
 ]]--
 
 
-if not WindowTopBarLine then
-    warn("WindowTopBarLine not found! Creating fallback.")
-    WindowTopBarLine = AddThemeObject(SetProps(MakeElement("Frame"), {
-        Size = UDim2.new(1, 0, 0, 1),
-        Position = UDim2.new(0, 0, 1, -1),
-    }), "Stroke")
-    WindowTopBarLine.Parent = MainWindow.TopBar  -- or wherever you want
+local function CreateRGBStroke(object, thickness, speed)
+    if not object or not object:IsA("UIStroke") then return end
+    local hue = 0
+    task.spawn(function()
+        while object and object.Parent do
+            hue = (hue + 1) % 360
+            object.Color = Color3.fromHSV(hue / 360, 1, 1)
+            task.wait(speed or 0.025)
+        end
+    end)
 end
 
--- Create shimmer overlay
-local Shine = MakeElement("Frame")
-Shine.Name = "Shimmer"
-Shine.Size = UDim2.new(1, 0, 1, 0)
-Shine.BackgroundTransparency = 1
-Shine.ZIndex = 10
-Shine.Parent = WindowTopBarLine
-
-local grad = Instance.new("UIGradient")
-grad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
-})
-grad.Transparency = NumberSequence.new({
-    NumberSequenceKeypoint.new(0, 1),
-    NumberSequenceKeypoint.new(0.4, 0.3),   -- adjusted for better visibility
-    NumberSequenceKeypoint.new(0.6, 0.3),
-    NumberSequenceKeypoint.new(1, 1),
-})
-grad.Rotation = 35   -- slight angle looks better
-grad.Offset = Vector2.new(-1, 0)
-grad.Parent = Shine
-
--- Shimmer animation loop
-task.spawn(function()
-    while WindowTopBarLine and WindowTopBarLine.Parent do
-        grad.Offset = Vector2.new(-1, 0)
-        
-        local tween = TweenService:Create(
-            grad,
-            TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
-            { Offset = Vector2.new(1, 0) }
-        )
-        
-        tween:Play()
-        tween.Completed:Wait()
-        task.wait(0.8)  -- small pause between shimmers
+for _, frame in ipairs(MainWindow:GetDescendants()) do
+    if frame:IsA("Frame") then
+        local size = frame.Size
+        if (size.X.Scale == 1 and size.Y.Scale == 0 and size.X.Offset == 0 and size.Y.Offset == 1) or
+           (size.X.Scale == 0 and size.Y.Scale == 1 and size.X.Offset == 1 and size.Y.Offset == 0) then
+            
+            local stroke = Instance.new("UIStroke")
+            stroke.Thickness = 2
+            stroke.Transparency = 0
+            stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            stroke.Parent = frame
+            CreateRGBStroke(stroke, 2, 0.025)
+        end
     end
-end)
+end
+
+
 return OrionLib
