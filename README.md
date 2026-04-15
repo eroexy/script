@@ -2706,40 +2706,53 @@ Main_Tab:AddToggle({
 ]]--
 
 
+if not WindowTopBarLine then
+    warn("WindowTopBarLine not found! Creating fallback.")
+    WindowTopBarLine = AddThemeObject(SetProps(MakeElement("Frame"), {
+        Size = UDim2.new(1, 0, 0, 1),
+        Position = UDim2.new(0, 0, 1, -1),
+    }), "Stroke")
+    WindowTopBarLine.Parent = MainWindow.TopBar  -- or wherever you want
+end
+
+-- Create shimmer overlay
 local Shine = MakeElement("Frame")
+Shine.Name = "Shimmer"
 Shine.Size = UDim2.new(1, 0, 1, 0)
 Shine.BackgroundTransparency = 1
+Shine.ZIndex = 10
 Shine.Parent = WindowTopBarLine
 
 local grad = Instance.new("UIGradient")
 grad.Color = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
-	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,255,255)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255)),
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
 })
-
 grad.Transparency = NumberSequence.new({
-	NumberSequenceKeypoint.new(0, 1),
-	NumberSequenceKeypoint.new(0.5, 0),
-	NumberSequenceKeypoint.new(1, 1),
+    NumberSequenceKeypoint.new(0, 1),
+    NumberSequenceKeypoint.new(0.4, 0.3),   -- adjusted for better visibility
+    NumberSequenceKeypoint.new(0.6, 0.3),
+    NumberSequenceKeypoint.new(1, 1),
 })
-
-grad.Rotation = 0
+grad.Rotation = 35   -- slight angle looks better
 grad.Offset = Vector2.new(-1, 0)
 grad.Parent = Shine
 
+-- Shimmer animation loop
 task.spawn(function()
-	while WindowTopBarLine and WindowTopBarLine.Parent do
-		local tweenIn = TweenService:Create(
-			grad,
-			TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
-			{ Offset = Vector2.new(1, 0) }
-		)
-
-		grad.Offset = Vector2.new(-1, 0)
-		tweenIn:Play()
-		tweenIn.Completed:Wait()
-	end
+    while WindowTopBarLine and WindowTopBarLine.Parent do
+        grad.Offset = Vector2.new(-1, 0)
+        
+        local tween = TweenService:Create(
+            grad,
+            TweenInfo.new(1.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+            { Offset = Vector2.new(1, 0) }
+        )
+        
+        tween:Play()
+        tween.Completed:Wait()
+        task.wait(0.8)  -- small pause between shimmers
+    end
 end)
-
 return OrionLib
