@@ -763,6 +763,42 @@ function OrionLib:MakeWindow(WindowConfig)
 		Position = UDim2.new(0, 0, 1, -1)
 	}), "Stroke")
 
+	local Shine = MakeElement("Frame")
+	Shine.Size = UDim2.new(1, 0, 1, 0)
+	Shine.BackgroundTransparency = 1
+	Shine.Parent = WindowTopBarLine
+
+	local grad = Instance.new("UIGradient")
+	grad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,255,255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255)),
+	})
+
+	grad.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+
+	grad.Rotation = 0
+	grad.Offset = Vector2.new(-1, 0)
+	grad.Parent = Shine
+
+	task.spawn(function()
+		while WindowTopBarLine and WindowTopBarLine.Parent do
+			local tweenIn = TweenService:Create(
+				grad,
+				TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+				{ Offset = Vector2.new(1, 0) }
+			)
+
+			grad.Offset = Vector2.new(-1, 0)
+			tweenIn:Play()
+			tweenIn.Completed:Wait()
+		end
+	end)
+
 	local MainWindow = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 10), {
 		Parent = Orion,
 		Position = UDim2.new(0.5, -307, 0.5, -172),
