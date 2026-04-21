@@ -4,7 +4,7 @@ end
 _G.SCRIPT = true
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --// Services
 local Players = game.Players
 local ReplicatedStorage = game.ReplicatedStorage
@@ -12,7 +12,7 @@ local Workspace = game.Workspace
 local RunService = game.RunService
 local UserInputService = game.UserInputService
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --// Player
 
 player = Players.LocalPlayer
@@ -24,7 +24,7 @@ head = char:WaitForChild("Head")
 camera = Workspace.CurrentCamera
 mouse = player:GetMouse()
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --// Functions
 
 local Spawn = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
@@ -36,14 +36,14 @@ local SetOwner = GrabEvents:WaitForChild("SetNetworkOwner")
 local DestroyLine = GrabEvents:WaitForChild("DestroyGrabLine")
 local CreateLine = GrabEvents:WaitForChild("CreateGrabLine")
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --// Remotes
 
 local CharacterEvents = ReplicatedStorage:WaitForChild("CharacterEvents")
 local Struggle = CharacterEvents:WaitForChild("Struggle")
 local Ragdoll = CharacterEvents:WaitForChild("RagdollRemote")
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --// local player toy container
 
 local function GetToyContainer()
@@ -62,7 +62,7 @@ local function GetToyContainer()
 	return Workspace:FindFirstChild(player.Name .. "SpawnedInToys")
 end
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --// libary
 local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/eroexy/script/refs/heads/main/README.md"))()
 
@@ -89,7 +89,7 @@ local Window = Orion:MakeWindow({
 	ShowIcon = false,
 	Icon = "rbxassetid://8834748103"
 })
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 local function getWhitelistedPlayers()
 	if not _G.WhitelistFriendsToggle then
 		return {}
@@ -129,7 +129,7 @@ local function getWhitelistedPlayers()
 	return whitelist
 end
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --// Combat Tab
 local Tab = Window:MakeTab({
 	Name = "Combat",
@@ -137,9 +137,9 @@ local Tab = Window:MakeTab({
 	PremiumOnly = false
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --// Throw Power
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.Strength = 400
 _G.StrengthToggle = false
@@ -213,9 +213,9 @@ Tab:AddSlider({
 	end,
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --// Massless
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.MasslessGrabToggle = false
 
@@ -263,9 +263,9 @@ Tab:AddToggle({
 	end,
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --// Destroy Legs
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 Tab:AddSection({
 	Name = "Delete player limbs"
@@ -477,9 +477,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 --// Bring Players
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 Tab:AddSection({
 	Name = "Bring Players"
@@ -673,15 +673,15 @@ Tab:AddButton({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 local Tab = Window:MakeTab({
 	Name = "Defense",
 	Icon = "rbxassetid://10734951847",
 	PremiumOnly = false
 })
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Grab
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 _G.AntiGrabToggle = false
 local antiGrabCon
 
@@ -766,9 +766,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Blobman
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 antiblob = false
 antiblobConnection = nil
@@ -932,9 +932,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Grab Gucci
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 antiGucciConnection = nil
 safePosition = nil
@@ -1216,9 +1216,9 @@ Tab:AddToggle({
 })
 
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Explosion
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.AntiExplosionToggle = false
 
@@ -1271,9 +1271,9 @@ Tab:AddToggle({
 })
 
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Fling
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.AntiFlingToggle = false
 
@@ -1320,9 +1320,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti Void
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 local OriginalDestroyHeight = workspace.FallenPartsDestroyHeight
 
@@ -1349,9 +1349,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Break PLCD
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 Tab:AddSection({
 	Name = "Anti-Kick | PCLD"
@@ -1397,9 +1397,9 @@ Tab:AddButton({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Kick
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.AntiKickToggle = false
 
@@ -1603,9 +1603,9 @@ Tab:AddToggle({
 })
 
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Auto-Reset
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 Tab:AddToggle({
 	Name = "Auto Reset",
@@ -1635,9 +1635,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Input
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 _G.AntiInputToggle = false
 _G.AntiInputItem = nil
 
@@ -1754,9 +1754,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- destroy legs
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 Tab:AddSection({
 	Name = "Limbs"
@@ -1832,9 +1832,9 @@ Tab:AddButton({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Lag
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 Tab:AddSection({
 	Name = "Anti-Lag"
@@ -1923,9 +1923,9 @@ task.spawn(function()
 		end
 	end
 end)
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Paint
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 _G.AntiPaintToggle = false
 
 local AntiPaintcon
@@ -1987,9 +1987,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Stick
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 local function GetToyContainers()
 	local containers = {}
@@ -2095,9 +2095,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Burn
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 AntiBurnConn = nil
 
@@ -2142,9 +2142,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Loops
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 local Tab = Window:MakeTab({
 	Name = "Loop",
@@ -2152,9 +2152,9 @@ local Tab = Window:MakeTab({
 	PremiumOnly = false
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Get Loop Targets
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 Target = nil
 
@@ -2171,9 +2171,9 @@ local TargetDropdown = Tab:AddPlayersDropdown({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Loop Kill/Kick ownership
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.LoopKillOwnershipToggle = false
 _G.LoopKillAllOwnershipToggle = false
@@ -2556,9 +2556,9 @@ player.CharacterAdded:Connect(function(newChar)
 	if _G.LoopKickAllV1 then StartLoopKickAllV1() end
 end)
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Loop Kick V2 ownership
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.GRAB_RATE = 0.0008
 _G.DESTROY_RATE = 0.0001
@@ -2884,9 +2884,9 @@ local function spawntoy(toy, cf)
     return t
 end
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Ragdoll the nga
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 Tab:AddToggle({
     Name = "Ragdoll | Target",
@@ -2953,9 +2953,9 @@ Tab:AddToggle({
     end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti Anti-Kick
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 Tab:AddSection({ Name = "Break Anti's" })
 
 AntiKickConn = nil
@@ -3046,9 +3046,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Anti-Input
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 local GrabData = {
 	toggle = false,
@@ -3138,9 +3138,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Anti-Sit
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 local function GetTarget()
     local player = Players:FindFirstChild(Target)
@@ -3188,9 +3188,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- SnowBall that NGA
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 Tab:AddSection({ Name = "idk yet" })
 
@@ -3299,9 +3299,9 @@ Tab:AddToggle({
     end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Blobman
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 local Tab = Window:MakeTab({
 	Name = "Blobman",
@@ -3309,9 +3309,9 @@ local Tab = Window:MakeTab({
 	PremiumOnly = false
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Blobman Target
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 Tab:AddSection({
 	Name = "Select Target"
@@ -3332,9 +3332,9 @@ Tab:AddSection({
 	Name = "Blobman"
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Blobman Bring/Kill
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.LoopBringToggle = false
 _G.LoopBringConnection = nil
@@ -3588,9 +3588,9 @@ Tab:AddSection({
 	Name = "Server"
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Blobman Kill Server
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 
 
@@ -3689,13 +3689,13 @@ Tab:AddButton({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 local Tab = Window:MakeTab({
 	Name = "Visual",
 	Icon = "rbxassetid://10723346959",
 	PremiumOnly = false
 })
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 local function GetAllToyContainers()
 	local containers = {}
@@ -3835,7 +3835,7 @@ Tab:AddToggle({
 })
 
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 local Tab = Window:MakeTab({
 	Name = "Grab Aura's",
 	Icon = "rbxassetid://10709797837",
@@ -3848,9 +3848,9 @@ Tab:AddSection({
 
 grabbedPlayers = {}
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Heaven Aura
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 HeavenAuraConn = nil
 
 Tab:AddToggle({
@@ -3929,9 +3929,9 @@ Tab:AddToggle({
 	end,
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Death Aura
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 DeathAuraConn = nil
 
@@ -4021,9 +4021,9 @@ Tab:AddToggle({
 	end,
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Ching Chong Land AURA
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 ChinaAuraConn = nil
 
@@ -4102,9 +4102,89 @@ Tab:AddToggle({
 })
 
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+-- Ocean Aura
+
+OceanAuraConn = nil
+
+Tab:AddToggle({
+	Name = "Grab Aura | Ocean",
+	Default = false,
+	Icon = "",
+	Color = Color3.fromRGB(93, 5, 97),
+	Flag = "OceanAuraToggle",
+	Save = true,
+
+	Callback = function(Value)
+		_G.OceanAuraToggle = Value
+
+		if Value then
+			if OceanAuraConn then return end
+
+			OceanAuraConn = RunService.Heartbeat:Connect(function()
+				if not _G.OceanAuraToggle then return end
+
+				local char = player.Character
+				local hrp = char and char:FindFirstChild("HumanoidRootPart")
+				if not hrp then return end
+
+				for _, target in ipairs(Players:GetPlayers()) do
+					if target == player then continue end
+
+					local tchar = target.Character
+					if not tchar then continue end
+
+					local Thrp = tchar:FindFirstChild("HumanoidRootPart")
+					local Thead = tchar:FindFirstChild("Head")
+					if not Thrp or not Thead then continue end
+
+					local distance = (hrp.Position - Thrp.Position).Magnitude
+					if distance > 25 then
+						grabbedPlayers[target] = nil
+						continue
+					end
+
+					local owner = Thead:FindFirstChild("PartOwner")
+					local alreadyOwned = owner and owner.Value == player.Name
+
+					if alreadyOwned then
+						if not grabbedPlayers[target] then
+							grabbedPlayers[target] = true
+
+							task.spawn(function()
+								task.wait(0.05)
+								pcall(function()
+									Thrp.CFrame = CFrame.new(-4050.4187, -12.0526543, 776.664612)
+								end)
+								task.wait(1)
+								grabbedPlayers[target] = nil
+							end)
+						end
+					else
+						if not grabbedPlayers[target] then
+							pcall(function()
+								SetOwner:FireServer(Thrp, Thrp.CFrame)
+							end)
+						end
+					end
+				end
+			end)
+
+		else
+			if OceanAuraConn then
+				OceanAuraConn:Disconnect()
+				OceanAuraConn = nil
+			end
+
+			table.clear(grabbedPlayers)
+		end
+	end,
+})
+
+
+
+
 -- Ragdoll Aura
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 RagdollAuraConn = nil
 cachedPallet = nil
@@ -4229,16 +4309,16 @@ local function spawntoy(toy, cf)
     return spawned
 end
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 local Tab = Window:MakeTab({
 	Name = "Player",
 	Icon = "rbxassetid://10734920149",
 	PremiumOnly = false
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- WALK SPEED
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.WalkSpeedValue = 16
 
@@ -4289,9 +4369,9 @@ Tab:AddSlider({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- INFINITE JUMP
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.JumpPowerValue = 50
 
@@ -4457,15 +4537,15 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 local Tab = Window:MakeTab({
 	Name = "Keybinds",
 	Icon = "rbxassetid://10723416765",
 	PremiumOnly = false
 })
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Target T
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.TargetEnabled = false
 
@@ -4507,9 +4587,9 @@ function GetTargetPlayer()
 	return Players:FindFirstChild(Target)
 end
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Z teleport
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.TeleportToggle = false
 
@@ -4553,9 +4633,9 @@ Tab:AddToggle({
 	end,
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- C to Grab
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.CtoGrabToggle = false
 
@@ -4710,11 +4790,11 @@ end)
 
 
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
 -- Line Stuff
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 local Tab = Window:MakeTab({
 	Name = "Line",
@@ -4722,9 +4802,9 @@ local Tab = Window:MakeTab({
 	PremiumOnly = false
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Lag Stuff
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 local Tab = Window:MakeTab({
 	Name = "Lag",
@@ -4732,9 +4812,9 @@ local Tab = Window:MakeTab({
 	PremiumOnly = false
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Line Lag
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.LineLagAmount = 1000
 _G.LineLagToggle = false
@@ -4778,9 +4858,9 @@ Tab:AddToggle({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 -- Force Lag all
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 _G.ForceLagAmount = 10000
 
@@ -4814,13 +4894,13 @@ local Button = Tab:AddButton({
 })
 
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 local Tab = Window:MakeTab({
 	Name = "Misc",
 	Icon = "rbxassetid://10709798792",
 	PremiumOnly = false
 })
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 Tab:AddSection({
 	Name = "Whitelist"
@@ -4849,7 +4929,7 @@ Tab:AddPlayersDropdown({
 	end
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 local Flags = {
 	PlayerEvents = false,
@@ -4963,24 +5043,24 @@ Players.PlayerRemoving:Connect(function(player)
 		Orion:MakeNotification({Name = "Notification", Content = "Friend left: "..player.Name, Time = 5})
 	end
 end)
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
 
 Tab:AddSection({
 	Name = "Annoying"
 })
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
 
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+
+
+
+
 
 Tab:AddSection({
 	Name = "Ocean"
@@ -5015,5 +5095,5 @@ local Tab = Window:MakeTab({
 
 
 
--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 Orion:Init()
