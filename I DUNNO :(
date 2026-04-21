@@ -98,6 +98,8 @@ local Tab = Window:MakeTab({
 	PremiumOnly = false
 })
 
+grabbedPlayers = {}
+
 ChinaAuraConn = nil
 
 Tab:AddToggle({
