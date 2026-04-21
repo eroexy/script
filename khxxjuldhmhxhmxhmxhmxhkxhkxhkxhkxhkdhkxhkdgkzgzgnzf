@@ -3,14 +3,12 @@ if _G.SCRIPT then
 end
 _G.SCRIPT = true
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
-
 --// Services
-local Players = game.Players
-local ReplicatedStorage = game.ReplicatedStorage
-local Workspace = game.Workspace
-local RunService = game.RunService
-local UserInputService = game.UserInputService
+Players = game.Players
+ReplicatedStorage = game.ReplicatedStorage
+Workspace = game.Workspace
+RunService = game.RunService
+UserInputService = game.UserInputService
 
 
 --// Player
@@ -27,21 +25,21 @@ mouse = player:GetMouse()
 
 --// Functions
 
-local Spawn = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
-local Destroy = ReplicatedStorage.MenuToys.DestroyToy
+Spawn = ReplicatedStorage.MenuToys.SpawnToyRemoteFunction
+Destroy = ReplicatedStorage.MenuToys.DestroyToy
 
-local GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
+GrabEvents = ReplicatedStorage:WaitForChild("GrabEvents")
 
-local SetOwner = GrabEvents:WaitForChild("SetNetworkOwner")
-local DestroyLine = GrabEvents:WaitForChild("DestroyGrabLine")
-local CreateLine = GrabEvents:WaitForChild("CreateGrabLine")
+SetOwner = GrabEvents:WaitForChild("SetNetworkOwner")
+DestroyLine = GrabEvents:WaitForChild("DestroyGrabLine")
+CreateLine = GrabEvents:WaitForChild("CreateGrabLine")
 
 
 --// Remotes
 
-local CharacterEvents = ReplicatedStorage:WaitForChild("CharacterEvents")
-local Struggle = CharacterEvents:WaitForChild("Struggle")
-local Ragdoll = CharacterEvents:WaitForChild("RagdollRemote")
+CharacterEvents = ReplicatedStorage:WaitForChild("CharacterEvents")
+Struggle = CharacterEvents:WaitForChild("Struggle")
+Ragdoll = CharacterEvents:WaitForChild("RagdollRemote")
 
 
 --// local player toy container
