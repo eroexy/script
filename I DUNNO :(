@@ -175,3 +175,73 @@ Tab:AddToggle({
 	end,
 })
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+ForceFieldAuraConn = nil
+
+Tab:AddToggle({
+	Name = "Grab Aura | Force Field",
+	Default = false,
+	Icon = "",
+	Color = Color3.fromRGB(0, 120, 255),
+	Flag = "ForceFieldAuraToggle",
+	Save = true,
+
+	Callback = function(Value)
+		_G.ForceFieldAuraToggle = Value
+
+		if Value then
+			if ForceFieldAuraConn then return end
+
+			ForceFieldAuraConn = RunService.Heartbeat:Connect(function()
+				if not _G.ForceFieldAuraToggle then return end
+
+				local char = player.Character
+				local hrp = char and char:FindFirstChild("HumanoidRootPart")
+				if not hrp then return end
+
+				for _, target in ipairs(Players:GetPlayers()) do
+					if target == player then continue end
+
+					local tchar = target.Character
+					if not tchar then continue end
+
+					local Thrp = tchar:FindFirstChild("HumanoidRootPart")
+					if not Thrp then continue end
+
+					local distance = (hrp.Position - Thrp.Position).Magnitude
+					local pushRadius = 20
+
+					if distance < pushRadius and distance > 0 then
+						local pushDirection = (Thrp.Position - hrp.Position).Unit
+						local pushStrength = (pushRadius - distance) * 2.5
+
+						task.spawn(function()
+							pcall(function()
+								Thrp.CFrame = Thrp.CFrame + (pushDirection * pushStrength * 0.1)
+							end)
+						end)
+					end
+				end
+			end)
+
+		else
+			if ForceFieldAuraConn then
+				ForceFieldAuraConn:Disconnect()
+				ForceFieldAuraConn = nil
+			end
+		end
+	end,
+})
+
