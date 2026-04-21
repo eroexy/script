@@ -4021,12 +4021,90 @@ Tab:AddToggle({
 	end,
 })
 
+-->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+-- Ching Chong Land AURA
+-->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+ChinaAuraConn = nil
+
+Tab:AddToggle({
+	Name = "Grab Aura | Ching Chong Land",
+	Default = false,
+	Icon = "",
+	Color = Color3.fromRGB(93, 5, 97),
+	Flag = "ChinaAuraToggle",
+	Save = true,
+
+	Callback = function(Value)
+		_G.ChinaAuraToggle = Value
+
+		if Value then
+			if ChinaAuraConn then return end
+
+			ChinaAuraConn = RunService.Heartbeat:Connect(function()
+				if not _G.ChinaAuraToggle then return end
+
+				local char = player.Character
+				local hrp = char and char:FindFirstChild("HumanoidRootPart")
+				if not hrp then return end
+
+				for _, target in ipairs(Players:GetPlayers()) do
+					if target == player then continue end
+
+					local tchar = target.Character
+					if not tchar then continue end
+
+					local Thrp = tchar:FindFirstChild("HumanoidRootPart")
+					local Thead = tchar:FindFirstChild("Head")
+					if not Thrp or not Thead then continue end
+
+					local distance = (hrp.Position - Thrp.Position).Magnitude
+					if distance > 25 then
+						grabbedPlayers[target] = nil
+						continue
+					end
+
+					local owner = Thead:FindFirstChild("PartOwner")
+					local alreadyOwned = owner and owner.Value == player.Name
+
+					if alreadyOwned then
+						if not grabbedPlayers[target] then
+							grabbedPlayers[target] = true
+
+							task.spawn(function()
+								task.wait(0.05)
+								pcall(function()
+									Thrp.CFrame = CFrame.new(591.889709, 153.338577, -92.1728058)
+								end)
+								task.wait(1)
+								grabbedPlayers[target] = nil
+							end)
+						end
+					else
+						if not grabbedPlayers[target] then
+							pcall(function()
+								SetOwner:FireServer(Thrp, Thrp.CFrame)
+							end)
+						end
+					end
+				end
+			end)
+
+		else
+			if ChinaAuraConn then
+				ChinaAuraConn:Disconnect()
+				ChinaAuraConn = nil
+			end
+
+			table.clear(grabbedPlayers)
+		end
+	end,
+})
 
 
-
-
-
-
+-->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+-- Ragdoll Aura
+-->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 RagdollAuraConn = nil
 cachedPallet = nil
