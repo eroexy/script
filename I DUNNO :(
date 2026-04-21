@@ -99,11 +99,10 @@ local Tab = Window:MakeTab({
 })
 
 grabbedPlayers = {}
-
 ChinaAuraConn = nil
 
 Tab:AddToggle({
-	Name = "Grab Aura | Ching Chong Land",
+	Name = "Grab Aura | China",
 	Default = false,
 	Icon = "",
 	Color = Color3.fromRGB(93, 5, 97),
@@ -145,16 +144,14 @@ Tab:AddToggle({
 					if alreadyOwned then
 						if not grabbedPlayers[target] then
 							grabbedPlayers[target] = true
-							task.wait(0.05)
 
-							pcall(function()
-								Thrp.CFrame = CFrame.new(591.889709, 153.338577, -92.1728058)
-							end)
-
-							task.delay(1, function()
-								if grabbedPlayers[target] then
-									grabbedPlayers[target] = nil
-								end
+							task.spawn(function()
+								task.wait(0.05)
+								pcall(function()
+									Thrp.CFrame = CFrame.new(591.889709, 153.338577, -92.1728058)
+								end)
+								task.wait(1)
+								grabbedPlayers[target] = nil
 							end)
 						end
 					else
@@ -177,3 +174,4 @@ Tab:AddToggle({
 		end
 	end,
 })
+
