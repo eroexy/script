@@ -2801,8 +2801,6 @@ local function startGrabLoop()
         local lockPos = hrp.CFrame * CFrame.new(0, 15, 0) -- fixed: follows you
 
         targetHRP.CFrame = lockPos
-        targetHRP.AssemblyLinearVelocity = Vector3.zero
-        targetHRP.AssemblyAngularVelocity = Vector3.zero
 
         if hum then
             hum.PlatformStand = true
