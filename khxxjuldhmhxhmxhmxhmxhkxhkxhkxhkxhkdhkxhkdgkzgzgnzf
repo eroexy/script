@@ -1347,6 +1347,139 @@ Tab:AddToggle({
 	end
 })
 
+-- Anti-Attacker
+
+method = nil
+AntiAttackerConn = nil
+
+Tab:AddDropdown({
+	Name = "Anti-Attacker Method",
+	Options = {"Ching Chong Land", "Spawn Slot", "Heaven", "Death", "Ragdoll"},
+	Default = nil,
+	Flag = "AntiAttackerMethod",
+	Save = true,
+	Callback = function(Value)
+		method = Value
+	end
+})
+
+Tab:AddToggle({
+	Name = "Anti-Attacker",
+	Default = true,
+	Icon = "",
+	Color = Color3.fromRGB(93, 5, 97),
+	Flag = "AntiAttackerToggle",
+	Save = true,
+	Callback = function(Value)
+		_G.AntiAttackerToggle = Value
+
+		if Value then
+			if AntiAttackerConn then return end
+
+			AntiAttackerConn = game:GetService("RunService").Heartbeat:Connect(function()
+				if not hrp or not hrp.Parent then return end
+
+				for _, obj in ipairs(Workspace:GetChildren()) do
+					local ownerName = obj.Name:match("^(.+)SpawnedInToys$")
+					if not ownerName or ownerName == player.Name then continue end
+
+					for _, part in ipairs(obj:GetDescendants()) do
+						if part:IsA("BasePart") then
+							local partOwner = part:FindFirstChild("PartOwner")
+							if partOwner and partOwner.Value == player.Name then
+								local attackerPlayer = Players:FindFirstChild(ownerName)
+								if not attackerPlayer then continue end
+
+								local attackerChar = attackerPlayer.Character
+								if not attackerChar then continue end
+
+								local attackerHRP = attackerChar:FindFirstChild("HumanoidRootPart")
+								if not attackerHRP then continue end
+
+								local dist = (hrp.Position - attackerHRP.Position).Magnitude
+								if dist > 25 then continue end
+
+								if processedAttackers[ownerName] then continue end
+								processedAttackers[ownerName] = true
+
+								task.delay(3, function()
+									processedAttackers[ownerName] = nil
+								end)
+
+								local Thuman = attackerChar:FindFirstChild("Humanoid")
+
+								for i = 1, 8 do
+									SetOwner:FireServer(attackerHRP, attackerHRP.CFrame)
+									task.wait(0.02)
+								end
+
+								if method == "Ching Chong Land" then
+									task.wait(.05)
+									attackerHRP.CFrame = CFrame.new(591.889709, 153.338577, -92.1728058)
+									task.wait(.05)
+									DestroyLine:FireServer(attackerHRP)
+
+								elseif method == "Spawn Slot" then
+									task.wait(.05)
+									attackerHRP.CFrame = CFrame.new(52.5844078, -6.11595154, -121.83712)
+									task.wait(.05)
+									DestroyLine:FireServer(attackerHRP)
+
+								elseif method == "Heaven" then
+									task.wait(.05)
+									attackerHRP.CFrame = hrp.CFrame * CFrame.new(0, 1e3, 0)
+									task.wait(.05)
+									DestroyLine:FireServer(attackerHRP)
+
+								elseif method == "Death" then
+									task.wait(.05)
+									attackerHRP.CFrame = hrp.CFrame * CFrame.new(0, 1e18, 0)
+									task.wait(.05)
+									DestroyLine:FireServer(attackerHRP)
+									if Thuman then
+										Thuman.Health = 0
+									end
+
+								elseif method == "Ragdoll" then
+									DestroyLine:FireServer(attackerHRP)
+
+									local inv = Workspace[player.Name.."SpawnedInToys"]
+									local pallet = inv:FindFirstChild("RagdollPallet")
+
+									if not pallet then
+										pallet = spawntoy("PalletLightBrown", hrp.CFrame * CFrame.new(0, 1e18, 0))
+										if not pallet then return end
+									end
+
+									pallet.Name = "RagdollPallet"
+
+									for _, p in ipairs(pallet:GetDescendants()) do
+										if p:IsA("BasePart") then
+											p.CanCollide = false
+											p.Transparency = 1
+											p.Size = Vector3.new(0.3, 0.3, 0.3)
+										end
+									end
+
+									pallet.SoundPart.CFrame = attackerHRP.CFrame
+									task.wait()
+									pallet.SoundPart.CFrame = CFrame.new(0, 1e18, 0)
+								end
+							end
+						end
+					end
+				end
+			end)
+		else
+			if AntiAttackerConn then
+				AntiAttackerConn:Disconnect()
+				AntiAttackerConn = nil
+			end
+		end
+	end,
+})
+
+local processedAttackers = {}
 
 -- Break PLCD
 
