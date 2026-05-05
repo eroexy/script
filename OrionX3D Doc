@@ -192,7 +192,7 @@ local TextBox = Tab:AddTextbox({
 
 -- creating notifications
 
-OrionLib:MakeNotification({  Name = "NOTIFICATION", Content = "Message", Image = "rbxassetid://4384403532", Time = 5 }) -- Notif Title, -- Notif Content, -- icon (optional), -- Notif Timer
+Orion:MakeNotification({  Name = "NOTIFICATION", Content = "Message", Image = "rbxassetid://4384403532", Time = 5 }) -- Notif Title, -- Notif Content, -- icon (optional), -- Notif Timer
 
 -- init so your shit saves make sure you leave it at the bottom
 
