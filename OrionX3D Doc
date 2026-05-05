@@ -5,21 +5,28 @@ local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/eroexy/
 
 -- Loading the Window
 
-local Window = OrionLib:MakeWindow({
+Orion.SelectedTheme = "Default"
+
+local Window = Orion:MakeWindow({
   Name = "Script Title", -- title shown in top bar
+
   IntroEnabled = false, -- show loading animation
   IntroText = "Script Title", -- text shown during intro
-  IntroIcon = "rbxassetid://...", -- icon shown during intro
-  Icon = "rbxassetid://", -- icon in top bar
-  ShowIcon = false, -- show icon next to title
+  IntroIcon = "rbxassetid://", -- icon shown during intro
+
   KeyToOpenWindow = "M", -- key to toggle UI
   FreeMouse = false, -- unlock cursor when UI is open
   SaveConfig = false, -- auto-save flags to file
   ConfigFolder = "Name", -- folder name for saved configs
-  HidePremium = false, -- hide premium badge
-  CloseCallback = function()  -- fires when UI is closed
-  
-  end
+
+  HidePremium = false, -- hide premium UI
+
+  CloseCallback = function() -- fires when UI is closed
+
+  end,
+
+  ShowIcon = false, -- show icon next to title
+  Icon = "rbxassetid://" -- icon in top bar
 })
 
 -- creating tab
@@ -98,12 +105,26 @@ local Slider = Tab:AddSlider({
 
 Slider:Set(75) -- update slider value
 
+-- creating color picker
+
+local ColorPicker = Tab:AddColorpicker({
+  Name = "Color", -- colorpicker Title
+  Default = Color3.fromRGB(255, 0, 0), -- starting color
+  Flag = "Color", -- flag for color picker
+  Save = false, -- saves the color
+  Callback = function(value) -- Callback
+    print("Color:", value)
+  end
+})
+
+ColorPicker:Set(Color3.fromRGB(0, 255, 0)) -- update the ColorPicker Value
+
 -- creating dropdown
 
 local Dropdown = Tab:AddDropdown({
   Name = "Dropdown",  -- dropdown title
-  Options = {"Fast", "Normal", "Slow"},  -- options
-  Default = "Normal",  -- default selected option
+  Options = {"Fast", "Slow"},  -- options
+  Default = "Slow",  -- default selected option
   Flag = "Dropdown",  -- dropdown flag
   Save = false,  -- save the dropdownb value
   Callback = function(value)  -- dropdown callback
@@ -124,7 +145,7 @@ local MultiDropdown = Tab:AddMultipleDropdown({
   Flag = "MultiDropdown",
   Save = false,
   Callback = function(selectedTable)
-    print("Selected:", table.concat(selectedTable, ", "))
+    
   end
 })
 
@@ -176,4 +197,3 @@ OrionLib:MakeNotification({  Name = "NOTIFICATION", Content = "Message", Image =
 -- init so your shit saves make sure you leave it at the bottom
 
 OrionLib:Init()
-
