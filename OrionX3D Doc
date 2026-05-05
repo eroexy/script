@@ -1,0 +1,181 @@
+
+-- call orion
+
+local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/eroexy/script/refs/heads/main/README.md"))()
+
+-- Loading the Window
+
+local Window = OrionLib:MakeWindow({
+  Name = "Script Title", -- title shown in top bar
+  IntroEnabled = false, -- show loading animation
+  IntroText = "Script Title", -- text shown during intro
+  IntroIcon = "rbxassetid://...", -- icon shown during intro
+  Icon = "rbxassetid://", -- icon in top bar
+  ShowIcon = false, -- show icon next to title
+  KeyToOpenWindow = "M", -- key to toggle UI
+  FreeMouse = false, -- unlock cursor when UI is open
+  SaveConfig = false, -- auto-save flags to file
+  ConfigFolder = "Name", -- folder name for saved configs
+  HidePremium = false, -- hide premium badge
+  CloseCallback = function()  -- fires when UI is closed
+  
+  end
+})
+
+-- creating tab
+
+local Tab = Window:MakeTab({
+  Name = "Tab Name", -- Tab title
+  Icon = "rbxassetid://", -- Feather icon name or rbxassetid
+  PremiumOnly = false -- premium toggle
+})
+
+-- creating sections
+
+Tab:AddSection({ Name = "Section Name" }) -- Section Title
+
+-- creating labels
+
+local Label = Tab:AddLabel("Hello!") -- Label Tittle
+
+Label:Set("Bye!") -- update the text later
+
+-- creating AddParagraph
+
+local AddParagraph = Tab:AddParagraph("Title", "Story") -- Titke, Content
+
+AddParagraph:Set("Long Story") -- update content later
+
+-- creating Player Paragraph
+
+local PlayerParagraph = Tab:AddPlayerParagraph(12345678) -- pass a UserId
+
+PlayerParagraph:Set(87654321) -- update to a different player later via UserId
+
+-- creating toggle
+
+local Toggle = Tab:AddToggle({
+  Name = "Toggle", -- Toggle Title
+  Default = false, -- starting state
+  Color = Color3.fromRGB(9, 99, 195),  -- toggle color (on)
+  Flag = "myToggle", -- flag for the toggle (Do NOT override the name with another)
+  Save = false, -- save the toggle
+  Callback = function(value) -- Callback from the toggle
+    print("Toggle is now:", value)  -- value = true or false
+  end
+})
+
+Toggle:Set(true) -- update the toggle
+
+-- creating button
+
+local Button = Tab:AddButton({
+  Name = "Button", -- button title
+  Icon = "rbxassetid://", -- Feather icon name or rbxassetid
+  Callback = function() -- call back for the button
+    print("Button clicked!")
+  end
+})
+
+Button:Set("Push me") -- Update button same for some reason?
+
+-- creating slider
+
+local Slider = Tab:AddSlider({
+  Name = "Slider", -- slider title
+  Min = 0, -- min the slider can go to
+  Max = 100, -- max value the slider can go to
+  Default = 50, -- defualt starting value
+  Increment = 1, -- increase size
+  ValueName = "SliderSpeed", -- unit shown next to value
+  Color = Color3.fromRGB(9, 149, 98), -- slider color
+  Flag = "speedSlider", -- slider flag
+  Save = false, -- save slider value
+  Callback = function(value) -- slider callback
+    print("Slider value:", value)
+  end
+})
+
+Slider:Set(75) -- update slider value
+
+-- creating dropdown
+
+local Dropdown = Tab:AddDropdown({
+  Name = "Dropdown",  -- dropdown title
+  Options = {"Fast", "Normal", "Slow"},  -- options
+  Default = "Normal",  -- default selected option
+  Flag = "Dropdown",  -- dropdown flag
+  Save = false,  -- save the dropdownb value
+  Callback = function(value)  -- dropdown callback
+    print("Selected:", value)
+  end
+})
+
+Dropdown:Set("Fast") --  change the dropdown option
+
+Dropdown:Refresh({"Option A", "Option B"}, true) -- true = clear old options
+
+-- creating multiple option dropdown
+
+local MultiDropdown = Tab:AddMultipleDropdown({
+  Name = "Multiple Option Dropdown",
+  Options = {"Fly", "Speed", "Noclip"},
+  Default = "",
+  Flag = "MultiDropdown",
+  Save = false,
+  Callback = function(selectedTable)
+    print("Selected:", table.concat(selectedTable, ", "))
+  end
+})
+
+MultiDropdown:Set("Fly") -- set dropdown options
+MultiDropdown:Refresh({"A","B","C"}, true) -- true = clear old options
+
+-- creating player dropdowns
+
+local PlayerDrop = Tab:AddPlayersDropdown({
+  Name = "Player Dropdown",  -- player dropdown title
+  MultipleSelection = false,  -- allow multiple players
+  Callback = function(value)  -- callback for the player name
+    print("Selected player:", value) -- the value comes back as the player name
+  end
+})
+
+PlayerDrop:Set("PlayerName") -- update the player dropdown
+
+-- creating setting a keybind
+
+local KeyBind = Tab:AddBind({
+  Name = "KeyBind", -- bind toggle
+  Default = Enum.KeyCode.F, -- starting key
+  Hold = false, -- holding it or press it option
+  Flag = "KeyBind", -- flag of the keybind
+  Save = false, -- save the keybind
+  Callback = function(holding) -- holding is only passed if Hold = true
+    print("KeyBind triggered!")
+  end
+})
+
+Bind:Set(Enum.KeyCode.G) -- change the keybind
+
+-- creating textbox
+
+local TextBox = Tab:AddTextbox({
+  Name = "TextBox", -- textbox title
+  Default = "", -- placeholder text
+  TextDisappear = false, -- clear text after callback fires
+  Callback = function(Value) -- callback function
+    print("Input:", Value)
+  end
+})
+
+TextBox:Set("Value") -- update the textbox
+
+-- creating notifications
+
+OrionLib:MakeNotification({  Name = "NOTIFICATION", Content = "Message", Image = "rbxassetid://4384403532", Time = 5 }) -- Notif Title, -- Notif Content, -- icon (optional), -- Notif Timer
+
+-- init so your shit saves make sure you leave it at the bottom
+
+OrionLib:Init()
+
