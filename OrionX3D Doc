@@ -197,3 +197,7 @@ OrionLib:MakeNotification({  Name = "NOTIFICATION", Content = "Message", Image =
 -- init so your shit saves make sure you leave it at the bottom
 
 OrionLib:Init()
+
+-- destroying the lib
+
+Orion:Destroy()
