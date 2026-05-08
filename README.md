@@ -479,7 +479,7 @@ function OrionLib:MakeNotification(NotificationConfig)
 		local Background = SetProps(MakeElement("Image", "rbxassetid://508197089"), {
 			Parent = NotificationFrame,
 			Size = UDim2.new(1, 0, 1, 0),
-			BackgroundTransparency = 1,
+			BackgroundTransparency = 9,
 			ZIndex = 1
 		})
 
