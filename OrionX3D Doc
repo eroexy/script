@@ -132,6 +132,7 @@ local Dropdown = Tab:AddDropdown({
   end
 })
 
+Dropdown:Remove("Fast")  -- remove the dropdown option
 Dropdown:Set("Fast") --  change the dropdown option
 
 Dropdown:Refresh({"Option A", "Option B"}, true) -- true = clear old options
@@ -149,6 +150,7 @@ local MultiDropdown = Tab:AddMultipleDropdown({
   end
 })
 
+MultiDropdown:Remove("Fly") -- remove dropdown options
 MultiDropdown:Set("Fly") -- set dropdown options
 MultiDropdown:Refresh({"A","B","C"}, true) -- true = clear old options
 
@@ -162,6 +164,7 @@ local PlayerDrop = Tab:AddPlayersDropdown({
   end
 })
 
+PlayerDrop:Remove("PlayerName") -- remove player from dropdown
 PlayerDrop:Set("PlayerName") -- update the player dropdown
 
 -- creating setting a keybind
