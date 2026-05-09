@@ -467,7 +467,7 @@ function OrionLib:MakeNotification(NotificationConfig)
 			Parent = NotificationParent,
 			Size = UDim2.new(1, 0, 0, 0),
 			Position = UDim2.new(1, -55, 0, 0),
-			BackgroundTransparency = 1,
+			BackgroundTransparency = 0,
 			AutomaticSize = Enum.AutomaticSize.Y,
 			ClipsDescendants = true
 		})
