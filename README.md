@@ -1213,86 +1213,108 @@ function OrionLib:MakeWindow(WindowConfig)
 			end
 
 			function ElementFunction:AddToggle(ToggleConfig)
-				ToggleConfig = ToggleConfig or {}
-				ToggleConfig.Name = ToggleConfig.Name or "Toggle"
-				ToggleConfig.Default = ToggleConfig.Default or false
-				ToggleConfig.Callback = ToggleConfig.Callback or function() end
-				ToggleConfig.Color = ToggleConfig.Color or Color3.fromRGB(9, 99, 195)
-				ToggleConfig.Flag = ToggleConfig.Flag or nil
-				ToggleConfig.Save = ToggleConfig.Save or false
+    			ToggleConfig = ToggleConfig or {}
+    			ToggleConfig.Name = ToggleConfig.Name or "Toggle"
+    			ToggleConfig.Default = ToggleConfig.Default or false
+    			ToggleConfig.Callback = ToggleConfig.Callback or function() end
+    			ToggleConfig.Color = ToggleConfig.Color or Color3.fromRGB(9, 99, 195)
+    			ToggleConfig.Flag = ToggleConfig.Flag or nil
+    			ToggleConfig.Save = ToggleConfig.Save or false
+    			ToggleConfig.PremiumOnly = ToggleConfig.PremiumOnly or false
+    			ToggleConfig.IsPremium = ToggleConfig.IsPremium or false -- set this to your actual premium check
 
-				local Toggle = {Value = ToggleConfig.Default, Save = ToggleConfig.Save}
+   				local Toggle = {Value = ToggleConfig.Default, Save = ToggleConfig.Save}
 
-				local Click = SetProps(MakeElement("Button"), {
-					Size = UDim2.new(1, 0, 1, 0)
-				})
+    			local Click = SetProps(MakeElement("Button"), {
+        			Size = UDim2.new(1, 0, 1, 0)
+    			})
 
-				local ToggleBox = SetChildren(SetProps(MakeElement("RoundFrame", ToggleConfig.Color, 0, 4), {
-					Size = UDim2.new(0, 24, 0, 24),
-					Position = UDim2.new(1, -24, 0.5, 0),
-					AnchorPoint = Vector2.new(0.5, 0.5)
-				}), {
-					SetProps(MakeElement("Stroke"), {
-						Color = Color3.fromRGB(255, 255, 255),
-						Name = "Stroke",
-						Transparency = 0
-					}),
-					SetProps(MakeElement("Image", "rbxassetid://3944680095"), {
-						Size = UDim2.new(0, 20, 0, 20),
-						AnchorPoint = Vector2.new(0.5, 0.5),
-						Position = UDim2.new(0.5, 0, 0.5, 0),
-						ImageColor3 = Color3.fromRGB(255, 255, 255),
-						Name = "Ico"
-					}),
-				})
+    			local ToggleBox = SetChildren(SetProps(MakeElement("RoundFrame", ToggleConfig.Color, 0, 4), {
+        			Size = UDim2.new(0, 24, 0, 24),
+        			Position = UDim2.new(1, -24, 0.5, 0),
+        			AnchorPoint = Vector2.new(0.5, 0.5)
+    			}), {
+        			SetProps(MakeElement("Stroke"), {
+            			Color = Color3.fromRGB(255, 255, 255),
+            			Name = "Stroke",
+            			Transparency = 0
+        			}),
+        			SetProps(MakeElement("Image", "rbxassetid://3944680095"), {
+            			Size = UDim2.new(0, 20, 0, 20),
+            			AnchorPoint = Vector2.new(0.5, 0.5),
+            			Position = UDim2.new(0.5, 0, 0.5, 0),
+            			ImageColor3 = Color3.fromRGB(255, 255, 255),
+            			Name = "Ico"
+        			}),
+    			})
 
-				local ToggleFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
-					Size = UDim2.new(1, 0, 0, 38),
-					Parent = ItemParent
-				}), {
-					AddThemeObject(SetProps(MakeElement("Label", ToggleConfig.Name, 15), {
-						Size = UDim2.new(1, -12, 1, 0),
-						Position = UDim2.new(0, 12, 0, 0),
-						Font = Enum.Font.GothamBold,
-						Name = "Content"
-					}), "Text"),
-					AddThemeObject(MakeElement("Stroke"), "Stroke"),
-					ToggleBox,
-					Click
-				}), "Second")
+    			-- Crown icon shown on premium toggles for non-premium users
+    			local CrownIcon = SetProps(MakeElement("Image", "rbxassetid://6031075931"), {
+        			Size = UDim2.new(0, 16, 0, 16),
+        			Position = UDim2.new(1, -44, 0.5, 0),
+        			AnchorPoint = Vector2.new(0.5, 0.5),
+        			ImageColor3 = Color3.fromRGB(255, 200, 50),
+        			ImageTransparency = 0,
+        			Visible = ToggleConfig.PremiumOnly and not ToggleConfig.IsPremium
+    			})
 
-				function Toggle:Set(Value)
-					Toggle.Value = Value
-					TweenService:Create(ToggleBox, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Toggle.Value and ToggleConfig.Color or OrionLib.Themes.Default.Divider}):Play()
-					TweenService:Create(ToggleBox.Stroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Color = Toggle.Value and ToggleConfig.Color or OrionLib.Themes.Default.Stroke}):Play()
-					TweenService:Create(ToggleBox.Ico, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {ImageTransparency = Toggle.Value and 0 or 1, Size = Toggle.Value and UDim2.new(0, 20, 0, 20) or UDim2.new(0, 8, 0, 8)}):Play()
-					ToggleConfig.Callback(Toggle.Value)
-				end    
+    			local ToggleFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
+        			Size = UDim2.new(1, 0, 0, 38),
+        			Parent = ItemParent
+    			}), {
+        			AddThemeObject(SetProps(MakeElement("Label", ToggleConfig.Name, 15), {
+            			Size = UDim2.new(1, -12, 1, 0),
+            			Position = UDim2.new(0, 12, 0, 0),
+            			Font = Enum.Font.GothamBold,
+            			Name = "Content"
+        			}), "Text"),
+        			AddThemeObject(MakeElement("Stroke"), "Stroke"),
+        			ToggleBox,
+        			CrownIcon,
+        			Click
+    			}), "Second")
 
-				Toggle:Set(Toggle.Value)
+    			function Toggle:Set(Value)
+        			-- premium only
+        			if ToggleConfig.PremiumOnly and not ToggleConfig.IsPremium then
+            			OrionLib:MakeNotification({
+                			Name = "Premium Required",
+                			Content = ToggleConfig.Name .. "<font color='#FFD700'>You're not a premium user</font>",
+                			Time = 3
+            			})
+            			return
+        			end
+        			Toggle.Value = Value
+        			TweenService:Create(ToggleBox, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Toggle.Value and ToggleConfig.Color or OrionLib.Themes.Default.Divider}):Play()
+        			TweenService:Create(ToggleBox.Stroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Color = Toggle.Value and ToggleConfig.Color or OrionLib.Themes.Default.Stroke}):Play()
+        			TweenService:Create(ToggleBox.Ico, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {ImageTransparency = Toggle.Value and 0 or 1, Size = Toggle.Value and UDim2.new(0, 20, 0, 20) or UDim2.new(0, 8, 0, 8)}):Play()
+        			ToggleConfig.Callback(Toggle.Value)
+    			end
 
-				AddConnection(Click.MouseEnter, function()
-					TweenService:Create(ToggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OrionLib.Themes[OrionLib.SelectedTheme].Second.R * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.G * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.B * 255 + 3)}):Play()
-				end)
+    			Toggle:Set(Toggle.Value)
 
-				AddConnection(Click.MouseLeave, function()
-					TweenService:Create(ToggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Second}):Play()
-				end)
+    			AddConnection(Click.MouseEnter, function()
+        		TweenService:Create(ToggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OrionLib.Themes[OrionLib.SelectedTheme].Second.R * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.G * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.B * 255 + 3)}):Play()
+    		end)
 
-				AddConnection(Click.Activated, function()
-					TweenService:Create(ToggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OrionLib.Themes[OrionLib.SelectedTheme].Second.R * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.G * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.B * 255 + 3)}):Play()
-					SaveCfg(game.GameId)
-					Toggle:Set(not Toggle.Value)
-				end)
+    			AddConnection(Click.MouseLeave, function()
+        			TweenService:Create(ToggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Second}):Play()
+   				end)
 
-				AddConnection(Click.MouseButton1Down, function()
-					TweenService:Create(ToggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OrionLib.Themes[OrionLib.SelectedTheme].Second.R * 255 + 6, OrionLib.Themes[OrionLib.SelectedTheme].Second.G * 255 + 6, OrionLib.Themes[OrionLib.SelectedTheme].Second.B * 255 + 6)}):Play()
-				end)
+    			AddConnection(Click.Activated, function()
+        			TweenService:Create(ToggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OrionLib.Themes[OrionLib.SelectedTheme].Second.R * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.G * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.B * 255 + 3)}):Play()
+        			SaveCfg(game.GameId)
+        			Toggle:Set(not Toggle.Value)
+    			end)
 
-				if ToggleConfig.Flag then
-					OrionLib.Flags[ToggleConfig.Flag] = Toggle
-				end	
-				return Toggle
+    			AddConnection(Click.MouseButton1Down, function()
+        			TweenService:Create(ToggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OrionLib.Themes[OrionLib.SelectedTheme].Second.R * 255 + 6, OrionLib.Themes[OrionLib.SelectedTheme].Second.G * 255 + 6, OrionLib.Themes[OrionLib.SelectedTheme].Second.B * 255 + 6)}):Play()
+    			end)
+
+    			if ToggleConfig.Flag then
+        			OrionLib.Flags[ToggleConfig.Flag] = Toggle
+    			end
+    			return Toggle
 			end
 
 			function ElementFunction:AddSlider(SliderConfig)
