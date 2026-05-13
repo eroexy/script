@@ -1250,8 +1250,8 @@ function OrionLib:MakeWindow(WindowConfig)
 
     			-- Crown icon shown on premium toggles for non-premium users
     			local CrownIcon = SetProps(MakeElement("Image", "rbxassetid://10709818626"), {
-        			Size = UDim2.new(0, 21, 0, 21),
-        			Position = UDim2.new(1, -60, 0.5, 0),
+        			Size = UDim2.new(0, 30, 0, 30),
+        			Position = UDim2.new(1, -70, 0.5, 0),
         			AnchorPoint = Vector2.new(0.5, 0.5),
         			ImageColor3 = Color3.fromRGB(255, 200, 50),
         			ImageTransparency = 0,
