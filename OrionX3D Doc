@@ -63,6 +63,8 @@ PlayerParagraph:Set(87654321) -- update to a different player later via UserId
 
 local Toggle = Tab:AddToggle({
   Name = "Toggle", -- Toggle Title
+  PremiumOnly = true, -- is a prem toggle
+  IsPremium = false, --  check for if user is a prem user
   Default = false, -- starting state
   Color = Color3.fromRGB(9, 99, 195),  -- toggle color (on)
   Flag = "myToggle", -- flag for the toggle (Do NOT override the name with another)
