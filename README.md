@@ -1043,8 +1043,9 @@ function OrionLib:MakeWindow(WindowConfig)
 				return LabelFunction
 			end
 
-			function ElementFunction:AddPlayerParagraph(userId)
+			function ElementFunction:AddPlayerParagraph(userId, description)
 				userId = userId or 0
+				description = description or ""
 			
 				local displayName = "Unknown"
 				local username = "Unknown"
@@ -1059,7 +1060,7 @@ function OrionLib:MakeWindow(WindowConfig)
 				end
 			
 				local ParagraphFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
-				Size = UDim2.new(1, 0, 0, 70),
+				Size = UDim2.new(1, 0, 0, 90),
 				BackgroundTransparency = 0.7,
 				Parent = ItemParent
 				}), {
@@ -1085,6 +1086,15 @@ function OrionLib:MakeWindow(WindowConfig)
 				Position = UDim2.new(0, 70, 0, 35),
 				Font = Enum.Font.GothamSemibold,
 				TextXAlignment = Enum.TextXAlignment.Left
+				}), "TextDark"),
+
+				AddThemeObject(SetProps(MakeElement("Label", description, 12), {
+				Name = "Description",
+				Size = UDim2.new(1, -70, 0, 20),
+				Position = UDim2.new(0, 70, 0, 52),
+				Font = Enum.Font.Gotham,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextWrapped = true
 				}), "TextDark"),
 			
 				AddThemeObject(MakeElement("Stroke"), "Stroke")
