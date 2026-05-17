@@ -1083,7 +1083,7 @@ function OrionLib:MakeWindow(WindowConfig)
 				AddThemeObject(SetProps(MakeElement("Label", description, 13), {
 				Name = "Username",
 				Size = UDim2.new(1, -70, 0, 20),
-				Position = UDim2.new(0, 70, 0, 35),
+				Position = UDim2.new(0, 70, 0, 40),
 				Font = Enum.Font.GothamSemibold,
 				TextXAlignment = Enum.TextXAlignment.Left
 				}), "TextDark"),
