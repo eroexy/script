@@ -1060,7 +1060,7 @@ function OrionLib:MakeWindow(WindowConfig)
 				end
 			
 				local ParagraphFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
-				Size = UDim2.new(1, 0, 0, 90),
+				Size = UDim2.new(1, 0, 0, 70),
 				BackgroundTransparency = 0.7,
 				Parent = ItemParent
 				}), {
@@ -1072,7 +1072,7 @@ function OrionLib:MakeWindow(WindowConfig)
 				Image = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. userId .. "&width=420&height=420&format=png"
 				}),
 			
-				AddThemeObject(SetProps(MakeElement("Label", displayName, 15), {
+				AddThemeObject(SetProps(MakeElement("Label", username, 15), {
 				Name = "DisplayName",
 				Size = UDim2.new(1, -70, 0, 20),
 				Position = UDim2.new(0, 70, 0, 10),
@@ -1080,21 +1080,12 @@ function OrionLib:MakeWindow(WindowConfig)
 				TextXAlignment = Enum.TextXAlignment.Left
 				}), "Text"),
 			
-				AddThemeObject(SetProps(MakeElement("Label", username, 13), {
+				AddThemeObject(SetProps(MakeElement("Label", description, 13), {
 				Name = "Username",
 				Size = UDim2.new(1, -70, 0, 20),
 				Position = UDim2.new(0, 70, 0, 35),
 				Font = Enum.Font.GothamSemibold,
 				TextXAlignment = Enum.TextXAlignment.Left
-				}), "TextDark"),
-
-				AddThemeObject(SetProps(MakeElement("Label", description, 12), {
-				Name = "Description",
-				Size = UDim2.new(1, -70, 0, 20),
-				Position = UDim2.new(0, 70, 0, 52),
-				Font = Enum.Font.Gotham,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				TextWrapped = true
 				}), "TextDark"),
 			
 				AddThemeObject(MakeElement("Stroke"), "Stroke")
@@ -1102,7 +1093,7 @@ function OrionLib:MakeWindow(WindowConfig)
 			
 				local PlayerParagraph = {}
 				
-				function PlayerParagraph:Set(newUserId)
+				function PlayerParagraph:Set(UserId, Description)
 					newUserId = newUserId or 0
 				
 					local dname = "Unknown"
@@ -1117,9 +1108,9 @@ function OrionLib:MakeWindow(WindowConfig)
 						uname = data[1].Username or "Unknown"
 					end
 				
-					ParagraphFrame.DisplayName.Text = dname
+					ParagraphFrame.DisplayName.Text = uname
 					ParagraphFrame.DisplayName.Visible = true
-					ParagraphFrame.Username.Text = uname
+					ParagraphFrame.Username.Text = Description or description or ""
 					ParagraphFrame.Username.Position = UDim2.new(0, 70, 0, 35)
 					ParagraphFrame.Avatar.Image = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. newUserId .. "&width=420&height=420&format=png"
 				end
