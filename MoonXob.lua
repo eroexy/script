@@ -619,6 +619,16 @@ local function GetPlayers(ExcludeLocalPlayer: boolean?)
 
     return PlayerList
 end
+local function GetPlayerDropdownNames(ExcludeLocalPlayer: boolean?)
+    local Names = {}
+
+    for _, Player in GetPlayers(ExcludeLocalPlayer) do
+        table.insert(Names, Player.Name)
+    end
+
+    return Names
+end
+
 local function GetTeams()
     local TeamList = Teams:GetTeams()
 
@@ -4944,7 +4954,7 @@ do
                         end
 
                         local TextValue = Info.FormatDisplayValue and tostring(Info.FormatDisplayValue(Value)) or tostring(Value)
-                        if Dropdown.SpecialType == "Player" and IsDropdownPlayerOffline(Value) then
+                        if (Dropdown.SpecialType == "Player" and IsDropdownPlayerOffline(Value)) or (Info.PlayerDropdown and Dropdown.OfflineSelected and Dropdown.OfflineSelected[tostring(Value)]) then
                             TextValue = "<font color='rgb(255,50,50)'>" .. TextValue .. "</font>"
                         end
 
@@ -5037,6 +5047,7 @@ do
                 Count += 1
 
                 local IsDisabled = table.find(DisabledValues, Value)
+                local PlayerDropdownOffline = Info.PlayerDropdown and Dropdown.OfflineSelected and Dropdown.OfflineSelected[tostring(Value)] == true
                 local Table = {}
                 local ValueImage = GetValueImage(Value)
 
@@ -5077,57 +5088,40 @@ do
                 })
 
                 local OfflinePlayer = Dropdown.SpecialType == "Player" and IsDropdownPlayerOffline(Value)
-
-                local Selected
-                if Info.Multi then
-                    Selected = Dropdown.Value[Value]
-                    if not Selected and Dropdown.SpecialType == "Player" then
-                        for SavedValue, Active in Dropdown.Value do
-                            if Active and SameDropdownPlayer(SavedValue, Value) then
-                                Selected = true
-                                break
-                            end
-                        end
-                    end
-                else
-                    Selected = Dropdown.Value == Value or (Dropdown.SpecialType == "Player" and Dropdown.Value and SameDropdownPlayer(Dropdown.Value, Value))
-                end
-
                 if OfflinePlayer then
                     Button.TextColor3 = Library.Scheme.RedColor
                     Library.Registry[Button].TextColor3 = "RedColor"
-                    Container.BackgroundColor3 = Library.Scheme.DestructiveColor
-                    Library.Registry[Container].BackgroundColor3 = "DestructiveColor"
-
                     if Image then
                         Image.ImageColor3 = Library.Scheme.RedColor
                         Library.Registry[Image].ImageColor3 = "RedColor"
                     end
+                elseif PlayerDropdownOffline then
+                    Button.TextColor3 = Library.Scheme.FontColor
+                    Container.BackgroundColor3 = Library.Scheme.RedColor
                 end
 
+                local Selected
+                if Info.Multi then
+                    Selected = Dropdown.Value[Value]
+                else
+                    Selected = Dropdown.Value == Value or (Dropdown.SpecialType == "Player" and Dropdown.Value and SameDropdownPlayer(Dropdown.Value, Value))
+                end
 
                 function Table:UpdateButton()
                     if Info.Multi then
                         Selected = Dropdown.Value[Value]
-                        if not Selected and Dropdown.SpecialType == "Player" then
-                            for SavedValue, Active in Dropdown.Value do
-                                if Active and SameDropdownPlayer(SavedValue, Value) then
-                                    Selected = true
-                                    break
-                                end
-                            end
-                        end
                     else
                         Selected = Dropdown.Value == Value or (Dropdown.SpecialType == "Player" and Dropdown.Value and SameDropdownPlayer(Dropdown.Value, Value))
                     end
 
-                    if OfflinePlayer and Selected then
+                    if PlayerDropdownOffline and Selected then
+                        Container.BackgroundColor3 = Library.Scheme.RedColor
                         Container.BackgroundTransparency = 0
-                        Button.TextTransparency = IsDisabled and 0.8 or 0
                     else
+                        Container.BackgroundColor3 = Library.Scheme.MainColor
                         Container.BackgroundTransparency = Selected and 0 or 1
-                        Button.TextTransparency = IsDisabled and 0.8 or Selected and 0 or 0.5
                     end
+                    Button.TextTransparency = IsDisabled and 0.8 or Selected and 0 or 0.5
 
                     if Image then
                         Image.ImageTransparency = IsDisabled and 0.8 or Selected and 0 or 0.5
@@ -5140,37 +5134,33 @@ do
 
                         if not (Dropdown:GetActiveValues() == 1 and not Try and not Info.AllowNull) then
                             Selected = Try
-
                             if Info.Multi then
-                                if Dropdown.SpecialType == "Player" then
-                                    for SavedValue, _ in Dropdown.Value do
-                                        if SameDropdownPlayer(SavedValue, Value) then
-                                            Dropdown.Value[SavedValue] = nil
-                                        end
-                                    end
-                                end
-
                                 Dropdown.Value[Value] = Selected and true or nil
                             else
                                 Dropdown.Value = Selected and Value or nil
                             end
 
-                            if Dropdown.SpecialType == "Player" and OfflinePlayer and not Selected then
-                                for Index = #Dropdown.Values, 1, -1 do
-                                    if SameDropdownPlayer(Dropdown.Values[Index], Value) then
-                                        table.remove(Dropdown.Values, Index)
-                                    end
-                                end
-
-                                Dropdown:BuildDropdownList()
-                            else
-                                for _, OtherButton in Buttons do
-                                    OtherButton:UpdateButton()
-                                end
+                            for _, OtherButton in Buttons do
+                                OtherButton:UpdateButton()
                             end
                         end
 
-                        Table:UpdateButton()
+                        if Info.PlayerDropdown and PlayerDropdownOffline and not Selected then
+                            if Dropdown.OfflineSelected then
+                                Dropdown.OfflineSelected[tostring(Value)] = nil
+                            end
+
+                            for i = #Dropdown.Values, 1, -1 do
+                                if tostring(Dropdown.Values[i]) == tostring(Value) then
+                                    table.remove(Dropdown.Values, i)
+                                    break
+                                end
+                            end
+
+                            Dropdown:BuildDropdownList()
+                        else
+                            Table:UpdateButton()
+                        end
                         Dropdown:Display()
 
                         Library:UpdateDependencyBoxes()
@@ -5430,6 +5420,111 @@ do
         Dropdown.DefaultValues = Dropdown.Values
 
         Options[Idx] = Dropdown
+
+        return Dropdown
+    end
+
+
+    function Funcs:AddPlayerDropdown(Idx, Info)
+        Info = Info or {}
+
+        local OriginalCallback = Info.Callback or function() end
+        local OriginalChanged = Info.Changed or function() end
+        local ExcludeLocalPlayer = Info.ExcludeLocalPlayer == true
+
+        Info.Multi = Info.Multi ~= false
+        Info.AllowNull = true
+        Info.PlayerDropdown = true
+        Info.Values = Info.Values or GetPlayerDropdownNames(ExcludeLocalPlayer)
+
+        Info.Callback = function(Value)
+            return OriginalCallback(Value)
+        end
+
+        Info.Changed = function(Value)
+            return OriginalChanged(Value)
+        end
+
+        local Dropdown = Funcs.AddDropdown(self, Idx, Info)
+        Dropdown.Type = "PlayerDropdown"
+        Dropdown.PlayerDropdown = true
+        Dropdown.ExcludeLocalPlayer = ExcludeLocalPlayer
+        Dropdown.OfflineSelected = {}
+        Dropdown.BaseSetValues = Dropdown.SetValues
+
+        local function IsNameOnline(Name)
+            return Players:FindFirstChild(tostring(Name)) ~= nil
+        end
+
+        local function BuildMergedValues(Values)
+            local Merged = {}
+            local Seen = {}
+            local Offline = {}
+
+            for _, Name in Values or GetPlayerDropdownNames(ExcludeLocalPlayer) do
+                Name = tostring(Name)
+                if Name ~= "" and not Seen[Name] then
+                    table.insert(Merged, Name)
+                    Seen[Name] = true
+                end
+            end
+
+            if Dropdown.Value then
+                for Name, Active in Dropdown.Value do
+                    if Active then
+                        Name = tostring(Name)
+                        if not IsNameOnline(Name) then
+                            Offline[Name] = true
+                            if not Seen[Name] then
+                                table.insert(Merged, Name)
+                                Seen[Name] = true
+                            end
+                        end
+                    end
+                end
+            end
+
+            table.sort(Merged, function(A, B)
+                local AOffline = Offline[A] == true
+                local BOffline = Offline[B] == true
+
+                if AOffline ~= BOffline then
+                    return not AOffline
+                end
+
+                return A:lower() < B:lower()
+            end)
+
+            return Merged, Offline
+        end
+
+        function Dropdown:RefreshPlayers(Values)
+            local Merged, Offline = BuildMergedValues(Values)
+            Dropdown.OfflineSelected = Offline
+            Dropdown:BaseSetValues(Merged)
+        end
+
+        function Dropdown:SetValues(Values)
+            Dropdown:RefreshPlayers(Values)
+        end
+
+        function Dropdown:GetSelectedNames()
+            local Selected = {}
+
+            for Name, Active in Dropdown.Value do
+                if Active then
+                    table.insert(Selected, tostring(Name))
+                end
+            end
+
+            table.sort(Selected, function(A, B)
+                return A:lower() < B:lower()
+            end)
+
+            return Selected
+        end
+
+        Dropdown:RefreshPlayers(Info.Values)
 
         return Dropdown
     end
@@ -9633,6 +9728,8 @@ local function OnPlayerChange()
     for _, Dropdown in Options do
         if Dropdown.Type == "Dropdown" and Dropdown.SpecialType == "Player" then
             Dropdown:SetValues(Dropdown.ExcludeLocalPlayer and ExcludedPlayerList or PlayerList)
+        elseif Dropdown.Type == "PlayerDropdown" then
+            Dropdown:RefreshPlayers(GetPlayerDropdownNames(Dropdown.ExcludeLocalPlayer))
         end
     end
 end
@@ -9654,7 +9751,7 @@ Library:GiveSignal(Players.PlayerAdded:Connect(function()
     task.defer(OnPlayerChange)
 end))
 Library:GiveSignal(Players.PlayerRemoving:Connect(function()
-    task.delay(0.05, OnPlayerChange)
+    task.defer(OnPlayerChange)
 end))
 
 Library:GiveSignal(Teams.ChildAdded:Connect(OnTeamChange))
