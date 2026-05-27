@@ -3863,7 +3863,8 @@ do
         table.insert(
             Library.Corners,
             New("UICorner", {
-                CornerRadius = UDim.new(0, Library.CornerRadius / 2),
+                -- moonX edit: slightly rounded square, not a circle/pill.
+                CornerRadius = UDim.new(0, 6),
                 Parent = Checkbox,
             })
         )
@@ -4005,6 +4006,10 @@ do
     end
 
     function Funcs:AddToggle(Idx, Info)
+        -- moonX edit: make normal toggles use the box checkbox style instead of the round pill switch.
+        return Funcs.AddCheckbox(self, Idx, Info)
+
+        -- original switch toggle kept below unreachable on purpose.
         if Library.ForceCheckbox then
             return Funcs.AddCheckbox(self, Idx, Info)
         end
@@ -4064,18 +4069,18 @@ do
             AnchorPoint = Vector2.new(1, 0),
             BackgroundColor3 = "MainColor",
             Position = UDim2.fromScale(1, 0),
-            Size = UDim2.fromOffset(18, 18),
+            Size = UDim2.fromOffset(32, 18),
             Parent = Button,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(0, Library.CornerRadius / 2),
+            CornerRadius = UDim.new(1, 0),
             Parent = Switch,
         })
         New("UIPadding", {
-            PaddingBottom = UDim.new(0, 3),
-            PaddingLeft = UDim.new(0, 3),
-            PaddingRight = UDim.new(0, 3),
-            PaddingTop = UDim.new(0, 3),
+            PaddingBottom = UDim.new(0, 2),
+            PaddingLeft = UDim.new(0, 2),
+            PaddingRight = UDim.new(0, 2),
+            PaddingTop = UDim.new(0, 2),
             Parent = Switch,
         })
         local SwitchStroke = New("UIStroke", {
@@ -4083,15 +4088,15 @@ do
             Parent = Switch,
         })
 
-        local Ball = New("ImageLabel", {
-            BackgroundTransparency = 1,
-            Image = CheckIcon and CheckIcon.Url or "",
-            ImageColor3 = "FontColor",
-            ImageRectOffset = CheckIcon and CheckIcon.ImageRectOffset or Vector2.zero,
-            ImageRectSize = CheckIcon and CheckIcon.ImageRectSize or Vector2.zero,
-            ImageTransparency = Toggle.Value and 0 or 1,
+        local Ball = New("Frame", {
+            BackgroundColor3 = "FontColor",
             Size = UDim2.fromScale(1, 1),
+            SizeConstraint = Enum.SizeConstraint.RelativeYY,
             Parent = Switch,
+        })
+        New("UICorner", {
+            CornerRadius = UDim.new(1, 0),
+            Parent = Ball,
         })
 
         function Toggle:UpdateColors()
@@ -4102,6 +4107,8 @@ do
             if Library.Unloaded then
                 return
             end
+
+            local Offset = Toggle.Value and 1 or 0
 
             Switch.BackgroundTransparency = Toggle.Disabled and 0.75 or 0
             SwitchStroke.Transparency = Toggle.Disabled and 0.75 or 0
@@ -4114,9 +4121,11 @@ do
 
             if Toggle.Disabled then
                 Label.TextTransparency = 0.8
-                Ball.ImageTransparency = Toggle.Value and 0.5 or 1
-                Ball.ImageColor3 = Library:GetDarkerColor(Library.Scheme.FontColor)
-                Library.Registry[Ball].ImageColor3 = function()
+                Ball.AnchorPoint = Vector2.new(Offset, 0)
+                Ball.Position = UDim2.fromScale(Offset, 0)
+
+                Ball.BackgroundColor3 = Library:GetDarkerColor(Library.Scheme.FontColor)
+                Library.Registry[Ball].BackgroundColor3 = function()
                     return Library:GetDarkerColor(Library.Scheme.FontColor)
                 end
 
@@ -4127,11 +4136,12 @@ do
                 TextTransparency = Toggle.Value and 0 or 0.4,
             }):Play()
             TweenService:Create(Ball, Library.TweenInfo, {
-                ImageTransparency = Toggle.Value and 0 or 1,
+                AnchorPoint = Vector2.new(Offset, 0),
+                Position = UDim2.fromScale(Offset, 0),
             }):Play()
 
-            Ball.ImageColor3 = Library.Scheme.FontColor
-            Library.Registry[Ball].ImageColor3 = "FontColor"
+            Ball.BackgroundColor3 = Library.Scheme.FontColor
+            Library.Registry[Ball].BackgroundColor3 = "FontColor"
         end
 
         function Toggle:OnChanged(Func)
@@ -4745,109 +4755,6 @@ do
             Type = "Dropdown",
         }
 
-        local function GetDropdownValueName(Value)
-            if typeof(Value) == "Instance" and Value:IsA("Player") then
-                return Value.Name
-            end
-
-            return tostring(Value)
-        end
-
-        local function GetDropdownValueKey(Value)
-            return GetDropdownValueName(Value)
-        end
-
-        local function GetDropdownFormattedValue(Value, UseListFormatter)
-            local Formatter = UseListFormatter and Info.FormatListValue or Info.FormatDisplayValue
-            local Formatted = Formatter and Formatter(Value) or nil
-
-            if Formatted ~= nil then
-                return tostring(Formatted)
-            end
-
-            if typeof(Value) == "Instance" and Value:IsA("Player") then
-                return Value.Name
-            end
-
-            return tostring(Value)
-        end
-
-        local function GetSelectedPlayerNames()
-            local Names = {}
-
-            if Dropdown.SpecialType ~= "Player" then
-                return Names
-            end
-
-            if Info.Multi then
-                for Value, Active in Dropdown.Value do
-                    if Active then
-                        Names[GetDropdownValueKey(Value)] = true
-                    end
-                end
-            elseif Dropdown.Value then
-                Names[GetDropdownValueKey(Dropdown.Value)] = true
-            end
-
-            return Names
-        end
-
-        local function NormalizePlayerValues(Values)
-            if Dropdown.SpecialType ~= "Player" then
-                return Values
-            end
-
-            local SelectedNames = GetSelectedPlayerNames()
-            local NewValues = {}
-            local OnlineByName = {}
-
-            for _, Value in Values or {} do
-                if typeof(Value) == "Instance" and Value:IsA("Player") then
-                    OnlineByName[Value.Name] = Value
-                    table.insert(NewValues, Value)
-                end
-            end
-
-            if Info.Multi then
-                local NewSelected = {}
-
-                for Name, _ in SelectedNames do
-                    local OnlinePlayer = OnlineByName[Name]
-                    if OnlinePlayer then
-                        NewSelected[OnlinePlayer] = true
-                    else
-                        for OldValue, Active in Dropdown.Value do
-                            if Active and GetDropdownValueKey(OldValue) == Name then
-                                NewSelected[OldValue] = true
-                                table.insert(NewValues, OldValue)
-                                break
-                            end
-                        end
-                    end
-                end
-
-                Dropdown.Value = NewSelected
-            else
-                local Name = Dropdown.Value and GetDropdownValueKey(Dropdown.Value)
-                if Name then
-                    if OnlineByName[Name] then
-                        Dropdown.Value = OnlineByName[Name]
-                    elseif not table.find(NewValues, Dropdown.Value) then
-                        table.insert(NewValues, Dropdown.Value)
-                    end
-                end
-            end
-
-            return NewValues
-        end
-
-        local function IsPlayerOffline(Value)
-            return Dropdown.SpecialType == "Player"
-                and not (typeof(Value) == "Instance" and Value:IsA("Player") and Value.Parent == Players)
-        end
-
-        Dropdown.Values = NormalizePlayerValues(Dropdown.Values)
-
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 0, Dropdown.Text and 39 or 21),
@@ -4911,10 +4818,10 @@ do
         local DisplayButton = New("TextButton", {
             Active = not Dropdown.Disabled,
             BackgroundTransparency = 1,
-            RichText = true,
             Size = UDim2.new(1, 0, 0, 21),
             Text = "---",
             TextSize = 14,
+            RichText = true,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 2,
             Parent = DisplayContainer,
@@ -5029,7 +4936,7 @@ do
                         end
 
                         Str = Str
-                            .. GetDropdownFormattedValue(Value, false)
+                            .. (Info.FormatDisplayValue and tostring(Info.FormatDisplayValue(Value)) or tostring(Value))
                             .. ", "
                     end
                 end
@@ -5037,9 +4944,14 @@ do
                 Str = Str:sub(1, #Str - 2)
             else
                 ValueImage = GetValueImage(Dropdown.Value)
-                Str = Dropdown.Value and GetDropdownFormattedValue(Dropdown.Value, false) or ""
+                Str = Dropdown.Value and tostring(Dropdown.Value) or ""
+
+                if Str ~= "" and Info.FormatDisplayValue then
+                    Str = tostring(Info.FormatDisplayValue(Str))
+                end
             end
 
+            -- moonX edit: don't cut rich text strings because truncating can break <font> tags.
             if #Str > 25 and not Str:find("<") then
                 Str = Str:sub(1, 22) .. "..."
             end
@@ -5078,6 +4990,33 @@ do
             return Dropdown.Value and 1 or 0
         end
 
+        local function IsOfflinePlayerValue(Value)
+            if Dropdown.SpecialType ~= "Player" then
+                return false
+            end
+
+            if typeof(Value) == "Instance" and Value:IsA("Player") then
+                return Players:FindFirstChild(Value.Name) == nil
+            end
+
+            if typeof(Value) == "string" then
+                return Players:FindFirstChild(Value) == nil
+            end
+
+            return false
+        end
+
+        local function SamePlayerValue(A, B)
+            if A == B then
+                return true
+            end
+
+            local AName = typeof(A) == "Instance" and A:IsA("Player") and A.Name or tostring(A)
+            local BName = typeof(B) == "Instance" and B:IsA("Player") and B.Name or tostring(B)
+
+            return AName == BName
+        end
+
         local Buttons = {}
         function Dropdown:BuildDropdownList()
             local Values = Dropdown.Values
@@ -5090,8 +5029,8 @@ do
 
             local Count = 0
             for _, Value in Values do
-                local FormattedValue = GetDropdownFormattedValue(Value, true)
-                if SearchBox and not FormattedValue:gsub("<[^>]->", ""):lower():match(SearchBox.Text:lower()) then
+                local FormattedValue = tostring(Info.FormatListValue and Info.FormatListValue(Value) or Value)
+                if SearchBox and not FormattedValue:lower():match(SearchBox.Text:lower()) then
                     continue
                 end
 
@@ -5122,11 +5061,11 @@ do
 
                 local Button = New("TextButton", {
                     BackgroundTransparency = 1,
-                    RichText = true,
                     Size = ValueImage and UDim2.new(1, -18, 0, 21) or UDim2.new(1, 0, 0, 21),
                     Position = ValueImage and UDim2.fromOffset(18, 0) or UDim2.fromOffset(0, 0),
                     Text = FormattedValue,
                     TextSize = 14,
+                    RichText = true,
                     TextTransparency = 0.5,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     Parent = Container,
@@ -5151,16 +5090,12 @@ do
                         Selected = Dropdown.Value == Value
                     end
 
-                    Container.BackgroundTransparency = Selected and 0 or 1
-                    Button.TextTransparency = IsDisabled and 0.8 or Selected and 0 or 0.5
+                    local Offline = IsOfflinePlayerValue(Value)
 
-                    if IsPlayerOffline(Value) then
-                        Button.TextColor3 = Library.Scheme.RedColor
-                        Library.Registry[Button].TextColor3 = "RedColor"
-                    else
-                        Button.TextColor3 = Library.Scheme.FontColor
-                        Library.Registry[Button].TextColor3 = "FontColor"
-                    end
+                    Container.BackgroundTransparency = Selected and 0 or 1
+                    Container.BackgroundColor3 = Offline and Library.Scheme.RedColor or Library.Scheme.MainColor
+                    Button.TextColor3 = Offline and Library.Scheme.RedColor or Library.Scheme.FontColor
+                    Button.TextTransparency = IsDisabled and 0.8 or Selected and 0 or 0.5
 
                     if Image then
                         Image.ImageTransparency = IsDisabled and 0.8 or Selected and 0 or 0.5
@@ -5210,11 +5145,15 @@ do
                     if typeof(Active) ~= "boolean" then
                         Table[Active] = true
                     elseif Active then
-                        for _, Existing in Dropdown.Values do
-                            if Existing == Val or GetDropdownValueKey(Existing) == GetDropdownValueKey(Val) then
-                                Table[Existing] = true
+                        local FoundValue = nil
+                        for _, ExistingValue in Dropdown.Values do
+                            if SamePlayerValue(ExistingValue, Val) then
+                                FoundValue = ExistingValue
                                 break
                             end
+                        end
+                        if FoundValue or Dropdown.SpecialType ~= "Player" then
+                            Table[FoundValue or Val] = true
                         end
                     end
                 end
@@ -5222,9 +5161,9 @@ do
                 Dropdown.Value = Table
             else
                 local FoundValue = nil
-                for _, Existing in Dropdown.Values do
-                    if Existing == Value or GetDropdownValueKey(Existing) == GetDropdownValueKey(Value) then
-                        FoundValue = Existing
+                for _, ExistingValue in Dropdown.Values do
+                    if SamePlayerValue(ExistingValue, Value) then
+                        FoundValue = ExistingValue
                         break
                     end
                 end
@@ -5233,6 +5172,8 @@ do
                     Dropdown.Value = FoundValue
                 elseif not Value then
                     Dropdown.Value = nil
+                elseif Dropdown.SpecialType ~= "Player" and table.find(Dropdown.Values, Value) then
+                    Dropdown.Value = Value
                 end
             end
 
@@ -5249,7 +5190,55 @@ do
         end
 
         function Dropdown:SetValues(Values)
-            Dropdown.Values = NormalizePlayerValues(Values)
+            -- moonX edit: player dropdowns keep selected people when they leave.
+            -- If they rejoin, swap the saved old Player object to the new live Player object.
+            if Dropdown.SpecialType == "Player" then
+                local NewValues = {}
+                local UsedNames = {}
+
+                for _, PlayerValue in Values do
+                    table.insert(NewValues, PlayerValue)
+                    if typeof(PlayerValue) == "Instance" and PlayerValue:IsA("Player") then
+                        UsedNames[PlayerValue.Name] = PlayerValue
+                    else
+                        UsedNames[tostring(PlayerValue)] = PlayerValue
+                    end
+                end
+
+                if Info.Multi then
+                    local NewSelected = {}
+
+                    for OldValue, Active in Dropdown.Value do
+                        if Active then
+                            local OldName = typeof(OldValue) == "Instance" and OldValue:IsA("Player") and OldValue.Name or tostring(OldValue)
+                            local LiveValue = UsedNames[OldName]
+
+                            if LiveValue then
+                                NewSelected[LiveValue] = true
+                            else
+                                NewSelected[OldValue] = true
+                                table.insert(NewValues, OldValue)
+                            end
+                        end
+                    end
+
+                    Dropdown.Value = NewSelected
+                elseif Dropdown.Value then
+                    local OldName = typeof(Dropdown.Value) == "Instance" and Dropdown.Value:IsA("Player") and Dropdown.Value.Name or tostring(Dropdown.Value)
+                    local LiveValue = UsedNames[OldName]
+
+                    if LiveValue then
+                        Dropdown.Value = LiveValue
+                    else
+                        table.insert(NewValues, Dropdown.Value)
+                    end
+                end
+
+                Dropdown.Values = NewValues
+            else
+                Dropdown.Values = Values
+            end
+
             Dropdown:BuildDropdownList()
         end
 
@@ -9619,9 +9608,7 @@ local function OnTeamChange()
 end
 
 Library:GiveSignal(Players.PlayerAdded:Connect(OnPlayerChange))
-Library:GiveSignal(Players.PlayerRemoving:Connect(function()
-    task.defer(OnPlayerChange)
-end))
+Library:GiveSignal(Players.PlayerRemoving:Connect(OnPlayerChange))
 
 Library:GiveSignal(Teams.ChildAdded:Connect(OnTeamChange))
 Library:GiveSignal(Teams.ChildRemoved:Connect(OnTeamChange))
