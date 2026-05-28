@@ -623,7 +623,7 @@ local function GetPlayerDropdownNames(ExcludeLocalPlayer: boolean?)
     local Names = {}
 
     for _, Player in GetPlayers(ExcludeLocalPlayer) do
-        table.insert(Names, Player.Name)
+        table.insert(Names, Player.DisplayName)
     end
 
     return Names
