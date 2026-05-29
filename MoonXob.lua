@@ -657,17 +657,6 @@ local function GetLivePlayerByName(Name)
     end
 end
 
-local function GetPlayerDropdownDisplay(Value)
-    local Name = GetPlayerNameFromValue(Value)
-    local Player = GetLivePlayerByName(Name)
-
-    if Player then
-        return Player.DisplayName .. " (@" .. Player.Name .. ")"
-    end
-
-    return tostring(Value)
-end
-
 local function IsDropdownPlayerOffline(Value)
     if not (typeof(Value) == "Instance" and Value:IsA("Player")) then
         return false
@@ -5443,14 +5432,47 @@ do
 
         local OriginalCallback = Info.Callback or function() end
         local OriginalChanged = Info.Changed or function() end
+        local OriginalFormatListValue = Info.FormatListValue
+        local OriginalFormatDisplayValue = Info.FormatDisplayValue
         local ExcludeLocalPlayer = Info.ExcludeLocalPlayer == true
+
+        local function GetDisplayFromName(Value)
+            local Name = tostring(Value or "")
+            local Player = GetLivePlayerByName(Name)
+
+            if Player then
+                return Player.DisplayName
+            end
+
+            for _, OtherPlayer in Players:GetPlayers() do
+                if OtherPlayer.DisplayName == Name then
+                    return OtherPlayer.DisplayName
+                end
+            end
+
+            return Name
+        end
 
         Info.Multi = Info.Multi ~= false
         Info.AllowNull = true
         Info.PlayerDropdown = true
         Info.Values = Info.Values or GetPlayerDropdownNames(ExcludeLocalPlayer)
-        Info.FormatListValue = Info.FormatListValue or GetPlayerDropdownDisplay
-        Info.FormatDisplayValue = Info.FormatDisplayValue or GetPlayerDropdownDisplay
+
+        Info.FormatListValue = function(Value)
+            if OriginalFormatListValue then
+                return OriginalFormatListValue(Value)
+            end
+
+            return GetDisplayFromName(Value)
+        end
+
+        Info.FormatDisplayValue = function(Value)
+            if OriginalFormatDisplayValue then
+                return OriginalFormatDisplayValue(Value)
+            end
+
+            return GetDisplayFromName(Value)
+        end
 
         Info.Callback = function(Value)
             return OriginalCallback(Value)
