@@ -8979,11 +8979,23 @@ function Library:CreateWindow(WindowInfo)
         elseif not Library.Toggled then
             TooltipLabel.Visible = false
 
+            if CurrentMenu then
+                CurrentMenu:Close()
+            end
+
             for _, Option in Library.Options do
                 if Option.Type == "ColorPicker" then
-                    Option.ColorMenu:Close()
-                    Option.ContextMenu:Close()
-                elseif Option.Type == "Dropdown" or Option.Type == "KeyPicker" then
+                    if Option.ColorMenu then
+                        Option.ColorMenu:Close()
+                    end
+                    if Option.ContextMenu then
+                        Option.ContextMenu:Close()
+                    end
+                elseif Option.Type == "Dropdown" or Option.Type == "PlayerDropdown" or Option.Type == "KeyPicker" then
+                    if Option.Menu then
+                        Option.Menu:Close()
+                    end
+                elseif Option.Menu then
                     Option.Menu:Close()
                 end
             end
