@@ -27,6 +27,7 @@ local Buttons = {}
 local Toggles = {}
 local Options = {}
 local Tooltips = {}
+local PlayerDropdowns = {}
 
 local BaseURL = "https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/"
 local CustomImageManager = {}
@@ -199,6 +200,7 @@ local Library = {
     Buttons = Buttons,
     Toggles = Toggles,
     Options = Options,
+    PlayerDropdowns = PlayerDropdowns,
 
     NotifySide = "Right",
     ShowCustomCursor = true,
@@ -623,7 +625,7 @@ local function GetPlayerDropdownNames(ExcludeLocalPlayer: boolean?)
     local Names = {}
 
     for _, Player in GetPlayers(ExcludeLocalPlayer) do
-        table.insert(Names, Player.DisplayName)
+        table.insert(Names, Player.Name)
     end
 
     return Names
@@ -5452,8 +5454,27 @@ do
         Dropdown.OfflineSelected = {}
         Dropdown.BaseSetValues = Dropdown.SetValues
 
+        table.insert(PlayerDropdowns, Dropdown)
+
+        local function GetOnlinePlayerFromValue(Value)
+            local Text = tostring(Value)
+            for _, Player in Players:GetPlayers() do
+                if Player.Name == Text or Player.DisplayName == Text then
+                    return Player
+                end
+            end
+        end
+
         local function IsNameOnline(Name)
-            return Players:FindFirstChild(tostring(Name)) ~= nil
+            return GetOnlinePlayerFromValue(Name) ~= nil
+        end
+
+        local function AddName(List, Seen, Name)
+            Name = tostring(Name or "")
+            if Name ~= "" and not Seen[Name] then
+                table.insert(List, Name)
+                Seen[Name] = true
+            end
         end
 
         local function BuildMergedValues(Values)
@@ -5462,11 +5483,7 @@ do
             local Offline = {}
 
             for _, Name in Values or GetPlayerDropdownNames(ExcludeLocalPlayer) do
-                Name = tostring(Name)
-                if Name ~= "" and not Seen[Name] then
-                    table.insert(Merged, Name)
-                    Seen[Name] = true
-                end
+                AddName(Merged, Seen, Name)
             end
 
             if Dropdown.Value then
@@ -5475,10 +5492,7 @@ do
                         Name = tostring(Name)
                         if not IsNameOnline(Name) then
                             Offline[Name] = true
-                            if not Seen[Name] then
-                                table.insert(Merged, Name)
-                                Seen[Name] = true
-                            end
+                            AddName(Merged, Seen, Name)
                         end
                     end
                 end
@@ -5499,7 +5513,9 @@ do
         end
 
         function Dropdown:RefreshPlayers(Values)
-            local Merged, Offline = BuildMergedValues(Values)
+            local LiveNames = Values or GetPlayerDropdownNames(Dropdown.ExcludeLocalPlayer)
+            local Merged, Offline = BuildMergedValues(LiveNames)
+
             Dropdown.OfflineSelected = Offline
             Dropdown:BaseSetValues(Merged)
         end
@@ -5524,7 +5540,16 @@ do
             return Selected
         end
 
-        Dropdown:RefreshPlayers(Info.Values)
+        function Dropdown:DestroyPlayerRefresh()
+            for i = #PlayerDropdowns, 1, -1 do
+                if PlayerDropdowns[i] == Dropdown then
+                    table.remove(PlayerDropdowns, i)
+                    break
+                end
+            end
+        end
+
+        Dropdown:RefreshPlayers()
 
         return Dropdown
     end
@@ -9725,11 +9750,20 @@ local function OnPlayerChange()
     end
 
     local PlayerList, ExcludedPlayerList = GetPlayers(), GetPlayers(true)
+    local UpdatedPlayerDropdowns = {}
+
     for _, Dropdown in Options do
         if Dropdown.Type == "Dropdown" and Dropdown.SpecialType == "Player" then
             Dropdown:SetValues(Dropdown.ExcludeLocalPlayer and ExcludedPlayerList or PlayerList)
         elseif Dropdown.Type == "PlayerDropdown" then
-            Dropdown:RefreshPlayers(GetPlayerDropdownNames(Dropdown.ExcludeLocalPlayer))
+            Dropdown:RefreshPlayers()
+            UpdatedPlayerDropdowns[Dropdown] = true
+        end
+    end
+
+    for _, Dropdown in PlayerDropdowns do
+        if Dropdown and not UpdatedPlayerDropdowns[Dropdown] then
+            Dropdown:RefreshPlayers()
         end
     end
 end
@@ -9747,12 +9781,14 @@ local function OnTeamChange()
     end
 end
 
-Library:GiveSignal(Players.PlayerAdded:Connect(function()
+local function QueuePlayerDropdownRefresh()
+    OnPlayerChange()
     task.defer(OnPlayerChange)
-end))
-Library:GiveSignal(Players.PlayerRemoving:Connect(function()
-    task.defer(OnPlayerChange)
-end))
+    task.delay(0.25, OnPlayerChange)
+end
+
+Library:GiveSignal(Players.PlayerAdded:Connect(QueuePlayerDropdownRefresh))
+Library:GiveSignal(Players.PlayerRemoving:Connect(QueuePlayerDropdownRefresh))
 
 Library:GiveSignal(Teams.ChildAdded:Connect(OnTeamChange))
 Library:GiveSignal(Teams.ChildRemoved:Connect(OnTeamChange))
