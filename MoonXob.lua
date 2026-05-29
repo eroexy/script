@@ -657,6 +657,17 @@ local function GetLivePlayerByName(Name)
     end
 end
 
+local function GetPlayerDropdownDisplay(Value)
+    local Name = GetPlayerNameFromValue(Value)
+    local Player = GetLivePlayerByName(Name)
+
+    if Player then
+        return Player.DisplayName .. " (@" .. Player.Name .. ")"
+    end
+
+    return tostring(Value)
+end
+
 local function IsDropdownPlayerOffline(Value)
     if not (typeof(Value) == "Instance" and Value:IsA("Player")) then
         return false
@@ -5438,6 +5449,8 @@ do
         Info.AllowNull = true
         Info.PlayerDropdown = true
         Info.Values = Info.Values or GetPlayerDropdownNames(ExcludeLocalPlayer)
+        Info.FormatListValue = Info.FormatListValue or GetPlayerDropdownDisplay
+        Info.FormatDisplayValue = Info.FormatDisplayValue or GetPlayerDropdownDisplay
 
         Info.Callback = function(Value)
             return OriginalCallback(Value)
