@@ -4986,7 +4986,7 @@ do
                     Str = tostring(Info.FormatDisplayValue(Str))
                 end
 
-                if Str ~= "" and Dropdown.SpecialType == "Player" and IsDropdownPlayerOffline(Dropdown.Value) then
+                if Str ~= "" and ((Dropdown.SpecialType == "Player" and IsDropdownPlayerOffline(Dropdown.Value)) or (Info.PlayerDropdown and Dropdown.OfflineSelected and Dropdown.OfflineSelected[tostring(Dropdown.Value)])) then
                     Str = "<font color='rgb(255,50,50)'>" .. Str .. "</font>"
                 end
             end
@@ -5432,46 +5432,46 @@ do
 
         local OriginalCallback = Info.Callback or function() end
         local OriginalChanged = Info.Changed or function() end
-        local OriginalFormatListValue = Info.FormatListValue
-        local OriginalFormatDisplayValue = Info.FormatDisplayValue
         local ExcludeLocalPlayer = Info.ExcludeLocalPlayer == true
-
-        local function GetDisplayFromName(Value)
-            local Name = tostring(Value or "")
-            local Player = GetLivePlayerByName(Name)
-
-            if Player then
-                return Player.DisplayName
-            end
-
-            for _, OtherPlayer in Players:GetPlayers() do
-                if OtherPlayer.DisplayName == Name then
-                    return OtherPlayer.DisplayName
-                end
-            end
-
-            return Name
-        end
 
         Info.Multi = Info.Multi ~= false
         Info.AllowNull = true
         Info.PlayerDropdown = true
         Info.Values = Info.Values or GetPlayerDropdownNames(ExcludeLocalPlayer)
 
-        Info.FormatListValue = function(Value)
-            if OriginalFormatListValue then
-                return OriginalFormatListValue(Value)
+        local OldFormatListValue = Info.FormatListValue
+        local OldFormatDisplayValue = Info.FormatDisplayValue
+        local function FormatPlayerDisplay(Value)
+            local Name = tostring(Value or "")
+            local LivePlayer = Players:FindFirstChild(Name)
+
+            if LivePlayer then
+                return LivePlayer.DisplayName
             end
 
-            return GetDisplayFromName(Value)
+            for _, Player in Players:GetPlayers() do
+                if Player.Name == Name then
+                    return Player.DisplayName
+                end
+            end
+
+            return Name
+        end
+
+        Info.FormatListValue = function(Value)
+            if OldFormatListValue then
+                return OldFormatListValue(Value)
+            end
+
+            return FormatPlayerDisplay(Value)
         end
 
         Info.FormatDisplayValue = function(Value)
-            if OriginalFormatDisplayValue then
-                return OriginalFormatDisplayValue(Value)
+            if OldFormatDisplayValue then
+                return OldFormatDisplayValue(Value)
             end
 
-            return GetDisplayFromName(Value)
+            return FormatPlayerDisplay(Value)
         end
 
         Info.Callback = function(Value)
@@ -5494,7 +5494,7 @@ do
         local function GetOnlinePlayerFromValue(Value)
             local Text = tostring(Value)
             for _, Player in Players:GetPlayers() do
-                if Player.Name == Text or Player.DisplayName == Text then
+                if Player.Name == Text then
                     return Player
                 end
             end
@@ -8888,6 +8888,47 @@ function Library:CreateWindow(WindowInfo)
         return Dialog
     end
 
+    local WindowTransparencyCache = {}
+    local WindowTransparencyProps = {
+        "BackgroundTransparency",
+        "TextTransparency",
+        "TextStrokeTransparency",
+        "ImageTransparency",
+        "ScrollBarImageTransparency",
+        "Transparency",
+    }
+
+    local function SetWindowTransparency(Transparent)
+        if not MainFrame then
+            return
+        end
+
+        local Objects = { MainFrame }
+        for _, Object in MainFrame:GetDescendants() do
+            table.insert(Objects, Object)
+        end
+
+        for _, Object in Objects do
+            local Cache = WindowTransparencyCache[Object]
+
+            if not Cache then
+                Cache = {}
+                for _, Prop in WindowTransparencyProps do
+                    pcall(function()
+                        Cache[Prop] = Object[Prop]
+                    end)
+                end
+                WindowTransparencyCache[Object] = Cache
+            end
+
+            for Prop, OldValue in Cache do
+                pcall(function()
+                    Object[Prop] = Transparent and 1 or OldValue
+                end)
+            end
+        end
+    end
+
     function Window:Toggle(Value: boolean?)
         if Library.ActiveLoading then
             if Value == true then
@@ -8905,7 +8946,13 @@ function Library:CreateWindow(WindowInfo)
             Library.Toggled = not Library.Toggled
         end
 
-        MainFrame.Visible = Library.Toggled
+        if Library.Toggled then
+            MainFrame.Visible = true
+            SetWindowTransparency(false)
+        else
+            SetWindowTransparency(true)
+            MainFrame.Visible = false
+        end
 
         if WindowInfo.UnlockMouseWhileOpen then
             ModalElement.Modal = Library.Toggled
@@ -9816,10 +9863,20 @@ local function OnTeamChange()
     end
 end
 
+local PlayerDropdownRefreshQueued = false
 local function QueuePlayerDropdownRefresh()
-    OnPlayerChange()
-    task.defer(OnPlayerChange)
-    task.delay(0.25, OnPlayerChange)
+    if PlayerDropdownRefreshQueued then
+        return
+    end
+
+    PlayerDropdownRefreshQueued = true
+    task.defer(function()
+        PlayerDropdownRefreshQueued = false
+        OnPlayerChange()
+        task.defer(OnPlayerChange)
+        task.delay(0.25, OnPlayerChange)
+        task.delay(0.75, OnPlayerChange)
+    end)
 end
 
 Library:GiveSignal(Players.PlayerAdded:Connect(QueuePlayerDropdownRefresh))
