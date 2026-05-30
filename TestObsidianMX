@@ -1566,6 +1566,14 @@ local function RegisterConfigElement(Idx, Element)
     Library.ConfigElements[tostring(Idx)] = Element
 end
 
+local function SaveConfigSoon()
+    if Library.Unloaded then
+        return
+    end
+
+    Library:SaveConfig()
+end
+
 function Library:SaveConfig()
     if Library.Unloaded or Library.ConfigSaving then
         return false
@@ -1601,12 +1609,6 @@ function Library:SaveConfig()
     return Success
 end
 
-task.spawn(function()
-    while not Library.Unloaded do
-        task.wait(15)
-        Library:SaveConfig()
-    end
-end)
 
 function Library:MakeDraggable(UI: GuiObject, DragFrame: GuiObject, IgnoreToggled: boolean?, IsMainWindow: boolean?)
     local StartPos
@@ -4174,6 +4176,9 @@ do
             Library:UpdateDependencyBoxes()
             Library:SafeCallback(Toggle.Callback, Toggle.Value)
             Library:SafeCallback(Toggle.Changed, Toggle.Value)
+            if Toggle.Save == true then
+                SaveConfigSoon()
+            end
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -4392,6 +4397,9 @@ do
             Library:UpdateDependencyBoxes()
             Library:SafeCallback(Toggle.Callback, Toggle.Value)
             Library:SafeCallback(Toggle.Changed, Toggle.Value)
+            if Toggle.Save == true then
+                SaveConfigSoon()
+            end
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -4600,6 +4608,9 @@ do
             if not Input.Disabled then
                 Library:SafeCallback(Input.Callback, Input.Value)
                 Library:SafeCallback(Input.Changed, Input.Value)
+                if Input.Save == true then
+                    SaveConfigSoon()
+                end
             end
         end
 
@@ -4670,6 +4681,9 @@ do
             if not Library.Unloaded and not Input.Disabled then
                 Library:SafeCallback(Input.Callback, Input.Value)
                 Library:SafeCallback(Input.Changed, Input.Value)
+                if Input.Save == true then
+                    SaveConfigSoon()
+                end
             end
         end)
 
@@ -4873,6 +4887,9 @@ do
 
             Library:SafeCallback(Slider.Callback, Slider.Value)
             Library:SafeCallback(Slider.Changed, Slider.Value)
+            if Slider.Save == true then
+                SaveConfigSoon()
+            end
         end
 
         function Slider:SetDisabled(Disabled: boolean)
@@ -5422,6 +5439,9 @@ do
                         Library:UpdateDependencyBoxes()
                         Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                         Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                        if Dropdown.Save == true then
+                            SaveConfigSoon()
+                        end
                     end)
                 end
 
@@ -5480,6 +5500,9 @@ do
                 Library:UpdateDependencyBoxes()
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                if Dropdown.Save == true then
+                    SaveConfigSoon()
+                end
             end
         end
 
@@ -5697,6 +5720,9 @@ do
             if not Library.Unloaded and not Dropdown.Disabled then
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                if Dropdown.Save == true then
+                    SaveConfigSoon()
+                end
             end
         end)
 
@@ -5899,6 +5925,9 @@ do
                 Library:UpdateDependencyBoxes()
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                if Dropdown.Save == true then
+                    SaveConfigSoon()
+                end
             end
         end
 
