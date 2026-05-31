@@ -5642,14 +5642,23 @@ do
             Label.Visible = not not Text
         end
 
+        local LastDropdownToggle = 0
         local ToggleDropdown = function()
             if Dropdown.Disabled then
                 return
             end
 
+            local Now = os.clock()
+            if Now - LastDropdownToggle < 0.08 then
+                return
+            end
+            LastDropdownToggle = Now
+
             MenuTable:Toggle()
         end
 
+        DisplayContainer.Activated:Connect(ToggleDropdown)
+        DisplayButton.Activated:Connect(ToggleDropdown)
         DisplayContainer.MouseButton1Click:Connect(ToggleDropdown)
         DisplayButton.MouseButton1Click:Connect(ToggleDropdown)
 
