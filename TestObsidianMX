@@ -4005,10 +4005,6 @@ do
     end
 
     function Funcs:AddToggle(Idx, Info)
-        if Library.ForceCheckbox then
-            return Funcs.AddCheckbox(self, Idx, Info)
-        end
-
         Info = Library:Validate(Info, Templates.Toggle)
 
         local Groupbox = self
@@ -4030,14 +4026,14 @@ do
             Visible = Info.Visible,
             Addons = {},
 
-            Variant = "Switch",
+            Variant = "Box",
             Type = "Toggle",
         }
 
         local Button = New("TextButton", {
             Active = not Toggle.Disabled,
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 18),
+            Size = UDim2.new(1, 0, 0, 22),
             Text = "",
             Visible = Toggle.Visible,
             Parent = Container,
@@ -4045,7 +4041,7 @@ do
 
         local Label = New("TextLabel", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, -40, 1, 0),
+            Size = UDim2.new(1, -34, 1, 0),
             Text = Toggle.Text,
             TextSize = 14,
             TextTransparency = 0.4,
@@ -4060,38 +4056,36 @@ do
             Parent = Label,
         })
 
-        local Switch = New("Frame", {
-            AnchorPoint = Vector2.new(1, 0),
+        local Box = New("Frame", {
+            AnchorPoint = Vector2.new(1, 0.5),
             BackgroundColor3 = "MainColor",
-            Position = UDim2.fromScale(1, 0),
-            Size = UDim2.fromOffset(32, 18),
+            Position = UDim2.fromScale(1, 0.5),
+            Size = UDim2.fromOffset(18, 18),
             Parent = Button,
         })
-        New("UICorner", {
-            CornerRadius = UDim.new(1, 0),
-            Parent = Switch,
-        })
-        New("UIPadding", {
-            PaddingBottom = UDim.new(0, 2),
-            PaddingLeft = UDim.new(0, 2),
-            PaddingRight = UDim.new(0, 2),
-            PaddingTop = UDim.new(0, 2),
-            Parent = Switch,
-        })
-        local SwitchStroke = New("UIStroke", {
+        table.insert(
+            Library.Corners,
+            New("UICorner", {
+                CornerRadius = UDim.new(0, math.max(3, Library.CornerRadius / 2)),
+                Parent = Box,
+            })
+        )
+
+        local BoxStroke = New("UIStroke", {
             Color = "OutlineColor",
-            Parent = Switch,
+            Thickness = 1,
+            Parent = Box,
         })
 
-        local Ball = New("Frame", {
-            BackgroundColor3 = "FontColor",
-            Size = UDim2.fromScale(1, 1),
-            SizeConstraint = Enum.SizeConstraint.RelativeYY,
-            Parent = Switch,
-        })
-        New("UICorner", {
-            CornerRadius = UDim.new(1, 0),
-            Parent = Ball,
+        local CheckImage = New("ImageLabel", {
+            Image = CheckIcon and CheckIcon.Url or "",
+            ImageColor3 = "FontColor",
+            ImageRectOffset = CheckIcon and CheckIcon.ImageRectOffset or Vector2.zero,
+            ImageRectSize = CheckIcon and CheckIcon.ImageRectSize or Vector2.zero,
+            ImageTransparency = 1,
+            Position = UDim2.fromOffset(3, 3),
+            Size = UDim2.new(1, -6, 1, -6),
+            Parent = Box,
         })
 
         function Toggle:UpdateColors()
@@ -4103,40 +4097,37 @@ do
                 return
             end
 
-            local Offset = Toggle.Value and 1 or 0
-
-            Switch.BackgroundTransparency = Toggle.Disabled and 0.75 or 0
-            SwitchStroke.Transparency = Toggle.Disabled and 0.75 or 0
-
-            Switch.BackgroundColor3 = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.MainColor
-            SwitchStroke.Color = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.OutlineColor
-
-            Library.Registry[Switch].BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
-            Library.Registry[SwitchStroke].Color = Toggle.Value and "AccentColor" or "OutlineColor"
+            BoxStroke.Transparency = Toggle.Disabled and 0.5 or 0
 
             if Toggle.Disabled then
-                Label.TextTransparency = 0.8
-                Ball.AnchorPoint = Vector2.new(Offset, 0)
-                Ball.Position = UDim2.fromScale(Offset, 0)
+                TweenService:Create(Label, Library.TweenInfo, {
+                    TextTransparency = 0.8,
+                }):Play()
+                TweenService:Create(CheckImage, Library.TweenInfo, {
+                    ImageTransparency = Toggle.Value and 0.8 or 1,
+                }):Play()
 
-                Ball.BackgroundColor3 = Library:GetDarkerColor(Library.Scheme.FontColor)
-                Library.Registry[Ball].BackgroundColor3 = function()
-                    return Library:GetDarkerColor(Library.Scheme.FontColor)
-                end
-
+                Box.BackgroundColor3 = Library.Scheme.BackgroundColor
+                Library.Registry[Box].BackgroundColor3 = "BackgroundColor"
+                BoxStroke.Color = Library.Scheme.OutlineColor
+                Library.Registry[BoxStroke].Color = "OutlineColor"
                 return
             end
 
             TweenService:Create(Label, Library.TweenInfo, {
                 TextTransparency = Toggle.Value and 0 or 0.4,
             }):Play()
-            TweenService:Create(Ball, Library.TweenInfo, {
-                AnchorPoint = Vector2.new(Offset, 0),
-                Position = UDim2.fromScale(Offset, 0),
+            TweenService:Create(CheckImage, Library.TweenInfo, {
+                ImageTransparency = Toggle.Value and 0 or 1,
+                Size = Toggle.Value and UDim2.new(1, -6, 1, -6) or UDim2.new(1, -12, 1, -12),
+                Position = Toggle.Value and UDim2.fromOffset(3, 3) or UDim2.fromOffset(6, 6),
             }):Play()
 
-            Ball.BackgroundColor3 = Library.Scheme.FontColor
-            Library.Registry[Ball].BackgroundColor3 = "FontColor"
+            Box.BackgroundColor3 = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.MainColor
+            Library.Registry[Box].BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
+
+            BoxStroke.Color = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.OutlineColor
+            Library.Registry[BoxStroke].Color = Toggle.Value and "AccentColor" or "OutlineColor"
         end
 
         function Toggle:OnChanged(Func)
@@ -4192,7 +4183,7 @@ do
             Label.Text = Text
         end
 
-        Button.MouseButton1Click:Connect(function()
+        Button.Activated:Connect(function()
             if Toggle.Disabled then
                 return
             end
