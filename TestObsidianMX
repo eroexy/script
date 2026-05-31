@@ -27,6 +27,7 @@ local Buttons = {}
 local Toggles = {}
 local Options = {}
 local Tooltips = {}
+local PlayerDropdowns = {}
 
 local BaseURL = "https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/"
 local CustomImageManager = {}
@@ -199,6 +200,7 @@ local Library = {
     Buttons = Buttons,
     Toggles = Toggles,
     Options = Options,
+    PlayerDropdowns = PlayerDropdowns,
 
     NotifySide = "Right",
     ShowCustomCursor = true,
@@ -375,6 +377,7 @@ local Templates = {
         Changed = function() end,
 
         Risky = false,
+        Save = false,
         Disabled = false,
         Visible = true,
     },
@@ -392,6 +395,7 @@ local Templates = {
         Callback = function() end,
         Changed = function() end,
         VerifyValue = nil,
+        Save = false,
 
         Disabled = false,
         Visible = true,
@@ -408,6 +412,7 @@ local Templates = {
 
         Callback = function() end,
         Changed = function() end,
+        Save = false,
 
         Disabled = false,
         Visible = true,
@@ -422,6 +427,7 @@ local Templates = {
 
         Callback = function() end,
         Changed = function() end,
+        Save = false,
 
         Disabled = false,
         Visible = true,
@@ -619,6 +625,16 @@ local function GetPlayers(ExcludeLocalPlayer: boolean?)
 
     return PlayerList
 end
+local function GetPlayerDropdownNames(ExcludeLocalPlayer: boolean?)
+    local Names = {}
+
+    for _, Player in GetPlayers(ExcludeLocalPlayer) do
+        table.insert(Names, Player.Name)
+    end
+
+    return Names
+end
+
 local function GetTeams()
     local TeamList = Teams:GetTeams()
 
@@ -627,6 +643,45 @@ local function GetTeams()
     end)
 
     return TeamList
+end
+
+local function GetPlayerNameFromValue(Value)
+    if typeof(Value) == "Instance" and Value:IsA("Player") then
+        return Value.Name
+    end
+
+    return tostring(Value)
+end
+
+local function GetLivePlayerByName(Name)
+    for _, Player in Players:GetPlayers() do
+        if Player.Name == Name then
+            return Player
+        end
+    end
+end
+
+local function GetPlayerDropdownDisplay(Value)
+    local Name = GetPlayerNameFromValue(Value)
+    local Player = GetLivePlayerByName(Name)
+
+    if Player then
+        return Player.DisplayName .. " (@" .. Player.Name .. ")"
+    end
+
+    return tostring(Value)
+end
+
+local function IsDropdownPlayerOffline(Value)
+    if not (typeof(Value) == "Instance" and Value:IsA("Player")) then
+        return false
+    end
+
+    return Value.Parent ~= Players
+end
+
+local function SameDropdownPlayer(A, B)
+    return GetPlayerNameFromValue(A) == GetPlayerNameFromValue(B)
 end
 
 function Library:UpdateDependencyBoxes()
@@ -1377,6 +1432,204 @@ function Library:SafeCallback(Func: (...any) -> ...any, ...: any)
 
     return table.unpack(Result, 2, Result.n)
 end
+
+
+
+Library.ConfigFolder = "Obsidian/configs"
+Library.ConfigFile = Library.ConfigFolder .. "/" .. tostring(game.PlaceId) .. ".json"
+Library.ConfigData = nil
+Library.ConfigElements = {}
+Library.ConfigLoadChecked = false
+Library.ConfigLoadSuccess = false
+Library.ConfigNotifySent = false
+Library.ConfigSaving = false
+
+local function ConfigNotify(Text)
+    task.defer(function()
+        if Library.Unloaded then
+            return
+        end
+
+        if typeof(Library.Notify) == "function" then
+            pcall(function()
+                Library:Notify(Text, 4)
+            end)
+        end
+    end)
+end
+
+local function EnsureConfigLoaded()
+    if Library.ConfigLoadChecked then
+        return
+    end
+
+    Library.ConfigLoadChecked = true
+    Library.ConfigData = {}
+
+    local Loaded = false
+    if isfile and readfile and isfile(Library.ConfigFile) then
+        local Success, Decoded = pcall(function()
+            return HttpService:JSONDecode(readfile(Library.ConfigFile))
+        end)
+
+        if Success and typeof(Decoded) == "table" then
+            Library.ConfigData = Decoded
+            Loaded = true
+        end
+    end
+
+    Library.ConfigLoadSuccess = Loaded
+
+    task.delay(1, function()
+        if Library.ConfigNotifySent then
+            return
+        end
+
+        Library.ConfigNotifySent = true
+        if Loaded then
+            ConfigNotify("Loaded saved config")
+        else
+            ConfigNotify("Failed to load config")
+        end
+    end)
+end
+
+local function GetSavedConfigValue(Idx, Type)
+    EnsureConfigLoaded()
+
+    local Data = Library.ConfigData
+    if typeof(Data) ~= "table" then
+        return nil
+    end
+
+    local Entry = Data[tostring(Idx)]
+    if typeof(Entry) ~= "table" then
+        return nil
+    end
+
+    if Entry.Type ~= Type then
+        return nil
+    end
+
+    return Entry.Value
+end
+
+local function IsConfigSaveable(Type)
+    return Type == "Toggle"
+        or Type == "Slider"
+        or Type == "Input"
+        or Type == "Dropdown"
+        or Type == "PlayerDropdown"
+        or Type == "ColorPicker"
+        or Type == "KeyPicker"
+end
+
+local function SerializeConfigValue(Element)
+    if Element.Type == "ColorPicker" then
+        local Color = Element.Value or Color3.new(1, 1, 1)
+        return {
+            R = math.floor((Color.R * 255) + 0.5),
+            G = math.floor((Color.G * 255) + 0.5),
+            B = math.floor((Color.B * 255) + 0.5),
+            Transparency = Element.Transparency or 0,
+        }
+    end
+
+    if Element.Type == "KeyPicker" then
+        return {
+            Element.Value or "None",
+            Element.Mode or "Toggle",
+            Element.Modifiers or {},
+        }
+    end
+
+    if Element.Type == "PlayerDropdown" then
+        if typeof(Element.GetSelectedNames) == "function" then
+            return Element:GetSelectedNames()
+        end
+
+        local Names = {}
+        if Element.Multi then
+            for Value, Active in Element.Value or {} do
+                if Active then
+                    table.insert(Names, GetPlayerNameFromValue(Value))
+                end
+            end
+        elseif Element.Value then
+            table.insert(Names, GetPlayerNameFromValue(Element.Value))
+        end
+        return Names
+    end
+
+    if Element.Type == "Dropdown" and Element.Multi then
+        local Values = {}
+        for Value, Active in Element.Value or {} do
+            if Active then
+                table.insert(Values, Value)
+            end
+        end
+        return Values
+    end
+
+    return Element.Value
+end
+
+local function RegisterConfigElement(Idx, Element)
+    if not Idx or not Element then
+        return
+    end
+
+    if not IsConfigSaveable(Element.Type) then
+        return
+    end
+
+    Element.Save = true
+    Library.ConfigElements[tostring(Idx)] = Element
+end
+
+local function SaveConfigSoon()
+    if Library.Unloaded then
+        return
+    end
+
+    Library:SaveConfig()
+end
+
+function Library:SaveConfig()
+    if Library.Unloaded or Library.ConfigSaving then
+        return false
+    end
+
+    if not (writefile and makefolder and isfolder) then
+        return false
+    end
+
+    Library.ConfigSaving = true
+
+    local Data = {}
+    for Idx, Element in Library.ConfigElements do
+        if Element and IsConfigSaveable(Element.Type) then
+            Data[tostring(Idx)] = {
+                Type = Element.Type,
+                Value = SerializeConfigValue(Element),
+            }
+        end
+    end
+
+    local Success = pcall(function()
+        if not isfolder("Obsidian") then
+            makefolder("Obsidian")
+        end
+        if not isfolder(Library.ConfigFolder) then
+            makefolder(Library.ConfigFolder)
+        end
+        writefile(Library.ConfigFile, HttpService:JSONEncode(Data))
+    end)
+
+    Library.ConfigSaving = false
+    return Success
+end
+
 
 function Library:MakeDraggable(UI: GuiObject, DragFrame: GuiObject, IgnoreToggled: boolean?, IsMainWindow: boolean?)
     local StartPos
@@ -2136,6 +2389,19 @@ do
     function Funcs:AddKeyPicker(Idx, Info)
         Info = Library:Validate(Info, Templates.KeyPicker)
 
+        local SavedKeyPickerValue = GetSavedConfigValue(Idx, "KeyPicker")
+        if typeof(SavedKeyPickerValue) == "table" then
+            if typeof(SavedKeyPickerValue[1]) == "string" then
+                Info.Default = SavedKeyPickerValue[1]
+            end
+            if typeof(SavedKeyPickerValue[2]) == "string" then
+                Info.Mode = SavedKeyPickerValue[2]
+            end
+            if typeof(SavedKeyPickerValue[3]) == "table" then
+                Info.DefaultModifiers = SavedKeyPickerValue[3]
+            end
+        end
+
         local ParentObj = self
         local ToggleLabel = ParentObj.TextLabel
 
@@ -2603,6 +2869,7 @@ do
             Library:SafeCallback(KeyPicker.Changed, KeyCode, NewModifiers)
 
             KeyPicker:Update()
+            SaveConfigSoon()
         end
 
         function KeyPicker:SetText(Text)
@@ -2827,6 +3094,7 @@ do
         KeyPicker.DefaultModifiers = table.clone(KeyPicker.Modifiers or {})
 
         Options[Idx] = KeyPicker
+        RegisterConfigElement(Idx, KeyPicker)
 
         return self
     end
@@ -2837,6 +3105,19 @@ do
     end
     function Funcs:AddColorPicker(Idx, Info)
         Info = Library:Validate(Info, Templates.ColorPicker)
+
+        local SavedColorPickerValue = GetSavedConfigValue(Idx, "ColorPicker")
+        if typeof(SavedColorPickerValue) == "table" then
+            local R = tonumber(SavedColorPickerValue.R)
+            local G = tonumber(SavedColorPickerValue.G)
+            local B = tonumber(SavedColorPickerValue.B)
+            if R and G and B then
+                Info.Default = Color3.fromRGB(math.clamp(R, 0, 255), math.clamp(G, 0, 255), math.clamp(B, 0, 255))
+            end
+            if Info.Transparency and tonumber(SavedColorPickerValue.Transparency) then
+                Info.Transparency = tonumber(SavedColorPickerValue.Transparency)
+            end
+        end
 
         local ParentObj = self
         local ToggleLabel = ParentObj.TextLabel
@@ -3157,6 +3438,7 @@ do
 
             Library:SafeCallback(ColorPicker.Callback, ColorPicker.Value)
             Library:SafeCallback(ColorPicker.Changed, ColorPicker.Value)
+            SaveConfigSoon()
         end
 
         function ColorPicker:OnChanged(Func)
@@ -3275,6 +3557,7 @@ do
         ColorPicker.Default = ColorPicker.Value
 
         Options[Idx] = ColorPicker
+        RegisterConfigElement(Idx, ColorPicker)
 
         return self
     end
@@ -3807,9 +4090,14 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
+        local SavedValue = GetSavedConfigValue(Idx, "Toggle")
+        if typeof(SavedValue) ~= "boolean" then
+            SavedValue = Info.Default
+        end
+
         local Toggle = {
             Text = Info.Text,
-            Value = Info.Default,
+            Value = SavedValue,
 
             Tooltip = Info.Tooltip,
             DisabledTooltip = Info.DisabledTooltip,
@@ -3817,6 +4105,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
+            Save = true,
 
             Risky = Info.Risky,
             Disabled = Info.Disabled,
@@ -3863,7 +4152,7 @@ do
         table.insert(
             Library.Corners,
             New("UICorner", {
-                CornerRadius = UDim.new(0, Library.CornerRadius / 2),
+                CornerRadius = UDim.new(0, 3),
                 Parent = Checkbox,
             })
         )
@@ -3900,6 +4189,7 @@ do
                 CheckImage.ImageTransparency = Toggle.Value and 0.8 or 1
 
                 Checkbox.BackgroundColor3 = Library.Scheme.BackgroundColor
+                Checkbox.BackgroundTransparency = Toggle.Value and 0.35 or 1
                 Library.Registry[Checkbox].BackgroundColor3 = "BackgroundColor"
 
                 return
@@ -3909,11 +4199,12 @@ do
                 TextTransparency = Toggle.Value and 0 or 0.4,
             }):Play()
             TweenService:Create(CheckImage, Library.TweenInfo, {
-                ImageTransparency = Toggle.Value and 0 or 1,
+                ImageTransparency = 1,
             }):Play()
 
-            Checkbox.BackgroundColor3 = Library.Scheme.MainColor
-            Library.Registry[Checkbox].BackgroundColor3 = "MainColor"
+            Checkbox.BackgroundColor3 = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.MainColor
+            Checkbox.BackgroundTransparency = Toggle.Value and 0 or 1
+            Library.Registry[Checkbox].BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
         end
 
         function Toggle:OnChanged(Func)
@@ -3938,6 +4229,7 @@ do
             Library:UpdateDependencyBoxes()
             Library:SafeCallback(Toggle.Callback, Toggle.Value)
             Library:SafeCallback(Toggle.Changed, Toggle.Value)
+            SaveConfigSoon()
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -4000,6 +4292,16 @@ do
         Toggle.Default = Toggle.Value
 
         Toggles[Idx] = Toggle
+        RegisterConfigElement(Idx, Toggle)
+
+        if Toggle.Value == true then
+            task.defer(function()
+                if not Library.Unloaded and not Toggle.Disabled and Toggle.Value == true then
+                    Library:SafeCallback(Toggle.Callback, Toggle.Value)
+                    Library:SafeCallback(Toggle.Changed, Toggle.Value)
+                end
+            end)
+        end
 
         return Toggle
     end
@@ -4010,9 +4312,14 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
+        local SavedValue = GetSavedConfigValue(Idx, "Toggle")
+        if typeof(SavedValue) ~= "boolean" then
+            SavedValue = Info.Default
+        end
+
         local Toggle = {
             Text = Info.Text,
-            Value = Info.Default,
+            Value = SavedValue,
 
             Tooltip = Info.Tooltip,
             DisabledTooltip = Info.DisabledTooltip,
@@ -4020,6 +4327,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
+            Save = true,
 
             Risky = Info.Risky,
             Disabled = Info.Disabled,
@@ -4033,7 +4341,7 @@ do
         local Button = New("TextButton", {
             Active = not Toggle.Disabled,
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 22),
+            Size = UDim2.new(1, 0, 0, 18),
             Text = "",
             Visible = Toggle.Visible,
             Parent = Container,
@@ -4041,7 +4349,7 @@ do
 
         local Label = New("TextLabel", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, -34, 1, 0),
+            Size = UDim2.new(1, -28, 1, 0),
             Text = Toggle.Text,
             TextSize = 14,
             TextTransparency = 0.4,
@@ -4060,20 +4368,19 @@ do
             AnchorPoint = Vector2.new(1, 0.5),
             BackgroundColor3 = "MainColor",
             Position = UDim2.fromScale(1, 0.5),
-            Size = UDim2.fromOffset(18, 18),
+            Size = UDim2.fromOffset(16, 16),
             Parent = Button,
         })
         table.insert(
             Library.Corners,
             New("UICorner", {
-                CornerRadius = UDim.new(0, math.max(3, Library.CornerRadius / 2)),
+                CornerRadius = UDim.new(0, 3),
                 Parent = Box,
             })
         )
 
         local BoxStroke = New("UIStroke", {
             Color = "OutlineColor",
-            Thickness = 1,
             Parent = Box,
         })
 
@@ -4083,8 +4390,8 @@ do
             ImageRectOffset = CheckIcon and CheckIcon.ImageRectOffset or Vector2.zero,
             ImageRectSize = CheckIcon and CheckIcon.ImageRectSize or Vector2.zero,
             ImageTransparency = 1,
-            Position = UDim2.fromOffset(3, 3),
-            Size = UDim2.new(1, -6, 1, -6),
+            Position = UDim2.fromOffset(2, 2),
+            Size = UDim2.new(1, -4, 1, -4),
             Parent = Box,
         })
 
@@ -4100,17 +4407,12 @@ do
             BoxStroke.Transparency = Toggle.Disabled and 0.5 or 0
 
             if Toggle.Disabled then
-                TweenService:Create(Label, Library.TweenInfo, {
-                    TextTransparency = 0.8,
-                }):Play()
-                TweenService:Create(CheckImage, Library.TweenInfo, {
-                    ImageTransparency = Toggle.Value and 0.8 or 1,
-                }):Play()
+                Label.TextTransparency = 0.8
+                CheckImage.ImageTransparency = Toggle.Value and 0.8 or 1
 
                 Box.BackgroundColor3 = Library.Scheme.BackgroundColor
+                Box.BackgroundTransparency = Toggle.Value and 0.35 or 1
                 Library.Registry[Box].BackgroundColor3 = "BackgroundColor"
-                BoxStroke.Color = Library.Scheme.OutlineColor
-                Library.Registry[BoxStroke].Color = "OutlineColor"
                 return
             end
 
@@ -4118,16 +4420,12 @@ do
                 TextTransparency = Toggle.Value and 0 or 0.4,
             }):Play()
             TweenService:Create(CheckImage, Library.TweenInfo, {
-                ImageTransparency = Toggle.Value and 0 or 1,
-                Size = Toggle.Value and UDim2.new(1, -6, 1, -6) or UDim2.new(1, -12, 1, -12),
-                Position = Toggle.Value and UDim2.fromOffset(3, 3) or UDim2.fromOffset(6, 6),
+                ImageTransparency = 1,
             }):Play()
 
             Box.BackgroundColor3 = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.MainColor
+            Box.BackgroundTransparency = Toggle.Value and 0 or 1
             Library.Registry[Box].BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
-
-            BoxStroke.Color = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.OutlineColor
-            Library.Registry[BoxStroke].Color = Toggle.Value and "AccentColor" or "OutlineColor"
         end
 
         function Toggle:OnChanged(Func)
@@ -4152,6 +4450,7 @@ do
             Library:UpdateDependencyBoxes()
             Library:SafeCallback(Toggle.Callback, Toggle.Value)
             Library:SafeCallback(Toggle.Changed, Toggle.Value)
+            SaveConfigSoon()
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -4183,7 +4482,7 @@ do
             Label.Text = Text
         end
 
-        Button.Activated:Connect(function()
+        Button.MouseButton1Click:Connect(function()
             if Toggle.Disabled then
                 return
             end
@@ -4214,6 +4513,16 @@ do
         Toggle.Default = Toggle.Value
 
         Toggles[Idx] = Toggle
+        RegisterConfigElement(Idx, Toggle)
+
+        if Toggle.Value == true then
+            task.defer(function()
+                if not Library.Unloaded and not Toggle.Disabled and Toggle.Value == true then
+                    Library:SafeCallback(Toggle.Callback, Toggle.Value)
+                    Library:SafeCallback(Toggle.Changed, Toggle.Value)
+                end
+            end)
+        end
 
         return Toggle
     end
@@ -4228,9 +4537,15 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
+        local SavedValue = GetSavedConfigValue(Idx, "Input")
+        if typeof(SavedValue) ~= "string" and typeof(SavedValue) ~= "number" then
+            SavedValue = Info.Default
+        end
+        SavedValue = tostring(SavedValue)
+
         local Input = {
             Text = Info.Text,
-            Value = Info.Default,
+            Value = SavedValue,
 
             Finished = Info.Finished,
             Numeric = Info.Numeric,
@@ -4246,6 +4561,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
+            Save = true,
             VerifyValue = Info.VerifyValue,
 
             Disabled = Info.Disabled,
@@ -4343,6 +4659,7 @@ do
             if not Input.Disabled then
                 Library:SafeCallback(Input.Callback, Input.Value)
                 Library:SafeCallback(Input.Changed, Input.Value)
+                SaveConfigSoon()
             end
         end
 
@@ -4407,6 +4724,15 @@ do
         end
         
         Options[Idx] = Input
+        RegisterConfigElement(Idx, Input)
+
+        task.defer(function()
+            if not Library.Unloaded and not Input.Disabled then
+                Library:SafeCallback(Input.Callback, Input.Value)
+                Library:SafeCallback(Input.Changed, Input.Value)
+                SaveConfigSoon()
+            end
+        end)
 
         return Input
     end
@@ -4417,9 +4743,16 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
+        local SavedValue = GetSavedConfigValue(Idx, "Slider")
+        SavedValue = tonumber(SavedValue)
+        if not SavedValue then
+            SavedValue = Info.Default
+        end
+        SavedValue = math.clamp(Round(SavedValue, Info.Rounding), Info.Min, Info.Max)
+
         local Slider = {
             Text = Info.Text,
-            Value = Info.Default,
+            Value = SavedValue,
 
             Min = Info.Min,
             Max = Info.Max,
@@ -4436,6 +4769,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
+            Save = true,
 
             Disabled = Info.Disabled,
             Visible = Info.Visible,
@@ -4600,6 +4934,7 @@ do
 
             Library:SafeCallback(Slider.Callback, Slider.Value)
             Library:SafeCallback(Slider.Changed, Slider.Value)
+                SaveConfigSoon()
         end
 
         function Slider:SetDisabled(Disabled: boolean)
@@ -4696,6 +5031,14 @@ do
         Slider.Default = Slider.Value
 
         Options[Idx] = Slider
+        RegisterConfigElement(Idx, Slider)
+
+        task.defer(function()
+            if not Library.Unloaded and not Slider.Disabled then
+                Library:SafeCallback(Slider.Callback, Slider.Value)
+                Library:SafeCallback(Slider.Changed, Slider.Value)
+            end
+        end)
 
         return Slider
     end
@@ -4727,6 +5070,7 @@ do
             SpecialType = Info.SpecialType,
             ExcludeLocalPlayer = Info.ExcludeLocalPlayer,
             EnablePlayerImages = Info.EnablePlayerImages,
+            PlayerSelectedValues = {},
 
             Tooltip = Info.Tooltip,
             DisabledTooltip = Info.DisabledTooltip,
@@ -4734,6 +5078,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
+            Save = true,
 
             Disabled = Info.Disabled,
             Visible = Info.Visible,
@@ -4806,6 +5151,7 @@ do
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 0, 21),
             Text = "---",
+            RichText = true,
             TextSize = 14,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 2,
@@ -4914,15 +5260,36 @@ do
             local ValueImage = nil
 
             if Info.Multi then
+                local AddedNames = {}
+
                 for _, Value in Dropdown.Values do
                     if Dropdown.Value[Value] then
+                        local Name = Dropdown.SpecialType == "Player" and GetPlayerNameFromValue(Value) or tostring(Value)
+                        AddedNames[Name] = true
+
                         if not ValueImage then
                             ValueImage = GetValueImage(Value)
                         end
 
-                        Str = Str
-                            .. (Info.FormatDisplayValue and tostring(Info.FormatDisplayValue(Value)) or tostring(Value))
-                            .. ", "
+                        local TextValue = Info.FormatDisplayValue and tostring(Info.FormatDisplayValue(Value)) or tostring(Value)
+                        if (Dropdown.SpecialType == "Player" and IsDropdownPlayerOffline(Value)) or (Info.PlayerDropdown and Dropdown.OfflineSelected and Dropdown.OfflineSelected[GetPlayerNameFromValue(Value)]) then
+                            TextValue = "<font color='rgb(255,50,50)'>" .. TextValue .. "</font>"
+                        end
+
+                        Str = Str .. TextValue .. ", "
+                    end
+                end
+
+                if Dropdown.SpecialType == "Player" then
+                    for Value, Active in Dropdown.Value do
+                        if Active then
+                            local Name = GetPlayerNameFromValue(Value)
+                            if not AddedNames[Name] then
+                                AddedNames[Name] = true
+                                local TextValue = "<font color='rgb(255,50,50)'>" .. tostring(Value) .. "</font>"
+                                Str = Str .. TextValue .. ", "
+                            end
+                        end
                     end
                 end
 
@@ -4934,9 +5301,13 @@ do
                 if Str ~= "" and Info.FormatDisplayValue then
                     Str = tostring(Info.FormatDisplayValue(Str))
                 end
+
+                if Str ~= "" and Dropdown.SpecialType == "Player" and IsDropdownPlayerOffline(Dropdown.Value) then
+                    Str = "<font color='rgb(255,50,50)'>" .. Str .. "</font>"
+                end
             end
 
-            if #Str > 25 then
+            if #Str > 25 and not Str:find("<font") then
                 Str = Str:sub(1, 22) .. "..."
             end
 
@@ -4976,24 +5347,32 @@ do
 
         local Buttons = {}
         function Dropdown:BuildDropdownList()
-            local Values = Dropdown.Values
-            local DisabledValues = Dropdown.DisabledValues
+            local Values = typeof(Dropdown.Values) == "table" and Dropdown.Values or {}
+            local DisabledValues = typeof(Dropdown.DisabledValues) == "table" and Dropdown.DisabledValues or {}
+            local SearchText = ""
+
+            if SearchBox then
+                SearchText = tostring(SearchBox.Text or ""):lower()
+            end
 
             for Button, _ in Buttons do
-                Button.Parent:Destroy()
+                if Button and Button.Parent then
+                    Button.Parent:Destroy()
+                end
             end
             table.clear(Buttons)
 
             local Count = 0
             for _, Value in Values do
                 local FormattedValue = tostring(Info.FormatListValue and Info.FormatListValue(Value) or Value)
-                if SearchBox and not FormattedValue:lower():match(SearchBox.Text:lower()) then
+                if SearchText ~= "" and not FormattedValue:lower():find(SearchText, 1, true) then
                     continue
                 end
 
                 Count += 1
 
                 local IsDisabled = table.find(DisabledValues, Value)
+                local PlayerDropdownOffline = Info.PlayerDropdown and Dropdown.OfflineSelected and Dropdown.OfflineSelected[GetPlayerNameFromValue(Value)] == true
                 local Table = {}
                 local ValueImage = GetValueImage(Value)
 
@@ -5021,6 +5400,7 @@ do
                     Size = ValueImage and UDim2.new(1, -18, 0, 21) or UDim2.new(1, 0, 0, 21),
                     Position = ValueImage and UDim2.fromOffset(18, 0) or UDim2.fromOffset(0, 0),
                     Text = FormattedValue,
+                    RichText = true,
                     TextSize = 14,
                     TextTransparency = 0.5,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -5032,21 +5412,40 @@ do
                     Parent = Button,
                 })
 
+                local OfflinePlayer = Dropdown.SpecialType == "Player" and IsDropdownPlayerOffline(Value)
+                if OfflinePlayer then
+                    Button.TextColor3 = Library.Scheme.RedColor
+                    Library.Registry[Button].TextColor3 = "RedColor"
+                    if Image then
+                        Image.ImageColor3 = Library.Scheme.RedColor
+                        Library.Registry[Image].ImageColor3 = "RedColor"
+                    end
+                elseif PlayerDropdownOffline then
+                    Button.TextColor3 = Library.Scheme.FontColor
+                    Container.BackgroundColor3 = Library.Scheme.RedColor
+                end
+
                 local Selected
                 if Info.Multi then
                     Selected = Dropdown.Value[Value]
                 else
-                    Selected = Dropdown.Value == Value
+                    Selected = Dropdown.Value == Value or (Dropdown.SpecialType == "Player" and Dropdown.Value and SameDropdownPlayer(Dropdown.Value, Value))
                 end
 
                 function Table:UpdateButton()
                     if Info.Multi then
                         Selected = Dropdown.Value[Value]
                     else
-                        Selected = Dropdown.Value == Value
+                        Selected = Dropdown.Value == Value or (Dropdown.SpecialType == "Player" and Dropdown.Value and SameDropdownPlayer(Dropdown.Value, Value))
                     end
 
-                    Container.BackgroundTransparency = Selected and 0 or 1
+                    if PlayerDropdownOffline and Selected then
+                        Container.BackgroundColor3 = Library.Scheme.RedColor
+                        Container.BackgroundTransparency = 0
+                    else
+                        Container.BackgroundColor3 = Library.Scheme.MainColor
+                        Container.BackgroundTransparency = Selected and 0 or 1
+                    end
                     Button.TextTransparency = IsDisabled and 0.8 or Selected and 0 or 0.5
 
                     if Image then
@@ -5071,12 +5470,28 @@ do
                             end
                         end
 
-                        Table:UpdateButton()
+                        if Info.PlayerDropdown and PlayerDropdownOffline and not Selected then
+                            if Dropdown.OfflineSelected then
+                                Dropdown.OfflineSelected[GetPlayerNameFromValue(Value)] = nil
+                            end
+
+                            for i = #Dropdown.Values, 1, -1 do
+                                if tostring(Dropdown.Values[i]) == tostring(Value) then
+                                    table.remove(Dropdown.Values, i)
+                                    break
+                                end
+                            end
+
+                            Dropdown:BuildDropdownList()
+                        else
+                            Table:UpdateButton()
+                        end
                         Dropdown:Display()
 
                         Library:UpdateDependencyBoxes()
                         Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                         Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                SaveConfigSoon()
                     end)
                 end
 
@@ -5092,18 +5507,34 @@ do
         function Dropdown:SetValue(Value)
             if Info.Multi then
                 local Table = {}
-				
+
                 for Val, Active in Value or {} do
                     if typeof(Active) ~= "boolean" then
-                        Table[Active] = true
-                    elseif Active and table.find(Dropdown.Values, Val) then
-                        Table[Val] = true
+                        local RealValue = Active
+                        if Dropdown.SpecialType == "Player" then
+                            local LivePlayer = GetLivePlayerByName(GetPlayerNameFromValue(Active))
+                            RealValue = LivePlayer or Active
+                        end
+                        Table[RealValue] = true
+                    elseif Active then
+                        local RealValue = Val
+                        if Dropdown.SpecialType == "Player" then
+                            local LivePlayer = GetLivePlayerByName(GetPlayerNameFromValue(Val))
+                            RealValue = LivePlayer or Val
+                        end
+
+                        if Dropdown.SpecialType == "Player" or table.find(Dropdown.Values, RealValue) then
+                            Table[RealValue] = true
+                        end
                     end
                 end
 
                 Dropdown.Value = Table
             else
-                if table.find(Dropdown.Values, Value) then
+                if Dropdown.SpecialType == "Player" and Value then
+                    local LivePlayer = GetLivePlayerByName(GetPlayerNameFromValue(Value))
+                    Dropdown.Value = LivePlayer or Value
+                elseif table.find(Dropdown.Values, Value) then
                     Dropdown.Value = Value
                 elseif not Value then
                     Dropdown.Value = nil
@@ -5119,12 +5550,56 @@ do
                 Library:UpdateDependencyBoxes()
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                SaveConfigSoon()
             end
         end
 
         function Dropdown:SetValues(Values)
-            Dropdown.Values = Values
+            if Dropdown.SpecialType == "Player" then
+                local NewValues = {}
+                local ExistingNames = {}
+
+                for _, Value in Values or {} do
+                    table.insert(NewValues, Value)
+                    ExistingNames[GetPlayerNameFromValue(Value)] = Value
+                end
+
+                if Info.Multi then
+                    local NewSelected = {}
+                    for Value, Active in Dropdown.Value do
+                        if Active then
+                            local Name = GetPlayerNameFromValue(Value)
+                            local LivePlayer = ExistingNames[Name] or GetLivePlayerByName(Name)
+                            local FinalValue = LivePlayer or Value
+                            NewSelected[FinalValue] = true
+
+                            if not ExistingNames[Name] then
+                                table.insert(NewValues, FinalValue)
+                                ExistingNames[Name] = FinalValue
+                            end
+                        end
+                    end
+                    Dropdown.Value = NewSelected
+                else
+                    if Dropdown.Value then
+                        local Name = GetPlayerNameFromValue(Dropdown.Value)
+                        local LivePlayer = ExistingNames[Name] or GetLivePlayerByName(Name)
+                        Dropdown.Value = LivePlayer or Dropdown.Value
+
+                        if not ExistingNames[Name] then
+                            table.insert(NewValues, Dropdown.Value)
+                            ExistingNames[Name] = Dropdown.Value
+                        end
+                    end
+                end
+
+                Dropdown.Values = NewValues
+            else
+                Dropdown.Values = Values
+            end
+
             Dropdown:BuildDropdownList()
+            Dropdown:Display()
         end
 
         function Dropdown:AddValues(Values)
@@ -5220,24 +5695,45 @@ do
         DisplayButton.MouseButton1Click:Connect(ToggleDropdown)
 
         if SearchBox then
-            SearchBox:GetPropertyChangedSignal("Text"):Connect(Dropdown.BuildDropdownList)
+            SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+                Dropdown:BuildDropdownList()
+            end)
+        end
+
+        function Dropdown:ClearSearch()
+            if SearchBox and SearchBox.Text ~= "" then
+                SearchBox.Text = ""
+            end
+        end
+
+        local DefaultSource = Info.Default
+        local SavedType = Info.PlayerDropdown and "PlayerDropdown" or "Dropdown"
+        local SavedValue = GetSavedConfigValue(Idx, SavedType)
+        if SavedValue ~= nil then
+            DefaultSource = SavedValue
         end
 
         local Defaults = {}
-        if typeof(Info.Default) == "string" then
-            local Index = table.find(Dropdown.Values, Info.Default)
+        if typeof(DefaultSource) == "string" then
+            local Index = table.find(Dropdown.Values, DefaultSource)
             if Index then
                 table.insert(Defaults, Index)
+            elseif Info.PlayerDropdown then
+                table.insert(Dropdown.Values, DefaultSource)
+                table.insert(Defaults, #Dropdown.Values)
             end
-        elseif typeof(Info.Default) == "table" then
-            for _, Value in next, Info.Default do
+        elseif typeof(DefaultSource) == "table" then
+            for _, Value in next, DefaultSource do
                 local Index = table.find(Dropdown.Values, Value)
                 if Index then
                     table.insert(Defaults, Index)
+                elseif Info.PlayerDropdown then
+                    table.insert(Dropdown.Values, tostring(Value))
+                    table.insert(Defaults, #Dropdown.Values)
                 end
             end
-        elseif Dropdown.Values[Info.Default] ~= nil then
-            table.insert(Defaults, Info.Default)
+        elseif Dropdown.Values[DefaultSource] ~= nil then
+            table.insert(Defaults, DefaultSource)
         end
 
         if next(Defaults) then
@@ -5272,9 +5768,19 @@ do
         Dropdown.DefaultValues = Dropdown.Values
 
         Options[Idx] = Dropdown
+        RegisterConfigElement(Idx, Dropdown)
+
+        task.defer(function()
+            if not Library.Unloaded and not Dropdown.Disabled then
+                Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
+                Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                SaveConfigSoon()
+            end
+        end)
 
         return Dropdown
     end
+
 
     function Funcs:AddPlayerDropdown(Idx, Info)
         Info = Info or {}
@@ -5283,20 +5789,14 @@ do
         local OriginalChanged = Info.Changed or function() end
         local ExcludeLocalPlayer = Info.ExcludeLocalPlayer == true
 
-        local function GetName(Value)
-            if typeof(Value) == "Instance" and Value:IsA("Player") then
-                return Value.Name
-            end
-
-            return tostring(Value or "")
-        end
-
         local function GetLiveNames()
             local Names = {}
+            local Seen = {}
 
-            for _, Player in Players:GetPlayers() do
-                if not (ExcludeLocalPlayer and Player == LocalPlayer) then
+            for _, Player in GetPlayers(ExcludeLocalPlayer) do
+                if Player and Player.Parent == Players and not Seen[Player.Name] then
                     table.insert(Names, Player.Name)
+                    Seen[Player.Name] = true
                 end
             end
 
@@ -5307,9 +5807,18 @@ do
             return Names
         end
 
+        local function GetName(Value)
+            if typeof(Value) == "Instance" and Value:IsA("Player") then
+                return Value.Name
+            end
+
+            return tostring(Value or "")
+        end
+
         local function IsNameOnline(Name)
+            Name = tostring(Name or "")
             for _, Player in Players:GetPlayers() do
-                if Player.Name == Name then
+                if Player.Name == Name and (not ExcludeLocalPlayer or Player ~= LocalPlayer) then
                     return true
                 end
             end
@@ -5325,73 +5834,52 @@ do
             end
         end
 
-        local function FormatPlayerName(Name)
-            Name = GetName(Name)
-            local Player = Players:FindFirstChild(Name)
-
-            if Player then
-                return Player.DisplayName .. " (@" .. Player.Name .. ")"
-            end
-
-            return Name .. " (offline)"
-        end
-
-        local SelectedValues = {}
-
         Info.Multi = Info.Multi ~= false
         Info.AllowNull = true
-        Info.Values = Info.Values or GetLiveNames()
-        Info.FormatListValue = Info.FormatListValue or FormatPlayerName
-        Info.FormatDisplayValue = Info.FormatDisplayValue or FormatPlayerName
+        Info.PlayerDropdown = true
+        Info.Values = GetLiveNames()
+        Info.FormatListValue = Info.FormatListValue or GetPlayerDropdownDisplay
+        Info.FormatDisplayValue = Info.FormatDisplayValue or GetPlayerDropdownDisplay
 
         Info.Callback = function(Value)
-            if Info.Multi then
-                table.clear(SelectedValues)
-
-                for _, Name in Info.Values do
-                    if Value and Value[Name] then
-                        table.insert(SelectedValues, Name)
-                    end
-                end
-
-                for Name, Active in Value or {} do
-                    if Active and not table.find(SelectedValues, Name) then
-                        table.insert(SelectedValues, Name)
-                    end
-                end
-
-                return OriginalCallback(SelectedValues)
-            end
-
             return OriginalCallback(Value)
         end
 
         Info.Changed = function(Value)
-            if Info.Multi then
-                return OriginalChanged(SelectedValues)
-            end
-
             return OriginalChanged(Value)
         end
 
         local Dropdown = Funcs.AddDropdown(self, Idx, Info)
         Dropdown.Type = "PlayerDropdown"
+        Dropdown.Save = true
         Dropdown.PlayerDropdown = true
-        Dropdown.SelectedValues = SelectedValues
         Dropdown.ExcludeLocalPlayer = ExcludeLocalPlayer
         Dropdown.OfflineSelected = {}
+        Dropdown.BaseSetValues = Dropdown.SetValues
+        Dropdown.BaseSetValue = Dropdown.SetValue
+        Dropdown.SelectedValues = {}
+
+        RegisterConfigElement(Idx, Dropdown)
+
+        table.insert(PlayerDropdowns, Dropdown)
 
         local function GetSelectedMap()
             local Selected = {}
 
             if Info.Multi then
-                for Name, Active in Dropdown.Value or {} do
+                for Value, Active in Dropdown.Value or {} do
                     if Active then
-                        Selected[GetName(Name)] = true
+                        local Name = GetName(Value)
+                        if Name ~= "" then
+                            Selected[Name] = true
+                        end
                     end
                 end
             elseif Dropdown.Value then
-                Selected[GetName(Dropdown.Value)] = true
+                local Name = GetName(Dropdown.Value)
+                if Name ~= "" then
+                    Selected[Name] = true
+                end
             end
 
             return Selected
@@ -5410,8 +5898,8 @@ do
             for Name in Selected do
                 if not IsNameOnline(Name) then
                     Offline[Name] = true
-                    AddName(Merged, Seen, Name)
                 end
+                AddName(Merged, Seen, Name)
             end
 
             table.sort(Merged, function(A, B)
@@ -5428,29 +5916,7 @@ do
             return Merged, Offline, Selected
         end
 
-        function Dropdown:GetSelectedNames()
-            local Names = {}
-
-            if Info.Multi then
-                for _, Name in Dropdown.Values do
-                    if Dropdown.Value and Dropdown.Value[Name] then
-                        table.insert(Names, Name)
-                    end
-                end
-            elseif Dropdown.Value then
-                table.insert(Names, GetName(Dropdown.Value))
-            end
-
-            return Names
-        end
-
-        function Dropdown:RefreshPlayers(Values)
-            local Merged, Offline, Selected = BuildMergedValues(Values or GetLiveNames())
-
-            Dropdown.OfflineSelected = Offline
-            Dropdown.Values = Merged
-            Info.Values = Merged
-
+        local function ApplySelectedMap(Selected, Merged)
             if Info.Multi then
                 local NewValue = {}
                 for _, Name in Merged do
@@ -5461,93 +5927,130 @@ do
                 Dropdown.Value = NewValue
             else
                 local CurrentName = Dropdown.Value and GetName(Dropdown.Value) or nil
-                Dropdown.Value = CurrentName and CurrentName ~= "" and CurrentName or nil
+                if CurrentName and CurrentName ~= "" then
+                    Dropdown.Value = CurrentName
+                else
+                    Dropdown.Value = nil
+                end
+            end
+        end
+
+        function Dropdown:RefreshPlayers(Values)
+            local LiveNames = Values
+            if typeof(LiveNames) ~= "table" then
+                LiveNames = GetLiveNames()
+            end
+
+            local Merged, Offline, Selected = BuildMergedValues(LiveNames)
+
+            Dropdown.Values = Merged
+            Dropdown.OfflineSelected = Offline
+            Dropdown.SelectedValues = Selected
+            ApplySelectedMap(Selected, Merged)
+
+            if Dropdown.ClearSearch then
+                Dropdown:ClearSearch()
             end
 
             Dropdown:BuildDropdownList()
             Dropdown:Display()
         end
 
-        function Dropdown:AddOption(PlayerOrName)
-            local Name = GetName(PlayerOrName)
-            if Name == "" then
-                return
-            end
-
-            local Values = {}
-            for _, ExistingName in Dropdown.Values do
-                table.insert(Values, GetName(ExistingName))
-            end
-
-            if not table.find(Values, Name) then
-                table.insert(Values, Name)
-            end
-
+        function Dropdown:SetValues(Values)
             Dropdown:RefreshPlayers(Values)
         end
 
-        function Dropdown:RemoveOption(PlayerOrName)
-            local Name = GetName(PlayerOrName)
-            if Name == "" then
-                return
-            end
+        function Dropdown:SetValue(Value)
+            if Info.Multi then
+                local NewValue = {}
 
-            local Selected = GetSelectedMap()
-            local Values = {}
-
-            for _, ExistingName in Dropdown.Values do
-                ExistingName = GetName(ExistingName)
-                if ExistingName ~= Name or Selected[Name] then
-                    table.insert(Values, ExistingName)
+                if typeof(Value) == "table" then
+                    for Key, Active in Value do
+                        if typeof(Active) == "boolean" then
+                            if Active then
+                                local Name = GetName(Key)
+                                if Name ~= "" then
+                                    NewValue[Name] = true
+                                end
+                            end
+                        else
+                            local Name = GetName(Active)
+                            if Name ~= "" then
+                                NewValue[Name] = true
+                            end
+                        end
+                    end
+                elseif Value then
+                    local Name = GetName(Value)
+                    if Name ~= "" then
+                        NewValue[Name] = true
+                    end
                 end
+
+                Dropdown.Value = NewValue
+            else
+                local Name = Value and GetName(Value) or nil
+                Dropdown.Value = Name and Name ~= "" and Name or nil
             end
 
-            Dropdown:RefreshPlayers(Values)
+            Dropdown:RefreshPlayers()
+
+            if not Dropdown.Disabled then
+                Library:UpdateDependencyBoxes()
+                Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
+                Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                SaveConfigSoon()
+            end
+        end
+
+        function Dropdown:GetSelectedNames()
+            local Selected = {}
+
+            if Info.Multi then
+                for Name, Active in Dropdown.Value or {} do
+                    if Active then
+                        table.insert(Selected, tostring(Name))
+                    end
+                end
+            elseif Dropdown.Value then
+                table.insert(Selected, tostring(Dropdown.Value))
+            end
+
+            table.sort(Selected, function(A, B)
+                return A:lower() < B:lower()
+            end)
+
+            return Selected
         end
 
         function Dropdown:DeleteAllDisconnectedPlayers()
-            local Selected = GetSelectedMap()
-            local Values = {}
-
-            local Seen = {}
-            for _, Name in GetLiveNames() do
-                AddName(Values, Seen, Name)
-            end
-
-            for Name in Selected do
-                if IsNameOnline(Name) then
-                    AddName(Values, Seen, Name)
-                else
-                    if Info.Multi then
-                        Dropdown.Value[Name] = nil
-                    elseif Dropdown.Value == Name then
-                        Dropdown.Value = nil
+            if not Info.Multi then
+                if Dropdown.Value and not IsNameOnline(Dropdown.Value) then
+                    Dropdown.Value = nil
+                end
+            else
+                local NewValue = {}
+                for Name, Active in Dropdown.Value or {} do
+                    if Active and IsNameOnline(Name) then
+                        NewValue[Name] = true
                     end
                 end
+                Dropdown.Value = NewValue
             end
 
-            Dropdown:RefreshPlayers(Values)
-            Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
-            Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+            Dropdown:RefreshPlayers()
         end
 
-        Players.PlayerAdded:Connect(function(Player)
-            if ExcludeLocalPlayer and Player == LocalPlayer then
-                return
+        function Dropdown:DestroyPlayerRefresh()
+            for i = #PlayerDropdowns, 1, -1 do
+                if PlayerDropdowns[i] == Dropdown then
+                    table.remove(PlayerDropdowns, i)
+                    break
+                end
             end
+        end
 
-            task.defer(function()
-                Dropdown:AddOption(Player.Name)
-            end)
-        end)
-
-        Players.PlayerRemoving:Connect(function(Player)
-            task.defer(function()
-                Dropdown:RemoveOption(Player.Name)
-            end)
-        end)
-
-        Dropdown:RefreshPlayers(GetLiveNames())
+        Dropdown:RefreshPlayers()
 
         return Dropdown
     end
@@ -9748,9 +10251,38 @@ local function OnPlayerChange()
     end
 
     local PlayerList, ExcludedPlayerList = GetPlayers(), GetPlayers(true)
+    local UpdatedPlayerDropdowns = {}
+
     for _, Dropdown in Options do
+        if typeof(Dropdown) ~= "table" then
+            continue
+        end
+
         if Dropdown.Type == "Dropdown" and Dropdown.SpecialType == "Player" then
-            Dropdown:SetValues(Dropdown.ExcludeLocalPlayer and ExcludedPlayerList or PlayerList)
+            pcall(function()
+                Dropdown:SetValues(Dropdown.ExcludeLocalPlayer and ExcludedPlayerList or PlayerList)
+            end)
+        elseif Dropdown.Type == "PlayerDropdown" and Dropdown.RefreshPlayers then
+            local Success = pcall(function()
+                Dropdown:RefreshPlayers()
+            end)
+            if Success then
+                UpdatedPlayerDropdowns[Dropdown] = true
+            end
+        end
+    end
+
+    for i = #PlayerDropdowns, 1, -1 do
+        local Dropdown = PlayerDropdowns[i]
+        if typeof(Dropdown) ~= "table" then
+            table.remove(PlayerDropdowns, i)
+        elseif not UpdatedPlayerDropdowns[Dropdown] and Dropdown.RefreshPlayers then
+            local Success = pcall(function()
+                Dropdown:RefreshPlayers()
+            end)
+            if not Success then
+                table.remove(PlayerDropdowns, i)
+            end
         end
     end
 end
@@ -9768,8 +10300,16 @@ local function OnTeamChange()
     end
 end
 
-Library:GiveSignal(Players.PlayerAdded:Connect(OnPlayerChange))
-Library:GiveSignal(Players.PlayerRemoving:Connect(OnPlayerChange))
+local function QueuePlayerDropdownRefresh()
+    task.defer(OnPlayerChange)
+    task.delay(0.25, OnPlayerChange)
+    task.delay(1, OnPlayerChange)
+end
+
+task.defer(OnPlayerChange)
+
+Library:GiveSignal(Players.PlayerAdded:Connect(QueuePlayerDropdownRefresh))
+Library:GiveSignal(Players.PlayerRemoving:Connect(QueuePlayerDropdownRefresh))
 
 Library:GiveSignal(Teams.ChildAdded:Connect(OnTeamChange))
 Library:GiveSignal(Teams.ChildRemoved:Connect(OnTeamChange))
