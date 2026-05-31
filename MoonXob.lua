@@ -377,6 +377,7 @@ local Templates = {
         Changed = function() end,
 
         Risky = false,
+        Save = false,
         Disabled = false,
         Visible = true,
     },
@@ -394,6 +395,7 @@ local Templates = {
         Callback = function() end,
         Changed = function() end,
         VerifyValue = nil,
+        Save = false,
 
         Disabled = false,
         Visible = true,
@@ -410,6 +412,7 @@ local Templates = {
 
         Callback = function() end,
         Changed = function() end,
+        Save = false,
 
         Disabled = false,
         Visible = true,
@@ -424,6 +427,7 @@ local Templates = {
 
         Callback = function() end,
         Changed = function() end,
+        Save = false,
 
         Disabled = false,
         Visible = true,
@@ -1428,6 +1432,183 @@ function Library:SafeCallback(Func: (...any) -> ...any, ...: any)
 
     return table.unpack(Result, 2, Result.n)
 end
+
+
+
+Library.ConfigFolder = "Obsidian/configs"
+Library.ConfigFile = Library.ConfigFolder .. "/" .. tostring(game.PlaceId) .. ".json"
+Library.ConfigData = nil
+Library.ConfigElements = {}
+Library.ConfigLoadChecked = false
+Library.ConfigLoadSuccess = false
+Library.ConfigNotifySent = false
+Library.ConfigSaving = false
+
+local function ConfigNotify(Text)
+    task.defer(function()
+        if Library.Unloaded then
+            return
+        end
+
+        if typeof(Library.Notify) == "function" then
+            pcall(function()
+                Library:Notify(Text, 4)
+            end)
+        end
+    end)
+end
+
+local function EnsureConfigLoaded()
+    if Library.ConfigLoadChecked then
+        return
+    end
+
+    Library.ConfigLoadChecked = true
+    Library.ConfigData = {}
+
+    local Loaded = false
+    if isfile and readfile and isfile(Library.ConfigFile) then
+        local Success, Decoded = pcall(function()
+            return HttpService:JSONDecode(readfile(Library.ConfigFile))
+        end)
+
+        if Success and typeof(Decoded) == "table" then
+            Library.ConfigData = Decoded
+            Loaded = true
+        end
+    end
+
+    Library.ConfigLoadSuccess = Loaded
+
+    task.delay(1, function()
+        if Library.ConfigNotifySent then
+            return
+        end
+
+        Library.ConfigNotifySent = true
+        if Loaded then
+            ConfigNotify("Loaded saved config")
+        else
+            ConfigNotify("Failed to load config")
+        end
+    end)
+end
+
+local function GetSavedConfigValue(Idx, Type)
+    EnsureConfigLoaded()
+
+    local Data = Library.ConfigData
+    if typeof(Data) ~= "table" then
+        return nil
+    end
+
+    local Entry = Data[tostring(Idx)]
+    if typeof(Entry) ~= "table" then
+        return nil
+    end
+
+    if Entry.Type ~= Type then
+        return nil
+    end
+
+    return Entry.Value
+end
+
+local function IsConfigSaveable(Type)
+    return Type == "Toggle" or Type == "Slider" or Type == "Input" or Type == "Dropdown" or Type == "PlayerDropdown"
+end
+
+local function SerializeConfigValue(Element)
+    if Element.Type == "PlayerDropdown" then
+        if typeof(Element.GetSelectedNames) == "function" then
+            return Element:GetSelectedNames()
+        end
+
+        local Names = {}
+        if Element.Multi then
+            for Value, Active in Element.Value or {} do
+                if Active then
+                    table.insert(Names, GetPlayerNameFromValue(Value))
+                end
+            end
+        elseif Element.Value then
+            table.insert(Names, GetPlayerNameFromValue(Element.Value))
+        end
+        return Names
+    end
+
+    if Element.Type == "Dropdown" and Element.Multi then
+        local Values = {}
+        for Value, Active in Element.Value or {} do
+            if Active then
+                table.insert(Values, Value)
+            end
+        end
+        return Values
+    end
+
+    return Element.Value
+end
+
+local function RegisterConfigElement(Idx, Element)
+    if not Idx or not Element then
+        return
+    end
+
+    if not IsConfigSaveable(Element.Type) then
+        return
+    end
+
+    if Element.Save ~= true then
+        return
+    end
+
+    Library.ConfigElements[tostring(Idx)] = Element
+end
+
+local function SaveConfigSoon()
+    if Library.Unloaded then
+        return
+    end
+
+    Library:SaveConfig()
+end
+
+function Library:SaveConfig()
+    if Library.Unloaded or Library.ConfigSaving then
+        return false
+    end
+
+    if not (writefile and makefolder and isfolder) then
+        return false
+    end
+
+    Library.ConfigSaving = true
+
+    local Data = {}
+    for Idx, Element in Library.ConfigElements do
+        if Element and Element.Save == true and IsConfigSaveable(Element.Type) then
+            Data[tostring(Idx)] = {
+                Type = Element.Type,
+                Value = SerializeConfigValue(Element),
+            }
+        end
+    end
+
+    local Success = pcall(function()
+        if not isfolder("Obsidian") then
+            makefolder("Obsidian")
+        end
+        if not isfolder(Library.ConfigFolder) then
+            makefolder(Library.ConfigFolder)
+        end
+        writefile(Library.ConfigFile, HttpService:JSONEncode(Data))
+    end)
+
+    Library.ConfigSaving = false
+    return Success
+end
+
 
 function Library:MakeDraggable(UI: GuiObject, DragFrame: GuiObject, IgnoreToggled: boolean?, IsMainWindow: boolean?)
     local StartPos
@@ -3858,9 +4039,14 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
+        local SavedValue = Info.Save == true and GetSavedConfigValue(Idx, "Toggle") or nil
+        if typeof(SavedValue) ~= "boolean" then
+            SavedValue = Info.Default
+        end
+
         local Toggle = {
             Text = Info.Text,
-            Value = Info.Default,
+            Value = SavedValue,
 
             Tooltip = Info.Tooltip,
             DisabledTooltip = Info.DisabledTooltip,
@@ -3868,6 +4054,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
+            Save = Info.Save == true,
 
             Risky = Info.Risky,
             Disabled = Info.Disabled,
@@ -3989,6 +4176,9 @@ do
             Library:UpdateDependencyBoxes()
             Library:SafeCallback(Toggle.Callback, Toggle.Value)
             Library:SafeCallback(Toggle.Changed, Toggle.Value)
+            if Toggle.Save == true then
+                SaveConfigSoon()
+            end
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -4051,6 +4241,16 @@ do
         Toggle.Default = Toggle.Value
 
         Toggles[Idx] = Toggle
+        RegisterConfigElement(Idx, Toggle)
+
+        if Toggle.Value == true then
+            task.defer(function()
+                if not Library.Unloaded and not Toggle.Disabled and Toggle.Value == true then
+                    Library:SafeCallback(Toggle.Callback, Toggle.Value)
+                    Library:SafeCallback(Toggle.Changed, Toggle.Value)
+                end
+            end)
+        end
 
         return Toggle
     end
@@ -4061,9 +4261,14 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
+        local SavedValue = Info.Save == true and GetSavedConfigValue(Idx, "Toggle") or nil
+        if typeof(SavedValue) ~= "boolean" then
+            SavedValue = Info.Default
+        end
+
         local Toggle = {
             Text = Info.Text,
-            Value = Info.Default,
+            Value = SavedValue,
 
             Tooltip = Info.Tooltip,
             DisabledTooltip = Info.DisabledTooltip,
@@ -4071,6 +4276,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
+            Save = Info.Save == true,
 
             Risky = Info.Risky,
             Disabled = Info.Disabled,
@@ -4191,6 +4397,9 @@ do
             Library:UpdateDependencyBoxes()
             Library:SafeCallback(Toggle.Callback, Toggle.Value)
             Library:SafeCallback(Toggle.Changed, Toggle.Value)
+            if Toggle.Save == true then
+                SaveConfigSoon()
+            end
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -4253,6 +4462,16 @@ do
         Toggle.Default = Toggle.Value
 
         Toggles[Idx] = Toggle
+        RegisterConfigElement(Idx, Toggle)
+
+        if Toggle.Value == true then
+            task.defer(function()
+                if not Library.Unloaded and not Toggle.Disabled and Toggle.Value == true then
+                    Library:SafeCallback(Toggle.Callback, Toggle.Value)
+                    Library:SafeCallback(Toggle.Changed, Toggle.Value)
+                end
+            end)
+        end
 
         return Toggle
     end
@@ -4267,9 +4486,15 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
+        local SavedValue = Info.Save == true and GetSavedConfigValue(Idx, "Input") or nil
+        if typeof(SavedValue) ~= "string" and typeof(SavedValue) ~= "number" then
+            SavedValue = Info.Default
+        end
+        SavedValue = tostring(SavedValue)
+
         local Input = {
             Text = Info.Text,
-            Value = Info.Default,
+            Value = SavedValue,
 
             Finished = Info.Finished,
             Numeric = Info.Numeric,
@@ -4285,6 +4510,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
+            Save = Info.Save == true,
             VerifyValue = Info.VerifyValue,
 
             Disabled = Info.Disabled,
@@ -4382,6 +4608,9 @@ do
             if not Input.Disabled then
                 Library:SafeCallback(Input.Callback, Input.Value)
                 Library:SafeCallback(Input.Changed, Input.Value)
+                if Input.Save == true then
+                    SaveConfigSoon()
+                end
             end
         end
 
@@ -4446,6 +4675,17 @@ do
         end
         
         Options[Idx] = Input
+        RegisterConfigElement(Idx, Input)
+
+        task.defer(function()
+            if not Library.Unloaded and not Input.Disabled then
+                Library:SafeCallback(Input.Callback, Input.Value)
+                Library:SafeCallback(Input.Changed, Input.Value)
+                if Input.Save == true then
+                    SaveConfigSoon()
+                end
+            end
+        end)
 
         return Input
     end
@@ -4456,9 +4696,16 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
+        local SavedValue = Info.Save == true and GetSavedConfigValue(Idx, "Slider") or nil
+        SavedValue = tonumber(SavedValue)
+        if not SavedValue then
+            SavedValue = Info.Default
+        end
+        SavedValue = math.clamp(Round(SavedValue, Info.Rounding), Info.Min, Info.Max)
+
         local Slider = {
             Text = Info.Text,
-            Value = Info.Default,
+            Value = SavedValue,
 
             Min = Info.Min,
             Max = Info.Max,
@@ -4475,6 +4722,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
+            Save = Info.Save == true,
 
             Disabled = Info.Disabled,
             Visible = Info.Visible,
@@ -4639,6 +4887,9 @@ do
 
             Library:SafeCallback(Slider.Callback, Slider.Value)
             Library:SafeCallback(Slider.Changed, Slider.Value)
+            if Slider.Save == true then
+                SaveConfigSoon()
+            end
         end
 
         function Slider:SetDisabled(Disabled: boolean)
@@ -4735,6 +4986,14 @@ do
         Slider.Default = Slider.Value
 
         Options[Idx] = Slider
+        RegisterConfigElement(Idx, Slider)
+
+        task.defer(function()
+            if not Library.Unloaded and not Slider.Disabled then
+                Library:SafeCallback(Slider.Callback, Slider.Value)
+                Library:SafeCallback(Slider.Changed, Slider.Value)
+            end
+        end)
 
         return Slider
     end
@@ -4774,6 +5033,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
+            Save = Info.Save == true,
 
             Disabled = Info.Disabled,
             Visible = Info.Visible,
@@ -5179,6 +5439,9 @@ do
                         Library:UpdateDependencyBoxes()
                         Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                         Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                        if Dropdown.Save == true then
+                            SaveConfigSoon()
+                        end
                     end)
                 end
 
@@ -5237,6 +5500,9 @@ do
                 Library:UpdateDependencyBoxes()
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                if Dropdown.Save == true then
+                    SaveConfigSoon()
+                end
             end
         end
 
@@ -5384,21 +5650,36 @@ do
             SearchBox:GetPropertyChangedSignal("Text"):Connect(Dropdown.BuildDropdownList)
         end
 
+        local DefaultSource = Info.Default
+        if Info.Save == true then
+            local SavedType = Info.PlayerDropdown and "PlayerDropdown" or "Dropdown"
+            local SavedValue = GetSavedConfigValue(Idx, SavedType)
+            if SavedValue ~= nil then
+                DefaultSource = SavedValue
+            end
+        end
+
         local Defaults = {}
-        if typeof(Info.Default) == "string" then
-            local Index = table.find(Dropdown.Values, Info.Default)
+        if typeof(DefaultSource) == "string" then
+            local Index = table.find(Dropdown.Values, DefaultSource)
             if Index then
                 table.insert(Defaults, Index)
+            elseif Info.PlayerDropdown then
+                table.insert(Dropdown.Values, DefaultSource)
+                table.insert(Defaults, #Dropdown.Values)
             end
-        elseif typeof(Info.Default) == "table" then
-            for _, Value in next, Info.Default do
+        elseif typeof(DefaultSource) == "table" then
+            for _, Value in next, DefaultSource do
                 local Index = table.find(Dropdown.Values, Value)
                 if Index then
                     table.insert(Defaults, Index)
+                elseif Info.PlayerDropdown then
+                    table.insert(Dropdown.Values, tostring(Value))
+                    table.insert(Defaults, #Dropdown.Values)
                 end
             end
-        elseif Dropdown.Values[Info.Default] ~= nil then
-            table.insert(Defaults, Info.Default)
+        elseif Dropdown.Values[DefaultSource] ~= nil then
+            table.insert(Defaults, DefaultSource)
         end
 
         if next(Defaults) then
@@ -5433,6 +5714,17 @@ do
         Dropdown.DefaultValues = Dropdown.Values
 
         Options[Idx] = Dropdown
+        RegisterConfigElement(Idx, Dropdown)
+
+        task.defer(function()
+            if not Library.Unloaded and not Dropdown.Disabled then
+                Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
+                Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                if Dropdown.Save == true then
+                    SaveConfigSoon()
+                end
+            end
+        end)
 
         return Dropdown
     end
@@ -5480,7 +5772,11 @@ do
 
         local Dropdown = Funcs.AddDropdown(self, Idx, Info)
         Dropdown.Type = "PlayerDropdown"
+        Dropdown.Save = Info.Save == true
         Dropdown.PlayerDropdown = true
+        if Dropdown.Save == true then
+            RegisterConfigElement(Idx, Dropdown)
+        end
         Dropdown.ExcludeLocalPlayer = ExcludeLocalPlayer
         Dropdown.OfflineSelected = {}
         Dropdown.BaseSetValues = Dropdown.SetValues
@@ -5629,6 +5925,9 @@ do
                 Library:UpdateDependencyBoxes()
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
+                if Dropdown.Save == true then
+                    SaveConfigSoon()
+                end
             end
         end
 
