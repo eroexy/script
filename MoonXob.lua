@@ -1515,10 +1515,34 @@ local function GetSavedConfigValue(Idx, Type)
 end
 
 local function IsConfigSaveable(Type)
-    return Type == "Toggle" or Type == "Slider" or Type == "Input" or Type == "Dropdown" or Type == "PlayerDropdown"
+    return Type == "Toggle"
+        or Type == "Slider"
+        or Type == "Input"
+        or Type == "Dropdown"
+        or Type == "PlayerDropdown"
+        or Type == "ColorPicker"
+        or Type == "KeyPicker"
 end
 
 local function SerializeConfigValue(Element)
+    if Element.Type == "ColorPicker" then
+        local Color = Element.Value or Color3.new(1, 1, 1)
+        return {
+            R = math.floor((Color.R * 255) + 0.5),
+            G = math.floor((Color.G * 255) + 0.5),
+            B = math.floor((Color.B * 255) + 0.5),
+            Transparency = Element.Transparency or 0,
+        }
+    end
+
+    if Element.Type == "KeyPicker" then
+        return {
+            Element.Value or "None",
+            Element.Mode or "Toggle",
+            Element.Modifiers or {},
+        }
+    end
+
     if Element.Type == "PlayerDropdown" then
         if typeof(Element.GetSelectedNames) == "function" then
             return Element:GetSelectedNames()
@@ -1559,10 +1583,7 @@ local function RegisterConfigElement(Idx, Element)
         return
     end
 
-    if Element.Save ~= true then
-        return
-    end
-
+    Element.Save = true
     Library.ConfigElements[tostring(Idx)] = Element
 end
 
@@ -1587,7 +1608,7 @@ function Library:SaveConfig()
 
     local Data = {}
     for Idx, Element in Library.ConfigElements do
-        if Element and Element.Save == true and IsConfigSaveable(Element.Type) then
+        if Element and IsConfigSaveable(Element.Type) then
             Data[tostring(Idx)] = {
                 Type = Element.Type,
                 Value = SerializeConfigValue(Element),
@@ -2368,6 +2389,19 @@ do
     function Funcs:AddKeyPicker(Idx, Info)
         Info = Library:Validate(Info, Templates.KeyPicker)
 
+        local SavedKeyPickerValue = GetSavedConfigValue(Idx, "KeyPicker")
+        if typeof(SavedKeyPickerValue) == "table" then
+            if typeof(SavedKeyPickerValue[1]) == "string" then
+                Info.Default = SavedKeyPickerValue[1]
+            end
+            if typeof(SavedKeyPickerValue[2]) == "string" then
+                Info.Mode = SavedKeyPickerValue[2]
+            end
+            if typeof(SavedKeyPickerValue[3]) == "table" then
+                Info.DefaultModifiers = SavedKeyPickerValue[3]
+            end
+        end
+
         local ParentObj = self
         local ToggleLabel = ParentObj.TextLabel
 
@@ -2835,6 +2869,7 @@ do
             Library:SafeCallback(KeyPicker.Changed, KeyCode, NewModifiers)
 
             KeyPicker:Update()
+            SaveConfigSoon()
         end
 
         function KeyPicker:SetText(Text)
@@ -3059,6 +3094,7 @@ do
         KeyPicker.DefaultModifiers = table.clone(KeyPicker.Modifiers or {})
 
         Options[Idx] = KeyPicker
+        RegisterConfigElement(Idx, KeyPicker)
 
         return self
     end
@@ -3069,6 +3105,19 @@ do
     end
     function Funcs:AddColorPicker(Idx, Info)
         Info = Library:Validate(Info, Templates.ColorPicker)
+
+        local SavedColorPickerValue = GetSavedConfigValue(Idx, "ColorPicker")
+        if typeof(SavedColorPickerValue) == "table" then
+            local R = tonumber(SavedColorPickerValue.R)
+            local G = tonumber(SavedColorPickerValue.G)
+            local B = tonumber(SavedColorPickerValue.B)
+            if R and G and B then
+                Info.Default = Color3.fromRGB(math.clamp(R, 0, 255), math.clamp(G, 0, 255), math.clamp(B, 0, 255))
+            end
+            if Info.Transparency and tonumber(SavedColorPickerValue.Transparency) then
+                Info.Transparency = tonumber(SavedColorPickerValue.Transparency)
+            end
+        end
 
         local ParentObj = self
         local ToggleLabel = ParentObj.TextLabel
@@ -3389,6 +3438,7 @@ do
 
             Library:SafeCallback(ColorPicker.Callback, ColorPicker.Value)
             Library:SafeCallback(ColorPicker.Changed, ColorPicker.Value)
+            SaveConfigSoon()
         end
 
         function ColorPicker:OnChanged(Func)
@@ -3507,6 +3557,7 @@ do
         ColorPicker.Default = ColorPicker.Value
 
         Options[Idx] = ColorPicker
+        RegisterConfigElement(Idx, ColorPicker)
 
         return self
     end
@@ -4039,7 +4090,7 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
-        local SavedValue = Info.Save == true and GetSavedConfigValue(Idx, "Toggle") or nil
+        local SavedValue = GetSavedConfigValue(Idx, "Toggle")
         if typeof(SavedValue) ~= "boolean" then
             SavedValue = Info.Default
         end
@@ -4054,7 +4105,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
-            Save = Info.Save == true,
+            Save = true,
 
             Risky = Info.Risky,
             Disabled = Info.Disabled,
@@ -4138,6 +4189,7 @@ do
                 CheckImage.ImageTransparency = Toggle.Value and 0.8 or 1
 
                 Checkbox.BackgroundColor3 = Library.Scheme.BackgroundColor
+                Checkbox.BackgroundTransparency = Toggle.Value and 0.35 or 1
                 Library.Registry[Checkbox].BackgroundColor3 = "BackgroundColor"
 
                 return
@@ -4147,11 +4199,12 @@ do
                 TextTransparency = Toggle.Value and 0 or 0.4,
             }):Play()
             TweenService:Create(CheckImage, Library.TweenInfo, {
-                ImageTransparency = Toggle.Value and 0 or 1,
+                ImageTransparency = 1,
             }):Play()
 
-            Checkbox.BackgroundColor3 = Library.Scheme.MainColor
-            Library.Registry[Checkbox].BackgroundColor3 = "MainColor"
+            Checkbox.BackgroundColor3 = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.MainColor
+            Checkbox.BackgroundTransparency = Toggle.Value and 0 or 1
+            Library.Registry[Checkbox].BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
         end
 
         function Toggle:OnChanged(Func)
@@ -4176,9 +4229,7 @@ do
             Library:UpdateDependencyBoxes()
             Library:SafeCallback(Toggle.Callback, Toggle.Value)
             Library:SafeCallback(Toggle.Changed, Toggle.Value)
-            if Toggle.Save == true then
-                SaveConfigSoon()
-            end
+            SaveConfigSoon()
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -4261,7 +4312,7 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
-        local SavedValue = Info.Save == true and GetSavedConfigValue(Idx, "Toggle") or nil
+        local SavedValue = GetSavedConfigValue(Idx, "Toggle")
         if typeof(SavedValue) ~= "boolean" then
             SavedValue = Info.Default
         end
@@ -4276,7 +4327,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
-            Save = Info.Save == true,
+            Save = true,
 
             Risky = Info.Risky,
             Disabled = Info.Disabled,
@@ -4360,6 +4411,7 @@ do
                 CheckImage.ImageTransparency = Toggle.Value and 0.8 or 1
 
                 Box.BackgroundColor3 = Library.Scheme.BackgroundColor
+                Box.BackgroundTransparency = Toggle.Value and 0.35 or 1
                 Library.Registry[Box].BackgroundColor3 = "BackgroundColor"
                 return
             end
@@ -4368,10 +4420,11 @@ do
                 TextTransparency = Toggle.Value and 0 or 0.4,
             }):Play()
             TweenService:Create(CheckImage, Library.TweenInfo, {
-                ImageTransparency = Toggle.Value and 0 or 1,
+                ImageTransparency = 1,
             }):Play()
 
             Box.BackgroundColor3 = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.MainColor
+            Box.BackgroundTransparency = Toggle.Value and 0 or 1
             Library.Registry[Box].BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
         end
 
@@ -4397,9 +4450,7 @@ do
             Library:UpdateDependencyBoxes()
             Library:SafeCallback(Toggle.Callback, Toggle.Value)
             Library:SafeCallback(Toggle.Changed, Toggle.Value)
-            if Toggle.Save == true then
-                SaveConfigSoon()
-            end
+            SaveConfigSoon()
         end
 
         function Toggle:SetDisabled(Disabled: boolean)
@@ -4486,7 +4537,7 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
-        local SavedValue = Info.Save == true and GetSavedConfigValue(Idx, "Input") or nil
+        local SavedValue = GetSavedConfigValue(Idx, "Input")
         if typeof(SavedValue) ~= "string" and typeof(SavedValue) ~= "number" then
             SavedValue = Info.Default
         end
@@ -4510,7 +4561,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
-            Save = Info.Save == true,
+            Save = true,
             VerifyValue = Info.VerifyValue,
 
             Disabled = Info.Disabled,
@@ -4608,9 +4659,7 @@ do
             if not Input.Disabled then
                 Library:SafeCallback(Input.Callback, Input.Value)
                 Library:SafeCallback(Input.Changed, Input.Value)
-                if Input.Save == true then
-                    SaveConfigSoon()
-                end
+                SaveConfigSoon()
             end
         end
 
@@ -4681,9 +4730,7 @@ do
             if not Library.Unloaded and not Input.Disabled then
                 Library:SafeCallback(Input.Callback, Input.Value)
                 Library:SafeCallback(Input.Changed, Input.Value)
-                if Input.Save == true then
-                    SaveConfigSoon()
-                end
+                SaveConfigSoon()
             end
         end)
 
@@ -4696,7 +4743,7 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
-        local SavedValue = Info.Save == true and GetSavedConfigValue(Idx, "Slider") or nil
+        local SavedValue = GetSavedConfigValue(Idx, "Slider")
         SavedValue = tonumber(SavedValue)
         if not SavedValue then
             SavedValue = Info.Default
@@ -4722,7 +4769,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
-            Save = Info.Save == true,
+            Save = true,
 
             Disabled = Info.Disabled,
             Visible = Info.Visible,
@@ -4887,9 +4934,7 @@ do
 
             Library:SafeCallback(Slider.Callback, Slider.Value)
             Library:SafeCallback(Slider.Changed, Slider.Value)
-            if Slider.Save == true then
                 SaveConfigSoon()
-            end
         end
 
         function Slider:SetDisabled(Disabled: boolean)
@@ -5033,7 +5078,7 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
-            Save = Info.Save == true,
+            Save = true,
 
             Disabled = Info.Disabled,
             Visible = Info.Visible,
@@ -5446,9 +5491,7 @@ do
                         Library:UpdateDependencyBoxes()
                         Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                         Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
-                        if Dropdown.Save == true then
-                            SaveConfigSoon()
-                        end
+                SaveConfigSoon()
                     end)
                 end
 
@@ -5507,9 +5550,7 @@ do
                 Library:UpdateDependencyBoxes()
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
-                if Dropdown.Save == true then
-                    SaveConfigSoon()
-                end
+                SaveConfigSoon()
             end
         end
 
@@ -5666,12 +5707,10 @@ do
         end
 
         local DefaultSource = Info.Default
-        if Info.Save == true then
-            local SavedType = Info.PlayerDropdown and "PlayerDropdown" or "Dropdown"
-            local SavedValue = GetSavedConfigValue(Idx, SavedType)
-            if SavedValue ~= nil then
-                DefaultSource = SavedValue
-            end
+        local SavedType = Info.PlayerDropdown and "PlayerDropdown" or "Dropdown"
+        local SavedValue = GetSavedConfigValue(Idx, SavedType)
+        if SavedValue ~= nil then
+            DefaultSource = SavedValue
         end
 
         local Defaults = {}
@@ -5735,9 +5774,7 @@ do
             if not Library.Unloaded and not Dropdown.Disabled then
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
-                if Dropdown.Save == true then
-                    SaveConfigSoon()
-                end
+                SaveConfigSoon()
             end
         end)
 
@@ -5814,7 +5851,7 @@ do
 
         local Dropdown = Funcs.AddDropdown(self, Idx, Info)
         Dropdown.Type = "PlayerDropdown"
-        Dropdown.Save = Info.Save == true
+        Dropdown.Save = true
         Dropdown.PlayerDropdown = true
         Dropdown.ExcludeLocalPlayer = ExcludeLocalPlayer
         Dropdown.OfflineSelected = {}
@@ -5822,9 +5859,7 @@ do
         Dropdown.BaseSetValue = Dropdown.SetValue
         Dropdown.SelectedValues = {}
 
-        if Dropdown.Save == true then
-            RegisterConfigElement(Idx, Dropdown)
-        end
+        RegisterConfigElement(Idx, Dropdown)
 
         table.insert(PlayerDropdowns, Dropdown)
 
@@ -5964,9 +5999,7 @@ do
                 Library:UpdateDependencyBoxes()
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
-                if Dropdown.Save == true then
-                    SaveConfigSoon()
-                end
+                SaveConfigSoon()
             end
         end
 
