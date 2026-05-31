@@ -1983,6 +1983,151 @@ function Library:AddDraggableMenu(Name: string)
     return Holder, Container
 end
 
+
+function Library:AddDraggableTextBoxWindow(Info)
+    Info = Info or {}
+
+    local Window = {}
+
+    local TitleText = Info.Title or "Text Box"
+    local DefaultText = Info.Text or ""
+    local Placeholder = Info.Placeholder or "Type here..."
+    local Position = Info.Position or UDim2.fromOffset(6, 6)
+    local Size = Info.Size or UDim2.fromOffset(260, 150)
+    local Visible = Info.Visible ~= false
+
+    local Callback = Info.Callback or function() end
+    local Changed = Info.Changed or function() end
+
+    local Holder = New("Frame", {
+        BackgroundColor3 = "BackgroundColor",
+        Position = Position,
+        Size = Size,
+        Visible = Visible,
+        ZIndex = 10,
+        Parent = ScreenGui,
+    })
+
+    table.insert(
+        Library.Corners,
+        New("UICorner", {
+            CornerRadius = UDim.new(0, Library.CornerRadius),
+            Parent = Holder,
+        })
+    )
+
+    table.insert(
+        Library.Scales,
+        New("UIScale", {
+            Parent = Holder,
+        })
+    )
+
+    Library:AddOutline(Holder)
+
+    local Title = New("TextLabel", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -12, 0, 30),
+        Position = UDim2.fromOffset(12, 0),
+        Text = TitleText,
+        TextSize = 15,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 11,
+        Parent = Holder,
+    })
+
+    Library:MakeLine(Holder, {
+        Position = UDim2.fromOffset(0, 30),
+        Size = UDim2.new(1, 0, 0, 1),
+        ZIndex = 11,
+    })
+
+    local TextBox = New("TextBox", {
+        BackgroundColor3 = "MainColor",
+        ClearTextOnFocus = false,
+        MultiLine = true,
+        PlaceholderText = Placeholder,
+        Position = UDim2.fromOffset(10, 40),
+        Size = UDim2.new(1, -20, 1, -50),
+        Text = DefaultText,
+        TextSize = 14,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top,
+        ZIndex = 11,
+        Parent = Holder,
+    })
+
+    table.insert(
+        Library.Corners,
+        New("UICorner", {
+            CornerRadius = UDim.new(0, Library.CornerRadius),
+            Parent = TextBox,
+        })
+    )
+
+    New("UIPadding", {
+        PaddingTop = UDim.new(0, 6),
+        PaddingBottom = UDim.new(0, 6),
+        PaddingLeft = UDim.new(0, 6),
+        PaddingRight = UDim.new(0, 6),
+        Parent = TextBox,
+    })
+
+    New("UIStroke", {
+        Color = GetSchemeValue("OutlineColor"),
+        Parent = TextBox,
+    })
+
+    Library:MakeDraggable(Holder, Title, true)
+
+    TextBox:GetPropertyChangedSignal("Text"):Connect(function()
+        Library:SafeCallback(Changed, TextBox.Text)
+    end)
+
+    TextBox.FocusLost:Connect(function(EnterPressed)
+        Library:SafeCallback(Callback, TextBox.Text, EnterPressed)
+    end)
+
+    Window.Frame = Holder
+    Window.Title = Title
+    Window.TextBox = TextBox
+
+    function Window:SetTitle(Text)
+        Title.Text = tostring(Text)
+    end
+
+    function Window:SetText(Text)
+        TextBox.Text = tostring(Text)
+    end
+
+    function Window:GetText()
+        return TextBox.Text
+    end
+
+    function Window:SetVisible(State)
+        Holder.Visible = State
+    end
+
+    function Window:Toggle()
+        Holder.Visible = not Holder.Visible
+    end
+
+    function Window:SetPosition(Pos)
+        Holder.Position = Pos
+    end
+
+    function Window:SetSize(NewSize)
+        Holder.Size = NewSize
+    end
+
+    function Window:Destroy()
+        Holder:Destroy()
+    end
+
+    return Window
+end
+
 --// Watermark - Deprecated \\--
 do
     local WatermarkLabel = Library:AddDraggableLabel("")
