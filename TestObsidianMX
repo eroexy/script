@@ -1244,8 +1244,10 @@ local function ParentUI(UI: Instance, SkipHiddenUI: boolean?)
     SafeParentUI(UI, gethui)
 end
 
+local HttpService = game:GetService("HttpService")
+
 local ScreenGui = New("ScreenGui", {
-    Name = "moonX",
+    Name = HttpService:GenerateGUID(false),
     DisplayOrder = 998,
     ResetOnSpawn = false,
 })
