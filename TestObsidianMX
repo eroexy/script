@@ -5736,15 +5736,79 @@ do
         local OriginalCallback = Info.Callback or function() end
         local OriginalChanged = Info.Changed or function() end
         local ExcludeLocalPlayer = Info.ExcludeLocalPlayer == true
+        local DisplayCache = {}
+        local UserIdCache = {}
+
+        local function CachePlayer(Player)
+            if Player and Player:IsA("Player") then
+                DisplayCache[Player.Name] = Player.DisplayName
+                UserIdCache[Player.Name] = Player.UserId
+            end
+        end
+
+        for _, Player in Players:GetPlayers() do
+            CachePlayer(Player)
+        end
+
+        local function GetName(Value)
+            if typeof(Value) == "Instance" and Value:IsA("Player") then
+                CachePlayer(Value)
+                return Value.Name
+            end
+
+            return tostring(Value or "")
+        end
+
+        local function GetLivePlayer(Name)
+            Name = tostring(Name or "")
+            for _, Player in Players:GetPlayers() do
+                if Player.Name == Name then
+                    CachePlayer(Player)
+                    return Player
+                end
+            end
+        end
+
+        local function IsSelectedName(Name)
+            Name = tostring(Name or "")
+
+            if Info.Multi then
+                for Value, Active in Dropdown.Value or {} do
+                    if Active and GetName(Value) == Name then
+                        return true
+                    end
+                end
+            else
+                return Dropdown.Value and GetName(Dropdown.Value) == Name
+            end
+
+            return false
+        end
+
+        local function FormatPlayerValue(Value)
+            local Name = GetName(Value)
+            local Player = GetLivePlayer(Name)
+            local DisplayName = Player and Player.DisplayName or DisplayCache[Name]
+
+            if DisplayName and DisplayName ~= "" then
+                return DisplayName .. " (@" .. Name .. ")"
+            end
+
+            return Name
+        end
 
         local function GetLiveNames()
             local Names = {}
             local Seen = {}
 
             for _, Player in GetPlayers(ExcludeLocalPlayer) do
-                if Player and Player.Parent == Players and not Seen[Player.Name] then
-                    table.insert(Names, Player.Name)
-                    Seen[Player.Name] = true
+                if Player and Player.Parent == Players then
+                    CachePlayer(Player)
+
+                    if not Seen[Player.Name] then
+                        table.insert(Names, Player.Name)
+                        Seen[Player.Name] = true
+                    end
                 end
             end
 
@@ -5755,12 +5819,20 @@ do
             return Names
         end
 
+        local function AddName(List, Seen, Name)
+            Name = tostring(Name or "")
+            if Name ~= "" and not Seen[Name] then
+                table.insert(List, Name)
+                Seen[Name] = true
+            end
+        end
+
         Info.Multi = Info.Multi ~= false
         Info.AllowNull = true
         Info.PlayerDropdown = true
         Info.Values = Info.Values or GetLiveNames()
-        Info.FormatListValue = Info.FormatListValue or GetPlayerDropdownDisplay
-        Info.FormatDisplayValue = Info.FormatDisplayValue or GetPlayerDropdownDisplay
+        Info.FormatListValue = Info.FormatListValue or FormatPlayerValue
+        Info.FormatDisplayValue = Info.FormatDisplayValue or FormatPlayerValue
 
         Info.Callback = function(Value)
             return OriginalCallback(Value)
@@ -5774,44 +5846,18 @@ do
         Dropdown.Type = "PlayerDropdown"
         Dropdown.Save = Info.Save == true
         Dropdown.PlayerDropdown = true
-        if Dropdown.Save == true then
-            RegisterConfigElement(Idx, Dropdown)
-        end
         Dropdown.ExcludeLocalPlayer = ExcludeLocalPlayer
         Dropdown.OfflineSelected = {}
         Dropdown.BaseSetValues = Dropdown.SetValues
         Dropdown.BaseSetValue = Dropdown.SetValue
 
+        if Dropdown.Save == true then
+            RegisterConfigElement(Idx, Dropdown)
+        end
+
         table.insert(PlayerDropdowns, Dropdown)
 
-        local function GetName(Value)
-            if typeof(Value) == "Instance" and Value:IsA("Player") then
-                return Value.Name
-            end
-
-            return tostring(Value or "")
-        end
-
-        local function IsNameOnline(Name)
-            Name = tostring(Name or "")
-            for _, Player in Players:GetPlayers() do
-                if Player.Name == Name then
-                    return true
-                end
-            end
-
-            return false
-        end
-
-        local function AddName(List, Seen, Name)
-            Name = tostring(Name or "")
-            if Name ~= "" and not Seen[Name] then
-                table.insert(List, Name)
-                Seen[Name] = true
-            end
-        end
-
-        local function GetSelectedMap()
+        local function GetSelectedNames()
             local Selected = {}
 
             if Info.Multi then
@@ -5827,26 +5873,36 @@ do
             return Selected
         end
 
-        local function BuildMergedValues(Values)
-            local Merged = {}
+        local function RebuildValues()
+            local NewValues = {}
             local Seen = {}
-            local Offline = {}
-            local Selected = GetSelectedMap()
+            local Selected = GetSelectedNames()
+            local Online = {}
 
-            for _, Name in Values or GetLiveNames() do
-                AddName(Merged, Seen, GetName(Name))
+            for _, Player in GetPlayers(ExcludeLocalPlayer) do
+                CachePlayer(Player)
+                Online[Player.Name] = true
+                AddName(NewValues, Seen, Player.Name)
             end
 
-            for Name in Selected do
-                if not IsNameOnline(Name) then
-                    Offline[Name] = true
-                    AddName(Merged, Seen, Name)
+            for _, Value in Dropdown.Values or {} do
+                local Name = GetName(Value)
+                if Selected[Name] then
+                    AddName(NewValues, Seen, Name)
                 end
             end
 
-            table.sort(Merged, function(A, B)
-                local AOffline = Offline[A] == true
-                local BOffline = Offline[B] == true
+            Dropdown.OfflineSelected = {}
+            for Name in Selected do
+                if not Online[Name] then
+                    Dropdown.OfflineSelected[Name] = true
+                    AddName(NewValues, Seen, Name)
+                end
+            end
+
+            table.sort(NewValues, function(A, B)
+                local AOffline = Dropdown.OfflineSelected[A] == true
+                local BOffline = Dropdown.OfflineSelected[B] == true
 
                 if AOffline ~= BOffline then
                     return not AOffline
@@ -5855,35 +5911,89 @@ do
                 return A:lower() < B:lower()
             end)
 
-            return Merged, Offline, Selected
-        end
-
-        function Dropdown:RefreshPlayers(Values)
-            local LiveNames = Values or GetLiveNames()
-            local Merged, Offline, Selected = BuildMergedValues(LiveNames)
-
-            Dropdown.OfflineSelected = Offline
-            Dropdown.Values = Merged
+            Dropdown.Values = NewValues
 
             if Info.Multi then
-                local NewValue = {}
-                for _, Name in Merged do
+                local NewSelected = {}
+                for _, Name in NewValues do
                     if Selected[Name] then
-                        NewValue[Name] = true
+                        NewSelected[Name] = true
                     end
                 end
-                Dropdown.Value = NewValue
+                Dropdown.Value = NewSelected
             else
                 local CurrentName = Dropdown.Value and GetName(Dropdown.Value) or nil
                 Dropdown.Value = CurrentName and CurrentName ~= "" and CurrentName or nil
             end
+        end
 
+        local function AddPlayerOption(Player)
+            if Library.Unloaded or not Player then
+                return
+            end
+
+            if ExcludeLocalPlayer and Player == LocalPlayer then
+                return
+            end
+
+            CachePlayer(Player)
+
+            local Name = Player.Name
+            local Exists = false
+
+            for _, Value in Dropdown.Values do
+                if GetName(Value) == Name then
+                    Exists = true
+                    break
+                end
+            end
+
+            if not Exists then
+                table.insert(Dropdown.Values, Name)
+            end
+
+            if Dropdown.OfflineSelected then
+                Dropdown.OfflineSelected[Name] = nil
+            end
+
+            RebuildValues()
             Dropdown:BuildDropdownList()
             Dropdown:Display()
         end
 
-        function Dropdown:SetValues(Values)
-            Dropdown:RefreshPlayers(Values)
+        local function RemovePlayerOption(Player)
+            if Library.Unloaded or not Player then
+                return
+            end
+
+            CachePlayer(Player)
+
+            local Name = Player.Name
+            local Selected = IsSelectedName(Name)
+
+            if Selected then
+                Dropdown.OfflineSelected[Name] = true
+            else
+                for i = #Dropdown.Values, 1, -1 do
+                    if GetName(Dropdown.Values[i]) == Name then
+                        table.remove(Dropdown.Values, i)
+                    end
+                end
+            end
+
+            RebuildValues()
+            Dropdown:BuildDropdownList()
+            Dropdown:Display()
+        end
+
+        function Dropdown:RefreshPlayers()
+            RebuildValues()
+            Dropdown:BuildDropdownList()
+            Dropdown:Display()
+        end
+
+        function Dropdown:SetValues()
+            Dropdown:RefreshPlayers()
         end
 
         function Dropdown:SetValue(Value)
@@ -5958,7 +6068,20 @@ do
                     break
                 end
             end
+
+            if Dropdown.PlayerAddedConnection then
+                Dropdown.PlayerAddedConnection:Disconnect()
+                Dropdown.PlayerAddedConnection = nil
+            end
+
+            if Dropdown.PlayerRemovingConnection then
+                Dropdown.PlayerRemovingConnection:Disconnect()
+                Dropdown.PlayerRemovingConnection = nil
+            end
         end
+
+        Dropdown.PlayerAddedConnection = Library:GiveSignal(Players.PlayerAdded:Connect(AddPlayerOption))
+        Dropdown.PlayerRemovingConnection = Library:GiveSignal(Players.PlayerRemoving:Connect(RemovePlayerOption))
 
         Dropdown:RefreshPlayers()
 
