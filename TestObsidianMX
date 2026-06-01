@@ -1245,7 +1245,7 @@ local function ParentUI(UI: Instance, SkipHiddenUI: boolean?)
 end
 
 local ScreenGui = New("ScreenGui", {
-    Name = "asbdadjiajfaisbdba__sbdbaydbf8-3b7yrb2br__8y2b37rbb672b7ryb27637-dsd87hb7yabr_b2376br82-73b764523784h28-b7c8snbdq7yern24r2e_rfn-safdnb72n38-5r287nr38nb2",
+    Name = "moonX",
     DisplayOrder = 998,
     ResetOnSpawn = false,
 })
