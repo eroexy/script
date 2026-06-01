@@ -666,7 +666,7 @@ local function GetPlayerDropdownDisplay(Value)
     local Player = GetLivePlayerByName(Name)
 
     if Player then
-        return Player.DisplayName .. " (@" .. Player.Name .. ")"
+        return Player.DisplayName
     end
 
     return tostring(Value)
@@ -5791,7 +5791,7 @@ do
             local DisplayName = Player and Player.DisplayName or DisplayCache[Name]
 
             if DisplayName and DisplayName ~= "" then
-                return DisplayName .. " (@" .. Name .. ")"
+                return DisplayName
             end
 
             return Name
