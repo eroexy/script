@@ -9,7 +9,6 @@ local UserInputService: UserInputService = cloneref(game:GetService("UserInputSe
 local TextService: TextService = cloneref(game:GetService("TextService"))
 local Teams: Teams = cloneref(game:GetService("Teams"))
 local TweenService: TweenService = cloneref(game:GetService("TweenService"))
-local HttpService: HttpService = cloneref(game:GetService("HttpService"))
 
 local getgenv = getgenv or function()
     return shared
@@ -1520,7 +1519,6 @@ local function IsConfigSaveable(Type)
         or Type == "Slider"
         or Type == "Input"
         or Type == "Dropdown"
-        or Type == "PlayerDropdown"
         or Type == "ColorPicker"
         or Type == "KeyPicker"
 end
@@ -1580,6 +1578,10 @@ local function RegisterConfigElement(Idx, Element)
         return
     end
 
+    if Element.Type == "PlayerDropdown" or Element.PlayerDropdown == true then
+        return
+    end
+
     if not IsConfigSaveable(Element.Type) then
         return
     end
@@ -1609,7 +1611,7 @@ function Library:SaveConfig()
 
     local Data = {}
     for Idx, Element in Library.ConfigElements do
-        if Element and IsConfigSaveable(Element.Type) then
+        if Element and Element.Type ~= "PlayerDropdown" and Element.PlayerDropdown ~= true and IsConfigSaveable(Element.Type) then
             Data[tostring(Idx)] = {
                 Type = Element.Type,
                 Value = SerializeConfigValue(Element),
@@ -4106,7 +4108,8 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
-            Save = true,
+            Save = not Info.PlayerDropdown,
+            PlayerDropdown = Info.PlayerDropdown == true,
 
             Risky = Info.Risky,
             Disabled = Info.Disabled,
@@ -4328,7 +4331,8 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
-            Save = true,
+            Save = not Info.PlayerDropdown,
+            PlayerDropdown = Info.PlayerDropdown == true,
 
             Risky = Info.Risky,
             Disabled = Info.Disabled,
@@ -4562,7 +4566,8 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
-            Save = true,
+            Save = not Info.PlayerDropdown,
+            PlayerDropdown = Info.PlayerDropdown == true,
             VerifyValue = Info.VerifyValue,
 
             Disabled = Info.Disabled,
@@ -4770,7 +4775,8 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
-            Save = true,
+            Save = not Info.PlayerDropdown,
+            PlayerDropdown = Info.PlayerDropdown == true,
 
             Disabled = Info.Disabled,
             Visible = Info.Visible,
@@ -5079,7 +5085,8 @@ do
 
             Callback = Info.Callback,
             Changed = Info.Changed,
-            Save = true,
+            Save = not Info.PlayerDropdown,
+            PlayerDropdown = Info.PlayerDropdown == true,
 
             Disabled = Info.Disabled,
             Visible = Info.Visible,
@@ -5492,7 +5499,9 @@ do
                         Library:UpdateDependencyBoxes()
                         Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                         Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
-                SaveConfigSoon()
+                        if not Info.PlayerDropdown then
+                            SaveConfigSoon()
+                        end
                     end)
                 end
 
@@ -5551,7 +5560,9 @@ do
                 Library:UpdateDependencyBoxes()
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
-                SaveConfigSoon()
+                if not Info.PlayerDropdown then
+                    SaveConfigSoon()
+                end
             end
         end
 
@@ -5708,10 +5719,13 @@ do
         end
 
         local DefaultSource = Info.Default
-        local SavedType = Info.PlayerDropdown and "PlayerDropdown" or "Dropdown"
-        local SavedValue = GetSavedConfigValue(Idx, SavedType)
-        if SavedValue ~= nil then
-            DefaultSource = SavedValue
+        local SavedValue = nil
+
+        if not Info.PlayerDropdown then
+            SavedValue = GetSavedConfigValue(Idx, "Dropdown")
+            if SavedValue ~= nil then
+                DefaultSource = SavedValue
+            end
         end
 
         local Defaults = {}
@@ -5775,7 +5789,9 @@ do
             if not Library.Unloaded and not Dropdown.Disabled then
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
-                SaveConfigSoon()
+                if not Info.PlayerDropdown then
+                    SaveConfigSoon()
+                end
             end
         end)
 
@@ -5852,7 +5868,7 @@ do
 
         local Dropdown = Funcs.AddDropdown(self, Idx, Info)
         Dropdown.Type = "PlayerDropdown"
-        Dropdown.Save = true
+        Dropdown.Save = false
         Dropdown.PlayerDropdown = true
         Dropdown.ExcludeLocalPlayer = ExcludeLocalPlayer
         Dropdown.OfflineSelected = {}
@@ -5860,7 +5876,7 @@ do
         Dropdown.BaseSetValue = Dropdown.SetValue
         Dropdown.SelectedValues = {}
 
-        RegisterConfigElement(Idx, Dropdown)
+        Library.ConfigElements[tostring(Idx)] = nil
 
         table.insert(PlayerDropdowns, Dropdown)
 
@@ -5942,12 +5958,33 @@ do
                 LiveNames = GetLiveNames()
             end
 
-            local Merged, Offline, Selected = BuildMergedValues(LiveNames)
+            local Merged = {}
+            local Seen = {}
+
+            for _, Name in LiveNames do
+                AddName(Merged, Seen, GetName(Name))
+            end
+
+            table.sort(Merged, function(A, B)
+                return A:lower() < B:lower()
+            end)
+
+            if Info.Multi then
+                local NewValue = {}
+                for _, Name in Merged do
+                    if Dropdown.Value and Dropdown.Value[Name] then
+                        NewValue[Name] = true
+                    end
+                end
+                Dropdown.Value = NewValue
+            else
+                local CurrentName = Dropdown.Value and GetName(Dropdown.Value) or nil
+                Dropdown.Value = CurrentName and Seen[CurrentName] and CurrentName or nil
+            end
 
             Dropdown.Values = Merged
-            Dropdown.OfflineSelected = Offline
-            Dropdown.SelectedValues = Selected
-            ApplySelectedMap(Selected, Merged)
+            Dropdown.OfflineSelected = {}
+            Dropdown.SelectedValues = GetSelectedMap()
 
             if Dropdown.ClearSearch then
                 Dropdown:ClearSearch()
@@ -6000,7 +6037,6 @@ do
                 Library:UpdateDependencyBoxes()
                 Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
                 Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
-                SaveConfigSoon()
             end
         end
 
