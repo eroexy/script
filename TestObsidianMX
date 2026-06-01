@@ -3980,7 +3980,7 @@ do
 
         local Toggle = {
             Text = Info.Text,
-            Value = Info.Save and Library:GetSavedValue(Idx, Info.Default) or Info.Default,
+            Value = Info.Default,
             Save = Info.Save == true,
             Idx = Idx,
 
@@ -4171,6 +4171,13 @@ do
         Toggle.Holder = Button
         table.insert(Groupbox.Elements, Toggle)
 
+        if Toggle.Save then
+            local SavedValue = Library:GetSavedValue(Idx, nil)
+            if SavedValue ~= nil then
+                Toggle:SetValue(SavedValue == true)
+            end
+        end
+
         Toggle.Default = Toggle.Value
 
         Toggles[Idx] = Toggle
@@ -4190,7 +4197,7 @@ do
 
         local Toggle = {
             Text = Info.Text,
-            Value = Info.Save and Library:GetSavedValue(Idx, Info.Default) or Info.Default,
+            Value = Info.Default,
             Save = Info.Save == true,
             Idx = Idx,
 
@@ -4397,6 +4404,13 @@ do
         Toggle.Holder = Button
         table.insert(Groupbox.Elements, Toggle)
 
+        if Toggle.Save then
+            local SavedValue = Library:GetSavedValue(Idx, nil)
+            if SavedValue ~= nil then
+                Toggle:SetValue(SavedValue == true)
+            end
+        end
+
         Toggle.Default = Toggle.Value
 
         Toggles[Idx] = Toggle
@@ -4416,7 +4430,7 @@ do
 
         local Input = {
             Text = Info.Text,
-            Value = Info.Save and Library:GetSavedValue(Idx, Info.Default) or Info.Default,
+            Value = Info.Default,
             Save = Info.Save == true,
             Idx = Idx,
 
@@ -4589,6 +4603,13 @@ do
         Input.Holder = Holder
         table.insert(Groupbox.Elements, Input)
 
+        if Input.Save then
+            local SavedValue = Library:GetSavedValue(Idx, nil)
+            if SavedValue ~= nil then
+                Input:SetValue(tostring(SavedValue))
+            end
+        end
+
         Input.Default = Input.Value
         if typeof(Info.VerifyValue) == "function" and (Input.Default ~= Input.EmptyReset and Info.VerifyValue(Input.Default) ~= true) then
             Input:SetValue(Input.EmptyReset)
@@ -4608,7 +4629,7 @@ do
 
         local Slider = {
             Text = Info.Text,
-            Value = Info.Save and Library:GetSavedValue(Idx, Info.Default) or Info.Default,
+            Value = Info.Default,
             Save = Info.Save == true,
             Idx = Idx,
 
@@ -4774,13 +4795,13 @@ do
             Slider:Display()
         end
 
-        function Slider:SetValue(Str)
+        function Slider:SetValue(Str, Force)
             if Slider.Disabled then
                 return
             end
 
             local Num = tonumber(Str)
-            if not Num or Num == Slider.Value then
+            if not Num or (Num == Slider.Value and Force ~= true) then
                 return
             end
 
@@ -4855,6 +4876,7 @@ do
 
                 Slider:Display()
                 if Slider.Value ~= OldValue then
+                    Library:SaveOption(Slider)
                     Library:SafeCallback(Slider.Callback, Slider.Value)
                     Library:SafeCallback(Slider.Changed, Slider.Value)
                 end
@@ -4884,6 +4906,13 @@ do
 
         Slider.Holder = Holder
         table.insert(Groupbox.Elements, Slider)
+
+        if Slider.Save then
+            local SavedValue = Library:GetSavedValue(Idx, nil)
+            if SavedValue ~= nil then
+                Slider:SetValue(SavedValue, true)
+            end
+        end
 
         Slider.Default = Slider.Value
 
