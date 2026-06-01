@@ -5805,6 +5805,7 @@ do
         local OriginalCallback = Info.Callback or function() end
         local OriginalChanged = Info.Changed or function() end
         local ExcludeLocalPlayer = Info.ExcludeLocalPlayer == true
+        local Dropdown
 
         local function GetLiveNames()
             local Names = {}
@@ -5832,159 +5833,144 @@ do
             return tostring(Value or "")
         end
 
-        local function IsNameOnline(Name)
-            Name = tostring(Name or "")
-            for _, Player in Players:GetPlayers() do
-                if Player.Name == Name and (not ExcludeLocalPlayer or Player ~= LocalPlayer) then
-                    return true
+        local function MakeSelectedList(Value)
+            local List = {}
+            local Seen = {}
+
+            if typeof(Value) == "table" then
+                for Key, Active in Value do
+                    local Name
+
+                    if typeof(Active) == "boolean" then
+                        if Active then
+                            Name = GetName(Key)
+                        end
+                    else
+                        Name = GetName(Active)
+                    end
+
+                    if Name and Name ~= "" and not Seen[Name] then
+                        table.insert(List, Name)
+                        Seen[Name] = true
+                    end
+                end
+            elseif Value then
+                local Name = GetName(Value)
+                if Name ~= "" then
+                    table.insert(List, Name)
                 end
             end
 
-            return false
+            table.sort(List, function(A, B)
+                return A:lower() < B:lower()
+            end)
+
+            return List
         end
 
-        local function AddName(List, Seen, Name)
-            Name = tostring(Name or "")
-            if Name ~= "" and not Seen[Name] then
-                table.insert(List, Name)
-                Seen[Name] = true
+        local function MakeSelectedMap(Value)
+            local Map = {}
+            local Live = {}
+
+            for _, Name in GetLiveNames() do
+                Live[Name] = true
             end
+
+            if typeof(Value) == "table" then
+                for Key, Active in Value do
+                    local Name
+
+                    if typeof(Active) == "boolean" then
+                        if Active then
+                            Name = GetName(Key)
+                        end
+                    else
+                        Name = GetName(Active)
+                    end
+
+                    if Name and Name ~= "" and Live[Name] then
+                        Map[Name] = true
+                    end
+                end
+            elseif Value then
+                local Name = GetName(Value)
+                if Name ~= "" and Live[Name] then
+                    Map[Name] = true
+                end
+            end
+
+            return Map
         end
 
         Info.Multi = Info.Multi ~= false
         Info.AllowNull = true
         Info.PlayerDropdown = true
+        Info.Save = false
         Info.Values = GetLiveNames()
-        Info.FormatListValue = Info.FormatListValue or GetPlayerDropdownDisplay
-        Info.FormatDisplayValue = Info.FormatDisplayValue or GetPlayerDropdownDisplay
+        Info.FormatListValue = nil
+        Info.FormatDisplayValue = nil
 
         Info.Callback = function(Value)
-            return OriginalCallback(Value)
+            return OriginalCallback(MakeSelectedList(Value))
         end
 
         Info.Changed = function(Value)
-            return OriginalChanged(Value)
+            return OriginalChanged(MakeSelectedList(Value))
         end
 
-        local Dropdown = Funcs.AddDropdown(self, Idx, Info)
+        Dropdown = Funcs.AddDropdown(self, Idx, Info)
         Dropdown.Type = "PlayerDropdown"
         Dropdown.Save = false
         Dropdown.PlayerDropdown = true
         Dropdown.ExcludeLocalPlayer = ExcludeLocalPlayer
-        Dropdown.OfflineSelected = {}
+        Dropdown.SelectedValues = MakeSelectedList(Dropdown.Value)
         Dropdown.BaseSetValues = Dropdown.SetValues
         Dropdown.BaseSetValue = Dropdown.SetValue
-        Dropdown.SelectedValues = {}
 
         Library.ConfigElements[tostring(Idx)] = nil
-
         table.insert(PlayerDropdowns, Dropdown)
 
-        local function GetSelectedMap()
-            local Selected = {}
-
-            if Info.Multi then
-                for Value, Active in Dropdown.Value or {} do
-                    if Active then
-                        local Name = GetName(Value)
-                        if Name ~= "" then
-                            Selected[Name] = true
-                        end
-                    end
-                end
-            elseif Dropdown.Value then
-                local Name = GetName(Dropdown.Value)
-                if Name ~= "" then
-                    Selected[Name] = true
-                end
-            end
-
-            return Selected
+        local function UpdateSelectedValues()
+            Dropdown.SelectedValues = MakeSelectedList(Dropdown.Value)
+            return Dropdown.SelectedValues
         end
 
-        local function BuildMergedValues(Values)
-            local Merged = {}
-            local Seen = {}
-            local Offline = {}
-            local Selected = GetSelectedMap()
-
-            for _, Name in Values or GetLiveNames() do
-                AddName(Merged, Seen, GetName(Name))
-            end
-
-            for Name in Selected do
-                if not IsNameOnline(Name) then
-                    Offline[Name] = true
-                end
-                AddName(Merged, Seen, Name)
-            end
-
-            table.sort(Merged, function(A, B)
-                local AOffline = Offline[A] == true
-                local BOffline = Offline[B] == true
-
-                if AOffline ~= BOffline then
-                    return not AOffline
-                end
-
-                return A:lower() < B:lower()
-            end)
-
-            return Merged, Offline, Selected
-        end
-
-        local function ApplySelectedMap(Selected, Merged)
-            if Info.Multi then
-                local NewValue = {}
-                for _, Name in Merged do
-                    if Selected[Name] then
-                        NewValue[Name] = true
-                    end
-                end
-                Dropdown.Value = NewValue
-            else
-                local CurrentName = Dropdown.Value and GetName(Dropdown.Value) or nil
-                if CurrentName and CurrentName ~= "" then
-                    Dropdown.Value = CurrentName
-                else
-                    Dropdown.Value = nil
-                end
-            end
+        function Dropdown:GetSelectedNames()
+            return UpdateSelectedValues()
         end
 
         function Dropdown:RefreshPlayers(Values)
-            local LiveNames = Values
-            if typeof(LiveNames) ~= "table" then
-                LiveNames = GetLiveNames()
-            end
-
-            local Merged = {}
+            local LiveNames = typeof(Values) == "table" and Values or GetLiveNames()
+            local CleanValues = {}
             local Seen = {}
 
-            for _, Name in LiveNames do
-                AddName(Merged, Seen, GetName(Name))
+            for _, Value in LiveNames do
+                local Name = GetName(Value)
+                if Name ~= "" and not Seen[Name] then
+                    table.insert(CleanValues, Name)
+                    Seen[Name] = true
+                end
             end
 
-            table.sort(Merged, function(A, B)
+            table.sort(CleanValues, function(A, B)
                 return A:lower() < B:lower()
             end)
 
             if Info.Multi then
                 local NewValue = {}
-                for _, Name in Merged do
-                    if Dropdown.Value and Dropdown.Value[Name] then
-                        NewValue[Name] = true
+                for Name, Active in Dropdown.Value or {} do
+                    if Active and Seen[GetName(Name)] then
+                        NewValue[GetName(Name)] = true
                     end
                 end
                 Dropdown.Value = NewValue
             else
-                local CurrentName = Dropdown.Value and GetName(Dropdown.Value) or nil
-                Dropdown.Value = CurrentName and Seen[CurrentName] and CurrentName or nil
+                local CurrentName = Dropdown.Value and GetName(Dropdown.Value) or ""
+                Dropdown.Value = Seen[CurrentName] and CurrentName or nil
             end
 
-            Dropdown.Values = Merged
-            Dropdown.OfflineSelected = {}
-            Dropdown.SelectedValues = GetSelectedMap()
+            Dropdown.Values = CleanValues
+            UpdateSelectedValues()
 
             if Dropdown.ClearSearch then
                 Dropdown:ClearSearch()
@@ -6000,35 +5986,34 @@ do
 
         function Dropdown:SetValue(Value)
             if Info.Multi then
-                local NewValue = {}
-
                 if typeof(Value) == "table" then
-                    for Key, Active in Value do
-                        if typeof(Active) == "boolean" then
-                            if Active then
-                                local Name = GetName(Key)
-                                if Name ~= "" then
-                                    NewValue[Name] = true
-                                end
-                            end
-                        else
-                            local Name = GetName(Active)
-                            if Name ~= "" then
-                                NewValue[Name] = true
-                            end
-                        end
-                    end
-                elseif Value then
+                    Dropdown.Value = MakeSelectedMap(Value)
+                else
                     local Name = GetName(Value)
                     if Name ~= "" then
-                        NewValue[Name] = true
+                        local Live = false
+                        for _, LiveName in Dropdown.Values do
+                            if LiveName == Name then
+                                Live = true
+                                break
+                            end
+                        end
+
+                        if Live then
+                            Dropdown.Value[Name] = Dropdown.Value[Name] and nil or true
+                        end
                     end
                 end
-
-                Dropdown.Value = NewValue
             else
-                local Name = Value and GetName(Value) or nil
-                Dropdown.Value = Name and Name ~= "" and Name or nil
+                local Name = Value and GetName(Value) or ""
+                local Live = false
+                for _, LiveName in Dropdown.Values do
+                    if LiveName == Name then
+                        Live = true
+                        break
+                    end
+                end
+                Dropdown.Value = Live and Name or nil
             end
 
             Dropdown:RefreshPlayers()
@@ -6040,41 +6025,7 @@ do
             end
         end
 
-        function Dropdown:GetSelectedNames()
-            local Selected = {}
-
-            if Info.Multi then
-                for Name, Active in Dropdown.Value or {} do
-                    if Active then
-                        table.insert(Selected, tostring(Name))
-                    end
-                end
-            elseif Dropdown.Value then
-                table.insert(Selected, tostring(Dropdown.Value))
-            end
-
-            table.sort(Selected, function(A, B)
-                return A:lower() < B:lower()
-            end)
-
-            return Selected
-        end
-
         function Dropdown:DeleteAllDisconnectedPlayers()
-            if not Info.Multi then
-                if Dropdown.Value and not IsNameOnline(Dropdown.Value) then
-                    Dropdown.Value = nil
-                end
-            else
-                local NewValue = {}
-                for Name, Active in Dropdown.Value or {} do
-                    if Active and IsNameOnline(Name) then
-                        NewValue[Name] = true
-                    end
-                end
-                Dropdown.Value = NewValue
-            end
-
             Dropdown:RefreshPlayers()
         end
 
