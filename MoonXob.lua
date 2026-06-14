@@ -1244,8 +1244,10 @@ local function ParentUI(UI: Instance, SkipHiddenUI: boolean?)
     SafeParentUI(UI, gethui)
 end
 
+local HttpService = game:GetService("HttpService")
+
 local ScreenGui = New("ScreenGui", {
-    Name = "Obsidian",
+    Name = HttpService:GenerateGUID(false),
     DisplayOrder = 998,
     ResetOnSpawn = false,
 })
@@ -3181,7 +3183,7 @@ do
             Parent = SatVipMap,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(1, 0),
+            CornerRadius = UDim.new(0, 12),
             Parent = SatVibCursor,
         })
         New("UIStroke", {
