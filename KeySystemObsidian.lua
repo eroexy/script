@@ -1,817 +1,787 @@
-local cloneref = cloneref or clonereference or function(x) return x end
-
+local cloneref = cloneref or clonereference or function(v) return v end
 local Players = cloneref(game:GetService("Players"))
 local TweenService = cloneref(game:GetService("TweenService"))
 local UserInputService = cloneref(game:GetService("UserInputService"))
+local RunService = cloneref(game:GetService("RunService"))
 local HttpService = cloneref(game:GetService("HttpService"))
+local TextService = cloneref(game:GetService("TextService"))
 local CoreGui = cloneref(game:GetService("CoreGui"))
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
 local protectgui = protectgui or (syn and syn.protect_gui) or function() end
-local gethui = gethui or function()
-    return CoreGui
-end
+local gethui = gethui or function() return CoreGui end
+local setclipboard = setclipboard or nil
 
-local function ParentGui(Gui)
-    pcall(protectgui, Gui)
+local KeySystem = {}
+KeySystem.__index = KeySystem
 
-    local Success = pcall(function()
-        Gui.Parent = gethui()
-    end)
+KeySystem.DefaultConfig = {
+    Title = "Key System",
+    Description = "Enter your key to continue.",
+    Footer = "Powered by KeySystemUI",
 
-    if not Success or not Gui.Parent then
-        Gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    end
-end
+    Size = UDim2.fromOffset(520, 390),
+    Position = UDim2.fromScale(0.5, 0.5),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Center = true,
+    Draggable = true,
+    CornerRadius = 8,
+    StrokeThickness = 1,
 
-local KeyUI = {}
+    BackgroundImage = "",
+    BackgroundImageTransparency = 0.15,
+    BackgroundImageColor = Color3.fromRGB(255, 255, 255),
+    BackgroundScaleType = Enum.ScaleType.Crop,
+    BackgroundDim = 0.35,
 
-KeyUI.Theme = {
-    Background = Color3.fromRGB(13, 13, 18),
-    Main = Color3.fromRGB(21, 21, 31),
-    Main2 = Color3.fromRGB(30, 30, 44),
-    Accent = Color3.fromRGB(125, 85, 255),
-    Accent2 = Color3.fromRGB(170, 105, 255),
-    Outline = Color3.fromRGB(52, 50, 68),
-    Text = Color3.fromRGB(255, 255, 255),
-    MutedText = Color3.fromRGB(175, 175, 190),
-    Red = Color3.fromRGB(255, 70, 70),
-    Green = Color3.fromRGB(95, 255, 150),
-    Dark = Color3.fromRGB(0, 0, 0),
+    BlurBackground = false,
+    DisplayOrder = 999,
+    Parent = nil,
+
+    KeyFile = "KeySystem/saved_key.txt",
+    SaveKey = true,
+    AutoLoadSavedKey = true,
+    AutoCheckSavedKey = false,
+    AutoDeleteInvalidKey = true,
+    ClearInputWhenInvalid = false,
+
+    KeyPlaceholder = "Paste key here...",
+    KeyBoxHeight = 42,
+    KeyBoxClearTextOnFocus = false,
+    HideKeyText = false,
+
+    ButtonIcons = true,
+    IconSide = "Left", -- Left or Right. Content stays centered together.
+    IconSize = 18,
+    IconGap = 8,
+    IconColor = Color3.fromRGB(255, 255, 255),
+    LucideURL = "https://raw.githubusercontent.com/deividcomsono/lucide-roblox-direct/refs/heads/main/source.lua",
+
+    MainButtonText = "Verify Key",
+    MainButtonIcon = "key-round",
+    GetKeyButtonText = "Get Key",
+    GetKeyButtonIcon = "external-link",
+    CopyDiscordButtonText = "Copy Discord",
+    CopyDiscordButtonIcon = "copy",
+    DeleteKeyButtonText = "Delete Saved Key",
+    DeleteKeyButtonIcon = "trash-2",
+    CloseButtonIcon = "x",
+
+    KeyLink = "",
+    Discord = "",
+
+    ShowGetKeyButton = true,
+    ShowDiscordButton = true,
+    ShowDeleteKeyButton = true,
+    ShowCloseButton = true,
+
+    ButtonHeight = 38,
+    ButtonGap = 8,
+
+    TweenTime = 0.18,
+    TweenStyle = Enum.EasingStyle.Quad,
+    TweenDirection = Enum.EasingDirection.Out,
+
+    StatusSuccess = "Key verified successfully.",
+    StatusInvalid = "Invalid key.",
+    StatusChecking = "Checking key...",
+    StatusLoaded = "Loaded saved key.",
+    StatusDeleted = "Saved key deleted.",
+    StatusCopied = "Copied to clipboard.",
+    StatusCopyFail = "Clipboard is not supported.",
+
+    Theme = {
+        BackgroundColor = Color3.fromRGB(14, 14, 18),
+        MainColor = Color3.fromRGB(24, 24, 30),
+        SecondColor = Color3.fromRGB(32, 32, 40),
+        AccentColor = Color3.fromRGB(125, 85, 255),
+        AccentHoverColor = Color3.fromRGB(145, 105, 255),
+        OutlineColor = Color3.fromRGB(55, 55, 70),
+        FontColor = Color3.fromRGB(255, 255, 255),
+        MutedFontColor = Color3.fromRGB(175, 175, 190),
+        ErrorColor = Color3.fromRGB(255, 70, 70),
+        SuccessColor = Color3.fromRGB(70, 255, 150),
+        WarningColor = Color3.fromRGB(255, 190, 70),
+        ButtonTextColor = Color3.fromRGB(255, 255, 255),
+        Font = Enum.Font.Code,
+    },
+
+    HoverTheme = {
+        ButtonBackgroundColor = nil,
+        ButtonTextColor = nil,
+        ButtonIconColor = nil,
+        OutlineColor = nil,
+    },
+
+    VerifyKey = function(key)
+        return key == "test-key"
+    end,
+
+    OnSuccess = function(key, ui) end,
+    OnInvalid = function(key, ui) end,
+    OnClose = function(ui) end,
 }
 
-local function Make(ClassName, Props)
-    local Obj = Instance.new(ClassName)
+local function Merge(base, given)
+    local out = {}
+    for k, v in pairs(base) do
+        if typeof(v) == "table" and typeof(given and given[k]) == "table" then
+            out[k] = Merge(v, given[k])
+        else
+            out[k] = v
+        end
+    end
+    if typeof(given) == "table" then
+        for k, v in pairs(given) do
+            if typeof(v) == "table" and typeof(out[k]) == "table" then
+                out[k] = Merge(out[k], v)
+            else
+                out[k] = v
+            end
+        end
+    end
+    return out
+end
 
-    for Key, Value in pairs(Props or {}) do
-        Obj[Key] = Value
+local function ToAsset(icon)
+    if icon == nil or icon == "" then return nil end
+    if typeof(icon) == "number" then return "rbxassetid://" .. tostring(icon) end
+    if typeof(icon) ~= "string" then return nil end
+    if icon:match("^rbxassetid://") or icon:match("^rbxthumb://") or icon:match("roblox%.com/asset") then
+        return icon
+    end
+    if tonumber(icon) then
+        return "rbxassetid://" .. icon
+    end
+    return nil
+end
+
+local function MakeFolderPath(path)
+    if not (isfolder and makefolder) then return end
+    local parts = string.split(path, "/")
+    if #parts <= 1 then return end
+    local current = ""
+    for i = 1, #parts - 1 do
+        current ..= parts[i]
+        if current ~= "" and not isfolder(current) then
+            pcall(makefolder, current)
+        end
+        current ..= "/"
+    end
+end
+
+local function SaveFile(path, text)
+    if not (writefile and path) then return false end
+    MakeFolderPath(path)
+    local ok = pcall(writefile, path, tostring(text or ""))
+    return ok
+end
+
+local function ReadFile(path)
+    if not (readfile and isfile and path and isfile(path)) then return nil end
+    local ok, data = pcall(readfile, path)
+    if ok then return data end
+    return nil
+end
+
+local function DeleteFile(path)
+    if delfile and isfile and path and isfile(path) then
+        return pcall(delfile, path)
+    end
+    if writefile and isfile and path and isfile(path) then
+        return pcall(writefile, path, "")
+    end
+    return false
+end
+
+local function Tween(obj, info, props)
+    local t = TweenService:Create(obj, info, props)
+    t:Play()
+    return t
+end
+
+local function New(class, props)
+    local obj = Instance.new(class)
+    for k, v in pairs(props or {}) do
+        obj[k] = v
+    end
+    return obj
+end
+
+local function TextBounds(text, font, size)
+    local params = Instance.new("GetTextBoundsParams")
+    params.Text = tostring(text or "")
+    params.Font = typeof(font) == "Font" and font or Font.fromEnum(font or Enum.Font.Code)
+    params.Size = size or 16
+    params.Width = 10000
+    local ok, result = pcall(function()
+        return TextService:GetTextBoundsAsync(params)
+    end)
+    if ok then return result end
+    return Vector2.new(#tostring(text or "") * (size or 16) * 0.55, size or 16)
+end
+
+function KeySystem:_LoadLucide()
+    if self.LucideLoaded then return end
+    self.LucideLoaded = true
+    self.LucideIcons = nil
+    if not game.HttpGet then return end
+    local ok, module = pcall(function()
+        return loadstring(game:HttpGet(self.Config.LucideURL))()
+    end)
+    if ok and typeof(module) == "table" and typeof(module.GetAsset) == "function" then
+        self.LucideIcons = module
+    end
+end
+
+function KeySystem:_GetIcon(icon)
+    local asset = ToAsset(icon)
+    if asset then
+        return { Url = asset, ImageRectOffset = Vector2.zero, ImageRectSize = Vector2.zero, Custom = true }
+    end
+    if typeof(icon) == "string" then
+        self:_LoadLucide()
+        if self.LucideIcons then
+            local ok, data = pcall(self.LucideIcons.GetAsset, icon)
+            if ok and data then return data end
+        end
+    end
+    return nil
+end
+
+function KeySystem:_SetStatus(text, color, flash)
+    self.StatusLabel.Text = text or ""
+    self.StatusLabel.TextColor3 = color or self.Config.Theme.MutedFontColor
+    if flash then
+        self.StatusLabel.TextTransparency = 1
+        Tween(self.StatusLabel, self.TweenInfo, { TextTransparency = 0 })
+    end
+end
+
+function KeySystem:_ApplyTheme(theme)
+    self.Config.Theme = Merge(self.Config.Theme, theme or {})
+    local t = self.Config.Theme
+    self.MainFrame.BackgroundColor3 = t.BackgroundColor
+    self.Topbar.BackgroundColor3 = t.MainColor
+    self.Content.BackgroundColor3 = t.MainColor
+    self.TitleLabel.TextColor3 = t.FontColor
+    self.DescriptionLabel.TextColor3 = t.MutedFontColor
+    self.FooterLabel.TextColor3 = t.MutedFontColor
+    self.KeyBox.BackgroundColor3 = t.SecondColor
+    self.KeyBox.TextColor3 = t.FontColor
+    self.KeyBox.PlaceholderColor3 = t.MutedFontColor
+    self.StatusLabel.TextColor3 = t.MutedFontColor
+    self.MainStroke.Color = t.OutlineColor
+    self.ContentStroke.Color = t.OutlineColor
+    self.KeyStroke.Color = t.OutlineColor
+    for _, btn in ipairs(self.Buttons) do
+        btn.BackgroundColor3 = btn:GetAttribute("IsAccent") and t.AccentColor or t.SecondColor
+        local label = btn:FindFirstChild("Label")
+        if label then label.TextColor3 = t.ButtonTextColor end
+        local icon = btn:FindFirstChild("Icon")
+        if icon then icon.ImageColor3 = self.Config.IconColor or t.ButtonTextColor end
+        local stroke = btn:FindFirstChildOfClass("UIStroke")
+        if stroke then stroke.Color = t.OutlineColor end
+    end
+end
+
+function KeySystem:SetTheme(theme)
+    self:_ApplyTheme(theme)
+end
+
+function KeySystem:SetHoverTheme(theme)
+    self.Config.HoverTheme = Merge(self.Config.HoverTheme, theme or {})
+end
+
+function KeySystem:_CreateButton(info)
+    local cfg = self.Config
+    local theme = cfg.Theme
+    local button = New("TextButton", {
+        Name = info.Name or "Button",
+        AutoButtonColor = false,
+        BackgroundColor3 = info.Accent and theme.AccentColor or theme.SecondColor,
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 0, cfg.ButtonHeight),
+        Text = "",
+        Parent = self.ButtonHolder,
+    })
+    button:SetAttribute("IsAccent", info.Accent and true or false)
+
+    New("UICorner", { CornerRadius = UDim.new(0, math.max(3, cfg.CornerRadius - 2)), Parent = button })
+    New("UIStroke", { Color = theme.OutlineColor, Thickness = 1, Parent = button })
+
+    local center = New("Frame", {
+        Name = "Center",
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundTransparency = 1,
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(10, cfg.ButtonHeight),
+        Parent = button,
+    })
+
+    local list = New("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        VerticalAlignment = Enum.VerticalAlignment.Center,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, cfg.IconGap),
+        Parent = center,
+    })
+
+    local iconData = cfg.ButtonIcons and self:_GetIcon(info.Icon)
+    local icon
+    local label = New("TextLabel", {
+        Name = "Label",
+        BackgroundTransparency = 1,
+        Font = theme.Font,
+        Text = info.Text or "Button",
+        TextColor3 = theme.ButtonTextColor,
+        TextSize = 15,
+        TextTransparency = 0.05,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        AutomaticSize = Enum.AutomaticSize.X,
+        Size = UDim2.fromOffset(0, cfg.ButtonHeight),
+        Parent = center,
+    })
+
+    if iconData then
+        icon = New("ImageLabel", {
+            Name = "Icon",
+            BackgroundTransparency = 1,
+            Image = iconData.Url,
+            ImageColor3 = cfg.IconColor or theme.ButtonTextColor,
+            ImageRectOffset = iconData.ImageRectOffset or Vector2.zero,
+            ImageRectSize = iconData.ImageRectSize or Vector2.zero,
+            Size = UDim2.fromOffset(cfg.IconSize, cfg.IconSize),
+            Parent = center,
+        })
+        if cfg.IconSide == "Right" then
+            label.LayoutOrder = 1
+            icon.LayoutOrder = 2
+        else
+            icon.LayoutOrder = 1
+            label.LayoutOrder = 2
+        end
     end
 
-    return Obj
+    local function resize()
+        local bounds = TextBounds(label.Text, Font.fromEnum(theme.Font), label.TextSize)
+        local width = bounds.X + 4
+        if icon then width += cfg.IconSize + cfg.IconGap end
+        center.Size = UDim2.fromOffset(width, cfg.ButtonHeight)
+    end
+    resize()
+    label:GetPropertyChangedSignal("Text"):Connect(resize)
+
+    local normalColor = button.BackgroundColor3
+    local hoverTheme = cfg.HoverTheme or {}
+    local hoverBg = hoverTheme.ButtonBackgroundColor or (info.Accent and theme.AccentHoverColor or Color3.fromRGB(
+        math.clamp(normalColor.R * 255 + 12, 0, 255),
+        math.clamp(normalColor.G * 255 + 12, 0, 255),
+        math.clamp(normalColor.B * 255 + 12, 0, 255)
+    ))
+    local hoverText = hoverTheme.ButtonTextColor or theme.ButtonTextColor
+    local hoverIcon = hoverTheme.ButtonIconColor or cfg.IconColor or theme.ButtonTextColor
+    local hoverOutline = hoverTheme.OutlineColor or theme.AccentColor
+
+    button.MouseEnter:Connect(function()
+        Tween(button, self.TweenInfo, { BackgroundColor3 = hoverBg })
+        Tween(label, self.TweenInfo, { TextColor3 = hoverText, TextTransparency = 0 })
+        local stroke = button:FindFirstChildOfClass("UIStroke")
+        if stroke then Tween(stroke, self.TweenInfo, { Color = hoverOutline }) end
+        if icon then Tween(icon, self.TweenInfo, { ImageColor3 = hoverIcon, ImageTransparency = 0 }) end
+    end)
+
+    button.MouseLeave:Connect(function()
+        Tween(button, self.TweenInfo, { BackgroundColor3 = button:GetAttribute("IsAccent") and self.Config.Theme.AccentColor or self.Config.Theme.SecondColor })
+        Tween(label, self.TweenInfo, { TextColor3 = self.Config.Theme.ButtonTextColor, TextTransparency = 0.05 })
+        local stroke = button:FindFirstChildOfClass("UIStroke")
+        if stroke then Tween(stroke, self.TweenInfo, { Color = self.Config.Theme.OutlineColor }) end
+        if icon then Tween(icon, self.TweenInfo, { ImageColor3 = self.Config.IconColor or self.Config.Theme.ButtonTextColor, ImageTransparency = 0 }) end
+    end)
+
+    button.MouseButton1Click:Connect(function()
+        if info.Callback then info.Callback() end
+    end)
+
+    table.insert(self.Buttons, button)
+    return button
 end
 
-local function Corner(Parent, Radius)
-    return Make("UICorner", {
-        CornerRadius = UDim.new(0, Radius or 6),
-        Parent = Parent,
-    })
-end
+function KeySystem:_Verify(key, fromSaved)
+    key = tostring(key or self.KeyBox.Text or "")
+    if key:gsub("%s+", "") == "" then
+        self:_SetStatus("Enter a key first.", self.Config.Theme.WarningColor, true)
+        return false
+    end
 
-local function Stroke(Parent, Color, Thickness, Transparency)
-    return Make("UIStroke", {
-        Color = Color or KeyUI.Theme.Outline,
-        Thickness = Thickness or 1,
-        Transparency = Transparency or 0,
-        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-        Parent = Parent,
-    })
-end
+    self:_SetStatus(self.Config.StatusChecking, self.Config.Theme.WarningColor, true)
 
-local function Padding(Parent, Left, Right, Top, Bottom)
-    return Make("UIPadding", {
-        PaddingLeft = UDim.new(0, Left or 0),
-        PaddingRight = UDim.new(0, Right or 0),
-        PaddingTop = UDim.new(0, Top or 0),
-        PaddingBottom = UDim.new(0, Bottom or 0),
-        Parent = Parent,
-    })
-end
+    local ok, valid, extra = pcall(self.Config.VerifyKey, key, self)
+    valid = ok and valid == true
 
-local function Tween(Obj, Time, Props)
-    local T = TweenService:Create(
-        Obj,
-        TweenInfo.new(Time or 0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        Props
-    )
-    T:Play()
-    return T
-end
-
-local function IsClick(Input)
-    return Input.UserInputType == Enum.UserInputType.MouseButton1
-        or Input.UserInputType == Enum.UserInputType.Touch
-end
-
-local function MakeDraggable(Main, Drag)
-    local Dragging = false
-    local StartPos
-    local StartFramePos
-    local EndConnection
-
-    Drag.InputBegan:Connect(function(Input)
-        if not IsClick(Input) then return end
-
-        Dragging = true
-        StartPos = Input.Position
-        StartFramePos = Main.Position
-
-        if EndConnection then
-            EndConnection:Disconnect()
+    if valid then
+        self.ValidatedKey = key
+        if self.Config.SaveKey then
+            SaveFile(self.Config.KeyFile, key)
         end
-
-        EndConnection = Input.Changed:Connect(function()
-            if Input.UserInputState == Enum.UserInputState.End then
-                Dragging = false
-                if EndConnection then
-                    EndConnection:Disconnect()
-                    EndConnection = nil
-                end
-            end
+        self:_SetStatus(extra or self.Config.StatusSuccess, self.Config.Theme.SuccessColor, true)
+        Tween(self.MainStroke, self.TweenInfo, { Color = self.Config.Theme.SuccessColor })
+        task.delay(0.25, function()
+            if self.MainStroke then Tween(self.MainStroke, self.TweenInfo, { Color = self.Config.Theme.OutlineColor }) end
         end)
-    end)
+        self.Config.OnSuccess(key, self)
+        return true
+    end
 
-    UserInputService.InputChanged:Connect(function(Input)
-        if not Dragging then return end
-        if Input.UserInputType ~= Enum.UserInputType.MouseMovement and Input.UserInputType ~= Enum.UserInputType.Touch then return end
-
-        local Delta = Input.Position - StartPos
-        Main.Position = UDim2.new(
-            StartFramePos.X.Scale,
-            StartFramePos.X.Offset + Delta.X,
-            StartFramePos.Y.Scale,
-            StartFramePos.Y.Offset + Delta.Y
-        )
+    if self.Config.AutoDeleteInvalidKey then
+        DeleteFile(self.Config.KeyFile)
+    end
+    if self.Config.ClearInputWhenInvalid and not fromSaved then
+        self.KeyBox.Text = ""
+    end
+    self:_SetStatus(extra or self.Config.StatusInvalid, self.Config.Theme.ErrorColor, true)
+    Tween(self.MainStroke, self.TweenInfo, { Color = self.Config.Theme.ErrorColor })
+    task.delay(0.25, function()
+        if self.MainStroke then Tween(self.MainStroke, self.TweenInfo, { Color = self.Config.Theme.OutlineColor }) end
     end)
+    self.Config.OnInvalid(key, self)
+    return false
 end
 
-function KeyUI:CreateKeySystem(Options)
-    Options = Options or {}
+function KeySystem:DeleteSavedKey()
+    DeleteFile(self.Config.KeyFile)
+    self:_SetStatus(self.Config.StatusDeleted, self.Config.Theme.WarningColor, true)
+end
 
-    local Window = {}
-    Window.Options = Options
-    Window.Key = Options.CorrectKey or Options.Key or "test"
-    Window.RememberKey = Options.RememberKey == true
-    Window.AutoDestroyOnSuccess = Options.AutoDestroyOnSuccess == true
-    Window.Elements = {}
-    Window.CurrentKeyText = ""
+function KeySystem:Close()
+    self.Config.OnClose(self)
+    if self.ScreenGui then
+        Tween(self.MainFrame, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Size = UDim2.fromOffset(self.MainFrame.AbsoluteSize.X * 0.96, self.MainFrame.AbsoluteSize.Y * 0.96),
+            BackgroundTransparency = 1,
+        })
+        task.delay(0.17, function()
+            if self.ScreenGui then self.ScreenGui:Destroy() end
+        end)
+    end
+end
 
-    local Gui = Make("ScreenGui", {
+function KeySystem:Show()
+    self.MainFrame.Visible = true
+    self.MainFrame.Size = UDim2.fromOffset(self.Config.Size.X.Offset * 0.96, self.Config.Size.Y.Offset * 0.96)
+    Tween(self.MainFrame, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = self.Config.Size })
+end
+
+function KeySystem.new(config)
+    local self = setmetatable({}, KeySystem)
+    self.Config = Merge(KeySystem.DefaultConfig, config or {})
+    self.Buttons = {}
+    self.TweenInfo = TweenInfo.new(self.Config.TweenTime, self.Config.TweenStyle, self.Config.TweenDirection)
+
+    local cfg = self.Config
+    local theme = cfg.Theme
+
+    local gui = New("ScreenGui", {
         Name = "KeySystemUI_" .. HttpService:GenerateGUID(false),
-        ResetOnSpawn = false,
+        DisplayOrder = cfg.DisplayOrder,
         IgnoreGuiInset = true,
-        DisplayOrder = Options.DisplayOrder or 999,
-        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+        ResetOnSpawn = false,
+    })
+    pcall(protectgui, gui)
+    local parent = cfg.Parent or gethui()
+    local ok = pcall(function() gui.Parent = parent end)
+    if not ok or not gui.Parent then gui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+    self.ScreenGui = gui
+
+    local frame = New("Frame", {
+        Name = "Window",
+        AnchorPoint = cfg.AnchorPoint,
+        BackgroundColor3 = theme.BackgroundColor,
+        BorderSizePixel = 0,
+        Position = cfg.Center and UDim2.fromScale(0.5, 0.5) or cfg.Position,
+        Size = cfg.Size,
+        Visible = false,
+        Parent = gui,
+    })
+    self.MainFrame = frame
+    New("UICorner", { CornerRadius = UDim.new(0, cfg.CornerRadius), Parent = frame })
+    self.MainStroke = New("UIStroke", { Color = theme.OutlineColor, Thickness = cfg.StrokeThickness, Parent = frame })
+
+    if cfg.BackgroundImage and cfg.BackgroundImage ~= "" then
+        New("ImageLabel", {
+            Name = "BackgroundImage",
+            BackgroundTransparency = 1,
+            Image = ToAsset(cfg.BackgroundImage) or cfg.BackgroundImage,
+            ImageTransparency = cfg.BackgroundImageTransparency,
+            ImageColor3 = cfg.BackgroundImageColor,
+            ScaleType = cfg.BackgroundScaleType,
+            Size = UDim2.fromScale(1, 1),
+            ZIndex = 0,
+            Parent = frame,
+        })
+        New("Frame", {
+            Name = "BackgroundDim",
+            BackgroundColor3 = theme.BackgroundColor,
+            BackgroundTransparency = 1 - cfg.BackgroundDim,
+            BorderSizePixel = 0,
+            Size = UDim2.fromScale(1, 1),
+            ZIndex = 1,
+            Parent = frame,
+        })
+    end
+
+    local topbar = New("Frame", {
+        Name = "Topbar",
+        BackgroundColor3 = theme.MainColor,
+        BorderSizePixel = 0,
+        Position = UDim2.fromOffset(0, 0),
+        Size = UDim2.new(1, 0, 0, 54),
+        ZIndex = 2,
+        Parent = frame,
+    })
+    self.Topbar = topbar
+    New("UICorner", { CornerRadius = UDim.new(0, cfg.CornerRadius), Parent = topbar })
+
+    New("Frame", {
+        Name = "TopbarCover",
+        BackgroundColor3 = theme.MainColor,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 0, 1, -cfg.CornerRadius),
+        Size = UDim2.new(1, 0, 0, cfg.CornerRadius),
+        ZIndex = 2,
+        Parent = topbar,
     })
 
-    ParentGui(Gui)
-    Window.ScreenGui = Gui
-
-    local Dim = Make("Frame", {
-        Name = "Dim",
-        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-        BackgroundTransparency = Options.DimTransparency or 0.25,
-        Size = UDim2.fromScale(1, 1),
-        Parent = Gui,
-    })
-
-    local Main = Make("Frame", {
-        Name = "Main",
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = KeyUI.Theme.Background,
-        Position = Options.Position or UDim2.fromScale(0.5, 0.5),
-        Size = Options.Size or UDim2.fromOffset(430, 520),
-        ClipsDescendants = true,
-        Parent = Gui,
-    })
-    Window.Main = Main
-    Corner(Main, Options.CornerRadius or 14)
-    Stroke(Main, KeyUI.Theme.Outline, 1, 0)
-
-    local Background = Make("ImageLabel", {
-        Name = "CustomBackground",
+    self.TitleLabel = New("TextLabel", {
         BackgroundTransparency = 1,
-        Image = Options.Background or Options.BackgroundId or "",
-        ImageTransparency = Options.BackgroundTransparency or 0.18,
-        ScaleType = Options.BackgroundScaleType or Enum.ScaleType.Crop,
-        Size = UDim2.fromScale(1, 1),
-        Parent = Main,
-    })
-    Window.Background = Background
-
-    local Shade = Make("Frame", {
-        Name = "Shade",
-        BackgroundColor3 = KeyUI.Theme.Background,
-        BackgroundTransparency = Options.ShadeTransparency or 0.16,
-        Size = UDim2.fromScale(1, 1),
-        Parent = Main,
-    })
-
-    local TopBar = Make("Frame", {
-        Name = "TopBar",
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, 62),
-        Parent = Main,
-    })
-
-    local AccentLine = Make("Frame", {
-        Name = "AccentLine",
-        BackgroundColor3 = KeyUI.Theme.Accent,
-        Size = UDim2.new(1, 0, 0, 2),
-        Position = UDim2.new(0, 0, 1, -2),
-        Parent = TopBar,
-    })
-
-    local Title = Make("TextLabel", {
-        Name = "Title",
-        BackgroundTransparency = 1,
-        Font = Options.Font or Enum.Font.Code,
-        Text = Options.Title or "Key System",
-        TextColor3 = KeyUI.Theme.Text,
+        Font = theme.Font,
+        Text = cfg.Title,
+        TextColor3 = theme.FontColor,
         TextSize = 19,
         TextXAlignment = Enum.TextXAlignment.Left,
-        Position = UDim2.fromOffset(18, 8),
-        Size = UDim2.new(1, -62, 0, 28),
-        RichText = true,
-        Parent = TopBar,
+        Position = UDim2.fromOffset(18, 0),
+        Size = UDim2.new(1, -70, 1, 0),
+        ZIndex = 3,
+        Parent = topbar,
     })
 
-    local Subtitle = Make("TextLabel", {
-        Name = "Subtitle",
+    if cfg.ShowCloseButton then
+        local closeIconData = self:_GetIcon(cfg.CloseButtonIcon)
+        local close = New("TextButton", {
+            Name = "Close",
+            AutoButtonColor = false,
+            BackgroundTransparency = 1,
+            Position = UDim2.new(1, -46, 0, 9),
+            Size = UDim2.fromOffset(36, 36),
+            Text = "",
+            ZIndex = 3,
+            Parent = topbar,
+        })
+        New("UICorner", { CornerRadius = UDim.new(0, 6), Parent = close })
+        if closeIconData then
+            New("ImageLabel", {
+                BackgroundTransparency = 1,
+                Image = closeIconData.Url,
+                ImageColor3 = theme.MutedFontColor,
+                ImageRectOffset = closeIconData.ImageRectOffset or Vector2.zero,
+                ImageRectSize = closeIconData.ImageRectSize or Vector2.zero,
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                Position = UDim2.fromScale(0.5, 0.5),
+                Size = UDim2.fromOffset(18, 18),
+                Parent = close,
+            })
+        else
+            close.Text = "X"
+            close.Font = theme.Font
+            close.TextColor3 = theme.MutedFontColor
+            close.TextSize = 16
+        end
+        close.MouseEnter:Connect(function()
+            Tween(close, self.TweenInfo, { BackgroundTransparency = 0, BackgroundColor3 = theme.SecondColor })
+        end)
+        close.MouseLeave:Connect(function()
+            Tween(close, self.TweenInfo, { BackgroundTransparency = 1 })
+        end)
+        close.MouseButton1Click:Connect(function() self:Close() end)
+    end
+
+    local content = New("Frame", {
+        Name = "Content",
+        BackgroundColor3 = theme.MainColor,
+        BackgroundTransparency = 0.04,
+        BorderSizePixel = 0,
+        Position = UDim2.fromOffset(14, 68),
+        Size = UDim2.new(1, -28, 1, -92),
+        ZIndex = 2,
+        Parent = frame,
+    })
+    self.Content = content
+    New("UICorner", { CornerRadius = UDim.new(0, math.max(4, cfg.CornerRadius - 2)), Parent = content })
+    self.ContentStroke = New("UIStroke", { Color = theme.OutlineColor, Thickness = 1, Parent = content })
+    New("UIPadding", { PaddingTop = UDim.new(0, 16), PaddingBottom = UDim.new(0, 12), PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16), Parent = content })
+
+    local list = New("UIListLayout", {
+        FillDirection = Enum.FillDirection.Vertical,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 10),
+        Parent = content,
+    })
+
+    self.DescriptionLabel = New("TextLabel", {
+        LayoutOrder = 1,
         BackgroundTransparency = 1,
-        Font = Options.Font or Enum.Font.Code,
-        Text = Options.Subtitle or "Enter your key to unlock.",
-        TextColor3 = KeyUI.Theme.MutedText,
+        Font = theme.Font,
+        Text = cfg.Description,
+        TextColor3 = theme.MutedFontColor,
+        TextSize = 14,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Size = UDim2.new(1, 0, 0, 42),
+        Parent = content,
+    })
+
+    self.KeyBox = New("TextBox", {
+        LayoutOrder = 2,
+        BackgroundColor3 = theme.SecondColor,
+        ClearTextOnFocus = cfg.KeyBoxClearTextOnFocus,
+        Font = theme.Font,
+        PlaceholderText = cfg.KeyPlaceholder,
+        PlaceholderColor3 = theme.MutedFontColor,
+        Text = "",
+        TextColor3 = theme.FontColor,
+        TextSize = 15,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Size = UDim2.new(1, 0, 0, cfg.KeyBoxHeight),
+        Parent = content,
+    })
+    self.KeyBox.TextTransparency = cfg.HideKeyText and 1 or 0
+    New("UICorner", { CornerRadius = UDim.new(0, math.max(3, cfg.CornerRadius - 3)), Parent = self.KeyBox })
+    self.KeyStroke = New("UIStroke", { Color = theme.OutlineColor, Thickness = 1, Parent = self.KeyBox })
+    New("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = self.KeyBox })
+
+    self.KeyBox.Focused:Connect(function()
+        Tween(self.KeyStroke, self.TweenInfo, { Color = theme.AccentColor })
+    end)
+    self.KeyBox.FocusLost:Connect(function(enter)
+        Tween(self.KeyStroke, self.TweenInfo, { Color = theme.OutlineColor })
+        if enter then self:_Verify(self.KeyBox.Text, false) end
+    end)
+
+    self.StatusLabel = New("TextLabel", {
+        LayoutOrder = 3,
+        BackgroundTransparency = 1,
+        Font = theme.Font,
+        Text = "",
+        TextColor3 = theme.MutedFontColor,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
-        Position = UDim2.fromOffset(18, 34),
-        Size = UDim2.new(1, -62, 0, 20),
-        RichText = true,
-        Parent = TopBar,
+        Size = UDim2.new(1, 0, 0, 22),
+        Parent = content,
     })
 
-    local Close = Make("TextButton", {
-        Name = "Close",
-        AutoButtonColor = false,
-        BackgroundColor3 = KeyUI.Theme.Main2,
-        Font = Options.Font or Enum.Font.Code,
-        Text = "×",
-        TextColor3 = KeyUI.Theme.Text,
-        TextSize = 20,
-        AnchorPoint = Vector2.new(1, 0),
-        Position = UDim2.new(1, -14, 0, 14),
-        Size = UDim2.fromOffset(32, 32),
-        Parent = TopBar,
-    })
-    Corner(Close, 8)
-    Stroke(Close, KeyUI.Theme.Outline, 1, 0.2)
-
-    Close.MouseEnter:Connect(function()
-        Tween(Close, 0.12, { BackgroundColor3 = KeyUI.Theme.Red })
-    end)
-
-    Close.MouseLeave:Connect(function()
-        Tween(Close, 0.12, { BackgroundColor3 = KeyUI.Theme.Main2 })
-    end)
-
-    Close.MouseButton1Click:Connect(function()
-        Window:Destroy()
-    end)
-
-    local Content = Make("ScrollingFrame", {
-        Name = "Content",
+    self.ButtonHolder = New("Frame", {
+        LayoutOrder = 4,
         BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        Position = UDim2.fromOffset(16, 78),
-        Size = UDim2.new(1, -32, 1, -94),
-        CanvasSize = UDim2.fromOffset(0, 0),
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        ScrollBarThickness = 2,
-        ScrollBarImageColor3 = KeyUI.Theme.Accent,
-        Parent = Main,
+        Size = UDim2.new(1, 0, 0, 0),
+        Parent = content,
     })
-    Window.Content = Content
-
-    local List = Make("UIListLayout", {
-        Padding = UDim.new(0, 10),
+    local buttonList = New("UIListLayout", {
+        FillDirection = Enum.FillDirection.Vertical,
         SortOrder = Enum.SortOrder.LayoutOrder,
-        Parent = Content,
+        Padding = UDim.new(0, cfg.ButtonGap),
+        Parent = self.ButtonHolder,
     })
-
-    Padding(Content, 2, 2, 2, 12)
-    MakeDraggable(Main, TopBar)
-
-    function Window:Notify(Text, Duration, Color)
-        Duration = Duration or 3
-
-        local Note = Make("Frame", {
-            Name = "Notification",
-            AnchorPoint = Vector2.new(1, 0),
-            BackgroundColor3 = KeyUI.Theme.Main,
-            Position = UDim2.new(1, -18, 0, 18),
-            Size = UDim2.fromOffset(290, 58),
-            BackgroundTransparency = 1,
-            Parent = Gui,
-        })
-        Corner(Note, 10)
-        Stroke(Note, Color or KeyUI.Theme.Accent, 1, 0.1)
-
-        local Bar = Make("Frame", {
-            BackgroundColor3 = Color or KeyUI.Theme.Accent,
-            Size = UDim2.new(0, 4, 1, 0),
-            Parent = Note,
-        })
-        Corner(Bar, 10)
-
-        local TextLabel = Make("TextLabel", {
-            BackgroundTransparency = 1,
-            Font = Options.Font or Enum.Font.Code,
-            Text = Text or "Notification",
-            TextColor3 = KeyUI.Theme.Text,
-            TextSize = 13,
-            TextWrapped = true,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextYAlignment = Enum.TextYAlignment.Center,
-            Position = UDim2.fromOffset(14, 0),
-            Size = UDim2.new(1, -26, 1, 0),
-            Parent = Note,
-        })
-
-        Tween(Note, 0.18, { BackgroundTransparency = 0 })
-        task.delay(Duration, function()
-            if not Note or not Note.Parent then return end
-            Tween(Note, 0.18, { BackgroundTransparency = 1 })
-            task.wait(0.2)
-            if Note then
-                Note:Destroy()
-            end
-        end)
-    end
-
-    function Window:Dialog(DialogOptions)
-        DialogOptions = DialogOptions or {}
-
-        local Overlay = Make("Frame", {
-            Name = "DialogOverlay",
-            BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-            BackgroundTransparency = 0.35,
-            Size = UDim2.fromScale(1, 1),
-            Parent = Main,
-        })
-
-        local Box = Make("Frame", {
-            Name = "Dialog",
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            BackgroundColor3 = KeyUI.Theme.Main,
-            Position = UDim2.fromScale(0.5, 0.5),
-            Size = UDim2.fromOffset(340, 180),
-            Parent = Overlay,
-        })
-        Corner(Box, 12)
-        Stroke(Box, KeyUI.Theme.Outline, 1, 0)
-
-        local DTitle = Make("TextLabel", {
-            BackgroundTransparency = 1,
-            Font = Options.Font or Enum.Font.Code,
-            Text = DialogOptions.Title or "Dialog",
-            TextColor3 = KeyUI.Theme.Text,
-            TextSize = 17,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Position = UDim2.fromOffset(16, 12),
-            Size = UDim2.new(1, -32, 0, 26),
-            Parent = Box,
-        })
-
-        local DDesc = Make("TextLabel", {
-            BackgroundTransparency = 1,
-            Font = Options.Font or Enum.Font.Code,
-            Text = DialogOptions.Description or "Description",
-            TextColor3 = KeyUI.Theme.MutedText,
-            TextSize = 13,
-            TextWrapped = true,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextYAlignment = Enum.TextYAlignment.Top,
-            Position = UDim2.fromOffset(16, 44),
-            Size = UDim2.new(1, -32, 0, 70),
-            Parent = Box,
-        })
-
-        local ButtonHolder = Make("Frame", {
-            BackgroundTransparency = 1,
-            Position = UDim2.new(0, 16, 1, -50),
-            Size = UDim2.new(1, -32, 0, 36),
-            Parent = Box,
-        })
-
-        local ButtonList = Make("UIListLayout", {
-            FillDirection = Enum.FillDirection.Horizontal,
-            HorizontalAlignment = Enum.HorizontalAlignment.Right,
-            Padding = UDim.new(0, 8),
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Parent = ButtonHolder,
-        })
-
-        local Buttons = DialogOptions.Buttons or {
-            {
-                Text = "OK",
-                Callback = function() end
-            }
-        }
-
-        for _, Info in ipairs(Buttons) do
-            local Btn = Make("TextButton", {
-                AutoButtonColor = false,
-                BackgroundColor3 = Info.Color or KeyUI.Theme.Main2,
-                Font = Options.Font or Enum.Font.Code,
-                Text = Info.Text or "Button",
-                TextColor3 = KeyUI.Theme.Text,
-                TextSize = 13,
-                Size = UDim2.fromOffset(92, 34),
-                Parent = ButtonHolder,
-            })
-            Corner(Btn, 8)
-            Stroke(Btn, KeyUI.Theme.Outline, 1, 0.2)
-
-            Btn.MouseEnter:Connect(function()
-                Tween(Btn, 0.12, { BackgroundColor3 = Info.HoverColor or KeyUI.Theme.Accent })
-            end)
-
-            Btn.MouseLeave:Connect(function()
-                Tween(Btn, 0.12, { BackgroundColor3 = Info.Color or KeyUI.Theme.Main2 })
-            end)
-
-            Btn.MouseButton1Click:Connect(function()
-                if Info.Callback then
-                    task.spawn(Info.Callback, Window)
-                end
-                if Info.Close ~= false then
-                    Overlay:Destroy()
-                end
-            end)
-        end
-
-        return Overlay
-    end
-
-    function Window:AddLabel(Text)
-        local Label = Make("TextLabel", {
-            Name = "Label",
-            BackgroundTransparency = 1,
-            Font = Options.Font or Enum.Font.Code,
-            Text = Text or "Label",
-            TextColor3 = KeyUI.Theme.MutedText,
-            TextSize = 13,
-            TextWrapped = true,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            AutomaticSize = Enum.AutomaticSize.Y,
-            Size = UDim2.new(1, -4, 0, 20),
-            RichText = true,
-            Parent = Content,
-        })
-
-        table.insert(Window.Elements, Label)
-
-        return {
-            Instance = Label,
-            SetText = function(_, NewText)
-                Label.Text = NewText
-            end,
-            SetVisible = function(_, State)
-                Label.Visible = State
-            end
-        }
-    end
-
-    function Window:AddTextbox(Info)
-        Info = Info or {}
-
-        local Holder = Make("Frame", {
-            Name = "TextboxHolder",
-            BackgroundColor3 = KeyUI.Theme.Main,
-            Size = UDim2.new(1, -4, 0, Info.Height or 46),
-            Parent = Content,
-        })
-        Corner(Holder, 10)
-        Stroke(Holder, KeyUI.Theme.Outline, 1, 0.15)
-
-        local Box = Make("TextBox", {
-            Name = "Textbox",
-            BackgroundTransparency = 1,
-            ClearTextOnFocus = Info.ClearTextOnFocus ~= false,
-            Font = Options.Font or Enum.Font.Code,
-            PlaceholderText = Info.Placeholder or "Type here...",
-            PlaceholderColor3 = KeyUI.Theme.MutedText,
-            Text = Info.Default or "",
-            TextColor3 = KeyUI.Theme.Text,
-            TextSize = 14,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Size = UDim2.fromScale(1, 1),
-            Parent = Holder,
-        })
-
-        Padding(Box, 14, 14, 0, 0)
-
-        local Object = {
-            Type = "Textbox",
-            Holder = Holder,
-            Textbox = Box,
-            Value = Box.Text,
-        }
-
-        function Object:SetText(NewText)
-            Box.Text = tostring(NewText or "")
-            Object.Value = Box.Text
-        end
-
-        function Object:GetText()
-            return Box.Text
-        end
-
-        function Object:SetVisible(State)
-            Holder.Visible = State
-        end
-
-        Box:GetPropertyChangedSignal("Text"):Connect(function()
-            Object.Value = Box.Text
-            Window.CurrentKeyText = Box.Text
-
-            if Info.Changed then
-                task.spawn(Info.Changed, Box.Text)
-            end
-
-            if Info.Callback and Info.Finished ~= true then
-                task.spawn(Info.Callback, Box.Text)
-            end
-        end)
-
-        Box.FocusLost:Connect(function(EnterPressed)
-            Object.Value = Box.Text
-            Window.CurrentKeyText = Box.Text
-
-            if Info.Callback and Info.Finished == true then
-                task.spawn(Info.Callback, Box.Text, EnterPressed)
-            end
-        end)
-
-        table.insert(Window.Elements, Object)
-        return Object
-    end
-
-    function Window:AddButton(Info)
-        Info = Info or {}
-
-        local Btn = Make("TextButton", {
-            Name = "Button",
-            AutoButtonColor = false,
-            BackgroundColor3 = Info.Color or KeyUI.Theme.Main2,
-            Font = Options.Font or Enum.Font.Code,
-            Text = Info.Text or "Button",
-            TextColor3 = KeyUI.Theme.Text,
-            TextSize = 14,
-            Size = UDim2.new(1, -4, 0, Info.Height or 42),
-            Parent = Content,
-        })
-        Corner(Btn, 10)
-        Stroke(Btn, KeyUI.Theme.Outline, 1, 0.15)
-
-        Btn.MouseEnter:Connect(function()
-            Tween(Btn, 0.12, { BackgroundColor3 = Info.HoverColor or KeyUI.Theme.Accent })
-        end)
-
-        Btn.MouseLeave:Connect(function()
-            Tween(Btn, 0.12, { BackgroundColor3 = Info.Color or KeyUI.Theme.Main2 })
-        end)
-
-        Btn.MouseButton1Click:Connect(function()
-            if Info.Callback then
-                task.spawn(Info.Callback, Window)
-            end
-        end)
-
-        local Object = {
-            Type = "Button",
-            Button = Btn,
-            SetText = function(_, NewText)
-                Btn.Text = tostring(NewText or "")
-            end,
-            SetVisible = function(_, State)
-                Btn.Visible = State
-            end
-        }
-
-        table.insert(Window.Elements, Object)
-        return Object
-    end
-
-    function Window:AddToggle(Info)
-        Info = Info or {}
-
-        local Holder = Make("Frame", {
-            Name = "ToggleHolder",
-            BackgroundColor3 = KeyUI.Theme.Main,
-            Size = UDim2.new(1, -4, 0, Info.Height or 42),
-            Parent = Content,
-        })
-        Corner(Holder, 10)
-        Stroke(Holder, KeyUI.Theme.Outline, 1, 0.15)
-
-        local Label = Make("TextLabel", {
-            BackgroundTransparency = 1,
-            Font = Options.Font or Enum.Font.Code,
-            Text = Info.Text or "Toggle",
-            TextColor3 = KeyUI.Theme.Text,
-            TextSize = 14,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Position = UDim2.fromOffset(14, 0),
-            Size = UDim2.new(1, -72, 1, 0),
-            Parent = Holder,
-        })
-
-        local Switch = Make("TextButton", {
-            AutoButtonColor = false,
-            BackgroundColor3 = KeyUI.Theme.Main2,
-            Text = "",
-            AnchorPoint = Vector2.new(1, 0.5),
-            Position = UDim2.new(1, -14, 0.5, 0),
-            Size = UDim2.fromOffset(42, 22),
-            Parent = Holder,
-        })
-        Corner(Switch, 12)
-        Stroke(Switch, KeyUI.Theme.Outline, 1, 0.15)
-
-        local Dot = Make("Frame", {
-            BackgroundColor3 = KeyUI.Theme.MutedText,
-            Position = UDim2.fromOffset(3, 3),
-            Size = UDim2.fromOffset(16, 16),
-            Parent = Switch,
-        })
-        Corner(Dot, 10)
-
-        local Object = {
-            Type = "Toggle",
-            Holder = Holder,
-            Value = Info.Default == true,
-        }
-
-        function Object:SetValue(Value)
-            Object.Value = Value == true
-
-            if Object.Value then
-                Tween(Switch, 0.12, { BackgroundColor3 = KeyUI.Theme.Accent })
-                Tween(Dot, 0.12, {
-                    BackgroundColor3 = KeyUI.Theme.Text,
-                    Position = UDim2.fromOffset(23, 3)
-                })
-            else
-                Tween(Switch, 0.12, { BackgroundColor3 = KeyUI.Theme.Main2 })
-                Tween(Dot, 0.12, {
-                    BackgroundColor3 = KeyUI.Theme.MutedText,
-                    Position = UDim2.fromOffset(3, 3)
-                })
-            end
-
-            if Info.Callback then
-                task.spawn(Info.Callback, Object.Value)
-            end
-        end
-
-        function Object:SetVisible(State)
-            Holder.Visible = State
-        end
-
-        Switch.MouseButton1Click:Connect(function()
-            Object:SetValue(not Object.Value)
-        end)
-
-        Holder.InputBegan:Connect(function(Input)
-            if IsClick(Input) then
-                Object:SetValue(not Object.Value)
-            end
-        end)
-
-        Object:SetValue(Object.Value)
-
-        table.insert(Window.Elements, Object)
-        return Object
-    end
-
-    function Window:AddKeyBox(Info)
-        Info = Info or {}
-
-        local KeyBox = self:AddTextbox({
-            Placeholder = Info.Placeholder or "Enter key...",
-            ClearTextOnFocus = Info.ClearTextOnFocus ~= false,
-            Default = Info.Default or "",
-            Changed = function(Text)
-                Window.CurrentKeyText = Text
-                if Info.Changed then
-                    Info.Changed(Text)
-                end
-            end,
-            Finished = Info.Finished or false,
-            Callback = Info.Callback
-        })
-
-        Window.KeyBox = KeyBox
-        return KeyBox
-    end
-
-    function Window:CheckKey(Key)
-        Key = tostring(Key or Window.CurrentKeyText or "")
-        local Correct = false
-
-        if typeof(Window.Key) == "table" then
-            for _, ValidKey in ipairs(Window.Key) do
-                if Key == tostring(ValidKey) then
-                    Correct = true
-                    break
-                end
-            end
-        else
-            Correct = Key == tostring(Window.Key)
-        end
-
-        if Options.Verify then
-            local Success, Result = pcall(Options.Verify, Key, Window)
-            Correct = Success and Result == true
-        end
-
-        if Correct then
-            Window:Notify(Options.SuccessMessage or "Correct key. Access granted.", 3, KeyUI.Theme.Green)
-
-            if Options.OnSuccess then
-                task.spawn(Options.OnSuccess, Key, Window)
-            end
-
-            if Window.AutoDestroyOnSuccess then
-                task.delay(0.6, function()
-                    Window:Destroy()
-                end)
-            end
-        else
-            Window:Notify(Options.FailMessage or "Invalid key. Try again.", 3, KeyUI.Theme.Red)
-
-            if Options.OnFail then
-                task.spawn(Options.OnFail, Key, Window)
-            end
-        end
-
-        return Correct
-    end
-
-    function Window:SetBackground(ImageId)
-        Background.Image = tostring(ImageId or "")
-    end
-
-    function Window:SetTitle(NewTitle)
-        Title.Text = tostring(NewTitle or "")
-    end
-
-    function Window:SetSubtitle(NewSubtitle)
-        Subtitle.Text = tostring(NewSubtitle or "")
-    end
-
-    function Window:Destroy()
-        if Gui then
-            Gui:Destroy()
-        end
-    end
-
-    if Options.DefaultElements ~= false then
-        Window:AddLabel(Options.Description or "Paste your key below. You can customize every button, textbox, dialog, and the background image.")
-
-        Window:AddKeyBox({
-            Placeholder = Options.KeyPlaceholder or "Enter key..."
-        })
-
-        Window:AddButton({
-            Text = Options.SubmitText or "Submit Key",
-            Callback = function()
-                Window:CheckKey()
-            end
-        })
-
-        Window:AddButton({
-            Text = Options.GetKeyText or "Get Key",
-            Callback = function()
-                if Options.GetKey then
-                    task.spawn(Options.GetKey, Window)
-                elseif Options.GetKeyURL then
-                    if setclipboard then
-                        setclipboard(Options.GetKeyURL)
-                        Window:Notify("Key link copied.", 3)
-                    else
-                        Window:Notify(Options.GetKeyURL, 5)
-                    end
-                else
-                    Window:Dialog({
-                        Title = "Get Key",
-                        Description = "Add GetKeyURL or GetKey = function(Window) to this button.",
-                        Buttons = {
-                            { Text = "OK" }
-                        }
-                    })
-                end
-            end
-        })
-    end
-
-    task.defer(function()
-        Main.Size = UDim2.fromOffset(Options.StartWidth or 390, Options.StartHeight or 470)
-        Tween(Main, 0.22, { Size = Options.Size or UDim2.fromOffset(430, 520) })
+    buttonList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        self.ButtonHolder.Size = UDim2.new(1, 0, 0, buttonList.AbsoluteContentSize.Y)
     end)
 
-    return Window
+    self:_CreateButton({ Name = "Verify", Text = cfg.MainButtonText, Icon = cfg.MainButtonIcon, Accent = true, Callback = function()
+        self:_Verify(self.KeyBox.Text, false)
+    end })
+
+    if cfg.ShowGetKeyButton then
+        self:_CreateButton({ Name = "GetKey", Text = cfg.GetKeyButtonText, Icon = cfg.GetKeyButtonIcon, Callback = function()
+            if cfg.KeyLink ~= "" and setclipboard then
+                setclipboard(cfg.KeyLink)
+                self:_SetStatus(cfg.StatusCopied, theme.SuccessColor, true)
+            elseif cfg.KeyLink ~= "" then
+                self:_SetStatus(cfg.KeyLink, theme.WarningColor, true)
+            else
+                self:_SetStatus("No key link configured.", theme.WarningColor, true)
+            end
+        end })
+    end
+
+    if cfg.ShowDiscordButton then
+        self:_CreateButton({ Name = "Discord", Text = cfg.CopyDiscordButtonText, Icon = cfg.CopyDiscordButtonIcon, Callback = function()
+            if cfg.Discord ~= "" and setclipboard then
+                setclipboard(cfg.Discord)
+                self:_SetStatus(cfg.StatusCopied, theme.SuccessColor, true)
+            elseif cfg.Discord ~= "" then
+                self:_SetStatus(cfg.Discord, theme.WarningColor, true)
+            else
+                self:_SetStatus(cfg.StatusCopyFail, theme.ErrorColor, true)
+            end
+        end })
+    end
+
+    if cfg.ShowDeleteKeyButton then
+        self:_CreateButton({ Name = "DeleteSavedKey", Text = cfg.DeleteKeyButtonText, Icon = cfg.DeleteKeyButtonIcon, Callback = function()
+            self:DeleteSavedKey()
+            self.KeyBox.Text = ""
+        end })
+    end
+
+    self.FooterLabel = New("TextLabel", {
+        LayoutOrder = 5,
+        BackgroundTransparency = 1,
+        Font = theme.Font,
+        Text = cfg.Footer,
+        TextColor3 = theme.MutedFontColor,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        Size = UDim2.new(1, 0, 0, 18),
+        Parent = content,
+    })
+
+    if cfg.Draggable then
+        local dragging, startPos, framePos, changed
+        topbar.InputBegan:Connect(function(input)
+            if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+            dragging = true
+            startPos = input.Position
+            framePos = frame.Position
+            changed = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    if changed then changed:Disconnect() changed = nil end
+                end
+            end)
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if not dragging then return end
+            if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
+            local delta = input.Position - startPos
+            frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+        end)
+    end
+
+    local saved = cfg.AutoLoadSavedKey and ReadFile(cfg.KeyFile)
+    if saved and saved ~= "" then
+        self.KeyBox.Text = saved
+        self:_SetStatus(cfg.StatusLoaded, theme.MutedFontColor, true)
+        if cfg.AutoCheckSavedKey then
+            task.defer(function()
+                self:_Verify(saved, true)
+            end)
+        end
+    end
+
+    self:Show()
+    return self
 end
 
-return KeyUI
+return KeySystem
