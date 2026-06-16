@@ -42,17 +42,17 @@ KeySystem.DefaultConfig = {
 
     FocusOverlay = true,
     FocusOverlayColor = Color3.fromRGB(0, 0, 0),
-    FocusOverlayTransparency = 0.35,
+    FocusOverlayTransparency = 0.18,
     FocusOverlayTweenTime = 0.35,
 
     TweenCameraFOV = true,
     FocusFOV = 58,
     FOVTweenTime = 0.35,
 
-    IntroTweenTime = 0.42,
-    OutroTweenTime = 0.34,
-    IntroScale = 0.91,
-    OutroScale = 0.94,
+    IntroTweenTime = 0.46,
+    OutroTweenTime = 0.42,
+    IntroScale = 0.88,
+    OutroScale = 0.88,
 
     LoadingEnabled = true,
     LoadingText = "Loading key system...",
@@ -99,7 +99,7 @@ KeySystem.DefaultConfig = {
     ButtonHeight = 38,
     ButtonGap = 8,
 
-    TweenTime = 0.18,
+    TweenTime = 0.20,
     TweenStyle = Enum.EasingStyle.Quad,
     TweenDirection = Enum.EasingDirection.Out,
 
@@ -241,6 +241,66 @@ local function New(class, props)
     return obj
 end
 
+local TransparencyProps = {
+    BackgroundTransparency = true,
+    TextTransparency = true,
+    TextStrokeTransparency = true,
+    ImageTransparency = true,
+    ScrollBarImageTransparency = true,
+    Transparency = true,
+}
+
+local function CacheTransparency(root)
+    if not root then return end
+
+    local function cache(obj)
+        for prop in pairs(TransparencyProps) do
+            local ok, value = pcall(function() return obj[prop] end)
+            if ok and typeof(value) == "number" and obj:GetAttribute("Open_" .. prop) == nil then
+                obj:SetAttribute("Open_" .. prop, value)
+            end
+        end
+    end
+
+    cache(root)
+    for _, obj in ipairs(root:GetDescendants()) do
+        cache(obj)
+    end
+end
+
+local function SetGuiAlpha(root, alpha, info)
+    if not root then return end
+    alpha = math.clamp(alpha or 0, 0, 1)
+
+    local function apply(obj)
+        local props = {}
+        for prop in pairs(TransparencyProps) do
+            local original = obj:GetAttribute("Open_" .. prop)
+            if typeof(original) == "number" then
+                props[prop] = original + ((1 - original) * alpha)
+            end
+        end
+        if next(props) then
+            if info then
+                Tween(obj, info, props)
+            else
+                for prop, value in pairs(props) do
+                    pcall(function() obj[prop] = value end)
+                end
+            end
+        end
+    end
+
+    apply(root)
+    for _, obj in ipairs(root:GetDescendants()) do
+        apply(obj)
+    end
+end
+
+local function GetBasePosition(cfg)
+    return cfg.Center and UDim2.fromScale(0.5, 0.5) or cfg.Position
+end
+
 local function TextBounds(text, font, size)
     local params = Instance.new("GetTextBoundsParams")
     params.Text = tostring(text or "")
@@ -350,6 +410,7 @@ function KeySystem:_CreateButton(info)
         Parent = self.ButtonHolder,
     })
     button:SetAttribute("IsAccent", info.Accent and true or false)
+    local buttonScale = New("UIScale", { Scale = 1, Parent = button })
 
     New("UICorner", { CornerRadius = UDim.new(0, math.max(3, cfg.CornerRadius - 2)), Parent = button })
     New("UIStroke", { Color = theme.OutlineColor, Thickness = 1, Parent = button })
@@ -431,6 +492,7 @@ function KeySystem:_CreateButton(info)
     local hoverOutline = hoverTheme.OutlineColor or theme.AccentColor
 
     button.MouseEnter:Connect(function()
+        Tween(buttonScale, TweenInfo.new(0.16, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1.018 })
         Tween(button, self.TweenInfo, { BackgroundColor3 = hoverBg })
         Tween(buttonScale, self.TweenInfo, { Scale = 1.015 })
         Tween(label, self.TweenInfo, { TextColor3 = hoverText, TextTransparency = 0 })
@@ -440,6 +502,7 @@ function KeySystem:_CreateButton(info)
     end)
 
     button.MouseLeave:Connect(function()
+        Tween(buttonScale, TweenInfo.new(0.16, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 })
         Tween(button, self.TweenInfo, { BackgroundColor3 = button:GetAttribute("IsAccent") and self.Config.Theme.AccentColor or self.Config.Theme.SecondColor })
         Tween(buttonScale, self.TweenInfo, { Scale = 1 })
         Tween(label, self.TweenInfo, { TextColor3 = self.Config.Theme.ButtonTextColor, TextTransparency = 0.05 })
@@ -454,6 +517,14 @@ function KeySystem:_CreateButton(info)
     button.MouseButton1Up:Connect(function()
         Tween(buttonScale, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1.015 })
     end)
+    button.MouseButton1Down:Connect(function()
+        Tween(buttonScale, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 0.985 })
+    end)
+
+    button.MouseButton1Up:Connect(function()
+        Tween(buttonScale, TweenInfo.new(0.13, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1.018 })
+    end)
+
     button.MouseButton1Click:Connect(function()
         if info.Callback then info.Callback() end
     end)
@@ -514,42 +585,63 @@ function KeySystem:Close()
     self.Config.OnClose(self)
 
     local cfg = self.Config
+    local basePos = GetBasePosition(cfg)
     local outro = TweenInfo.new(cfg.OutroTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut)
+    local fade = TweenInfo.new(cfg.OutroTweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
     if self.LoadingLabel then
         self:_SetLoading("Closing...", true)
     end
 
+    CacheTransparency(self.MainFrame)
+    SetGuiAlpha(self.MainFrame, 1, fade)
+
     if self.WindowScale then
         Tween(self.WindowScale, outro, { Scale = cfg.OutroScale })
     end
+
     if self.MainFrame then
         Tween(self.MainFrame, outro, {
-            BackgroundTransparency = 1,
-            Position = (cfg.Center and UDim2.fromScale(0.5, 0.5) or cfg.Position) + UDim2.fromOffset(0, 18),
+            Position = basePos + UDim2.fromOffset(0, 22),
+            Rotation = -1.25,
         })
     end
+
     if self.FocusOverlay then
-        Tween(self.FocusOverlay, TweenInfo.new(cfg.FocusOverlayTweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 })
+        Tween(self.FocusOverlay, TweenInfo.new(cfg.FocusOverlayTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut), {
+            BackgroundTransparency = 1,
+        })
     end
+
     if cfg.TweenCameraFOV and self.OriginalFOV then
         local camera = Workspace.CurrentCamera
         if camera then
-            Tween(camera, TweenInfo.new(cfg.FOVTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { FieldOfView = self.OriginalFOV })
+            Tween(camera, TweenInfo.new(cfg.FOVTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut), {
+                FieldOfView = self.OriginalFOV,
+            })
         end
     end
 
-    task.delay(math.max(cfg.OutroTweenTime, cfg.FocusOverlayTweenTime, cfg.FOVTweenTime) + 0.05, function()
-        if self.ScreenGui then self.ScreenGui:Destroy() end
+    task.delay(math.max(cfg.OutroTweenTime, cfg.FocusOverlayTweenTime, cfg.FOVTweenTime) + 0.06, function()
+        if self.ScreenGui then
+            self.ScreenGui:Destroy()
+            self.ScreenGui = nil
+        end
     end)
 end
 
 function KeySystem:Show()
     local cfg = self.Config
-    local theme = cfg.Theme
+    local basePos = GetBasePosition(cfg)
+    local intro = TweenInfo.new(cfg.IntroTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+    local introBack = TweenInfo.new(cfg.IntroTweenTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
     self.MainFrame.Visible = true
-    self.MainFrame.BackgroundTransparency = 1
-    self.MainFrame.Position = (cfg.Center and UDim2.fromScale(0.5, 0.5) or cfg.Position) + UDim2.fromOffset(0, 22)
+    self.MainFrame.Position = basePos + UDim2.fromOffset(0, 26)
+    self.MainFrame.Rotation = 1.25
+
+    CacheTransparency(self.MainFrame)
+    SetGuiAlpha(self.MainFrame, 1, nil)
 
     if self.WindowScale then
         self.WindowScale.Scale = cfg.IntroScale
@@ -557,8 +649,8 @@ function KeySystem:Show()
 
     if self.FocusOverlay then
         self.FocusOverlay.BackgroundTransparency = 1
-        Tween(self.FocusOverlay, TweenInfo.new(cfg.FocusOverlayTweenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            BackgroundTransparency = cfg.FocusOverlayTransparency
+        Tween(self.FocusOverlay, TweenInfo.new(cfg.FocusOverlayTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut), {
+            BackgroundTransparency = cfg.FocusOverlayTransparency,
         })
     end
 
@@ -566,7 +658,9 @@ function KeySystem:Show()
         local camera = Workspace.CurrentCamera
         if camera then
             self.OriginalFOV = camera.FieldOfView
-            Tween(camera, TweenInfo.new(cfg.FOVTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { FieldOfView = cfg.FocusFOV })
+            Tween(camera, TweenInfo.new(cfg.FOVTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut), {
+                FieldOfView = cfg.FocusFOV,
+            })
         end
     end
 
@@ -574,12 +668,15 @@ function KeySystem:Show()
         self:_SetLoading(cfg.LoadingText, true)
     end
 
-    Tween(self.MainFrame, TweenInfo.new(cfg.IntroTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-        BackgroundTransparency = 0,
-        Position = cfg.Center and UDim2.fromScale(0.5, 0.5) or cfg.Position,
+    SetGuiAlpha(self.MainFrame, 0, intro)
+
+    Tween(self.MainFrame, intro, {
+        Position = basePos,
+        Rotation = 0,
     })
+
     if self.WindowScale then
-        Tween(self.WindowScale, TweenInfo.new(cfg.IntroTweenTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
+        Tween(self.WindowScale, introBack, { Scale = 1 })
     end
 
     task.delay(cfg.LoadingTextTime, function()
@@ -636,7 +733,7 @@ function KeySystem.new(config)
         Size = cfg.Size,
         Visible = false,
         ZIndex = 10,
-        ClipsDescendants = true,
+        ClipsDescendants = false,
         Parent = gui,
     })
     self.MainFrame = frame
@@ -932,24 +1029,51 @@ function KeySystem.new(config)
     })
 
     if cfg.Draggable then
-        local dragging, startPos, framePos, changed
+        local dragging = false
+        local startPos
+        local framePos
+        local dragInput
+        local dragTween
+
+        local function stopDrag()
+            dragging = false
+            dragInput = nil
+        end
+
         topbar.InputBegan:Connect(function(input)
+            if self.Closing then return end
             if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+
             dragging = true
+            dragInput = input
             startPos = input.Position
             framePos = frame.Position
-            changed = input.Changed:Connect(function()
+
+            input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                    if changed then changed:Disconnect() changed = nil end
+                    stopDrag()
                 end
             end)
         end)
+
+        UserInputService.InputEnded:Connect(function(input)
+            if input == dragInput or input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                stopDrag()
+            end
+        end)
+
         UserInputService.InputChanged:Connect(function(input)
-            if not dragging then return end
+            if not dragging or self.Closing then return end
             if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
+
             local delta = input.Position - startPos
-            frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+            local target = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+
+            if dragTween then
+                pcall(function() dragTween:Cancel() end)
+            end
+            dragTween = TweenService:Create(frame, TweenInfo.new(0.055, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = target })
+            dragTween:Play()
         end)
     end
 
