@@ -3,10 +3,10 @@ local cloneref = cloneref or clonereference or function(v) return v end
 local Players = cloneref(game:GetService("Players"))
 local TweenService = cloneref(game:GetService("TweenService"))
 local UserInputService = cloneref(game:GetService("UserInputService"))
-local RunService = cloneref(game:GetService("RunService"))
 local HttpService = cloneref(game:GetService("HttpService"))
 local CoreGui = cloneref(game:GetService("CoreGui"))
 local Workspace = cloneref(game:GetService("Workspace"))
+local SoundService = cloneref(game:GetService("SoundService"))
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
@@ -18,12 +18,12 @@ local KeySystem = {}
 KeySystem.__index = KeySystem
 
 KeySystem.DefaultConfig = {
-	Title = "Sign in to Your Hub",
-	Subtitle = "Authenticate with your access key to continue.",
-	BadgeText = "secure key system",
+	Title = "Key System",
+	Subtitle = "Enter your key to unlock the script.",
+	BadgeText = "secure access",
 	Footer = "Ready",
 
-	Size = UDim2.fromOffset(430, 405),
+	Size = UDim2.fromOffset(500, 430),
 	Position = UDim2.fromScale(0.5, 0.5),
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Center = true,
@@ -33,20 +33,28 @@ KeySystem.DefaultConfig = {
 
 	CustomBackground = true,
 	BackgroundImage = "",
-	BackgroundImageTransparency = 0.22,
-	BackgroundDim = 0.55,
+	BackgroundImageTransparency = 0.2,
+	BackgroundDim = 0.68,
 	BackgroundScaleType = Enum.ScaleType.Crop,
 
 	FocusDarken = true,
-	FocusDarkness = 0.82,
+	FocusDarkness = 0.76,
 	FOVTween = true,
 	FocusedFOV = 60,
 	FOVTweenTime = 0.35,
 
+	FocusAudio = true,
+	FocusAudioVolume = 0.38,
+	FocusAudioMuffle = true,
+	FocusAudioLowGain = 0,
+	FocusAudioMidGain = -16,
+	FocusAudioHighGain = -38,
+	FocusAudioVoiceChat = true,
+
 	Shadow = true,
-	ShadowSize = 7,
-	ShadowTransparency = 0.68,
-	CornerRadius = 14,
+	ShadowSize = 5,
+	ShadowTransparency = 0.72,
+	CornerRadius = 12,
 
 	KeyFile = "KeySystem/saved_key.txt",
 	SaveKey = true,
@@ -62,16 +70,16 @@ KeySystem.DefaultConfig = {
 	IconSide = "Right",
 	IconSize = 17,
 	IconGap = 8,
-	IconColor = Color3.fromRGB(255, 255, 255),
+	IconColor = Color3.fromRGB(245, 242, 255),
 	LucideURL = "https://raw.githubusercontent.com/deividcomsono/lucide-roblox-direct/refs/heads/main/source.lua",
 
-	MainButtonText = "Verify access key",
+	MainButtonText = "Verify Key",
 	MainButtonIcon = "arrow-right",
-	GetKeyButtonText = "Copy get-key link",
+	GetKeyButtonText = "Get Key",
 	GetKeyButtonIcon = "copy",
-	DiscordButtonText = "Copy Discord",
+	DiscordButtonText = "Discord",
 	DiscordButtonIcon = "message-circle",
-	DeleteKeyButtonText = "Delete saved key",
+	DeleteKeyButtonText = "Delete Saved Key",
 	DeleteKeyButtonIcon = "trash-2",
 	CloseButtonIcon = "x",
 
@@ -83,32 +91,35 @@ KeySystem.DefaultConfig = {
 	ShowDeleteKeyButton = true,
 	ShowCloseButton = true,
 
-	TweenTime = 0.22,
-	OpenTweenTime = 0.4,
-	CloseTweenTime = 0.32,
+	TweenTime = 0.2,
+	OpenTweenTime = 0.36,
+	CloseTweenTime = 0.28,
 
-	StatusReady = "● Ready",
-	StatusChecking = "● Verifying...",
-	StatusSuccess = "✓ Authenticated",
-	StatusInvalid = "✕ Invalid key",
-	StatusLoaded = "● Loaded saved key",
-	StatusDeleted = "● Saved key deleted",
-	StatusCopied = "✓ Copied to clipboard",
-	StatusCopyFail = "✕ Clipboard unsupported",
+	StatusReady = "Ready",
+	StatusChecking = "Verifying key...",
+	StatusSuccess = "Authenticated",
+	StatusInvalid = "Invalid key",
+	StatusLoaded = "Loaded saved key",
+	StatusDeleted = "Saved key deleted",
+	StatusCopied = "Copied to clipboard",
+	StatusCopyFail = "Clipboard unsupported",
 
 	Theme = {
-		Background = Color3.fromRGB(2, 6, 23),
-		Card = Color3.fromRGB(15, 23, 42),
-		Card2 = Color3.fromRGB(2, 6, 23),
-		Border = Color3.fromRGB(51, 65, 85),
-		SoftBorder = Color3.fromRGB(30, 41, 59),
-		Text = Color3.fromRGB(248, 250, 252),
-		Muted = Color3.fromRGB(148, 163, 184),
-		Primary = Color3.fromRGB(139, 92, 246),
-		Primary2 = Color3.fromRGB(217, 70, 239),
-		Success = Color3.fromRGB(52, 211, 153),
-		Error = Color3.fromRGB(248, 113, 113),
-		Warning = Color3.fromRGB(251, 191, 36),
+		Background = Color3.fromRGB(2, 0, 8),
+		Card = Color3.fromRGB(8, 7, 13),
+		CardTop = Color3.fromRGB(13, 11, 22),
+		Panel = Color3.fromRGB(12, 10, 20),
+		Input = Color3.fromRGB(4, 3, 9),
+		Border = Color3.fromRGB(55, 42, 82),
+		SoftBorder = Color3.fromRGB(35, 28, 52),
+		Text = Color3.fromRGB(250, 247, 255),
+		Muted = Color3.fromRGB(157, 143, 182),
+		Primary = Color3.fromRGB(126, 65, 255),
+		Primary2 = Color3.fromRGB(188, 72, 255),
+		PrimaryDark = Color3.fromRGB(52, 24, 112),
+		Success = Color3.fromRGB(80, 245, 170),
+		Error = Color3.fromRGB(255, 93, 132),
+		Warning = Color3.fromRGB(255, 202, 99),
 		Font = Enum.Font.Gotham,
 		MediumFont = Enum.Font.GothamMedium,
 		BoldFont = Enum.Font.GothamBold,
@@ -157,25 +168,18 @@ local function ToAsset(value)
 	if value == nil or value == "" then return nil end
 	if typeof(value) == "number" then return "rbxassetid://" .. tostring(value) end
 	if typeof(value) ~= "string" then return nil end
-	if value:match("^rbxassetid://") or value:match("^rbxthumb://") or value:match("roblox%.com/asset") then
-		return value
-	end
-	if tonumber(value) then
-		return "rbxassetid://" .. value
-	end
+	if value:match("^rbxassetid://") or value:match("^rbxthumb://") or value:match("roblox%.com/asset") then return value end
+	if tonumber(value) then return "rbxassetid://" .. value end
 	return nil
 end
 
 local function MakeFolderPath(path)
 	if not (isfolder and makefolder and path) then return end
 	local parts = string.split(path, "/")
-	if #parts <= 1 then return end
 	local current = ""
-	for i = 1, #parts - 1 do
+	for i = 1, math.max(#parts - 1, 0) do
 		current ..= parts[i]
-		if current ~= "" and not isfolder(current) then
-			pcall(makefolder, current)
-		end
+		if current ~= "" and not isfolder(current) then pcall(makefolder, current) end
 		current ..= "/"
 	end
 end
@@ -195,12 +199,8 @@ end
 
 local function DeleteFile(path)
 	if not (path and path ~= "") then return false end
-	if delfile and isfile and isfile(path) then
-		return pcall(delfile, path)
-	end
-	if writefile and isfile and isfile(path) then
-		return pcall(writefile, path, "")
-	end
+	if delfile and isfile and isfile(path) then return pcall(delfile, path) end
+	if writefile and isfile and isfile(path) then return pcall(writefile, path, "") end
 	return false
 end
 
@@ -211,7 +211,7 @@ local function Tween(obj, info, props)
 	return tw
 end
 
-local function Brighten(c, n)
+local function Add(c, n)
 	return Color3.fromRGB(
 		math.clamp(c.R * 255 + n, 0, 255),
 		math.clamp(c.G * 255 + n, 0, 255),
@@ -246,14 +246,10 @@ function KeySystem:_GetIcon(icon)
 end
 
 function KeySystem:_SetStatus(text, color)
-	self.Status.Text = text or ""
+	self.Status.Text = tostring(text or "")
 	self.Status.TextColor3 = color or self.Config.Theme.Muted
 	self.Status.TextTransparency = 1
-	self.Status.Position = UDim2.new(0, 0, 1, -16)
-	Tween(self.Status, self.FastTween, {
-		TextTransparency = 0,
-		Position = UDim2.new(0, 0, 1, -18),
-	})
+	Tween(self.Status, self.FastTween, { TextTransparency = 0 })
 end
 
 function KeySystem:_MakeIcon(parent, iconName, color)
@@ -272,36 +268,35 @@ function KeySystem:_MakeIcon(parent, iconName, color)
 	})
 end
 
-function KeySystem:_Button(text, iconName, y, accent, callback)
+function KeySystem:_Button(text, iconName, parent, accent, callback)
 	local cfg = self.Config
 	local C = cfg.Theme
 
 	local btn = New("TextButton", {
 		AutoButtonColor = false,
-		BackgroundColor3 = accent and C.Primary or C.Card2,
+		BackgroundColor3 = accent and C.Primary or C.Input,
 		BorderSizePixel = 0,
 		Font = accent and C.BoldFont or C.MediumFont,
 		Text = "",
 		TextColor3 = C.Text,
 		TextSize = accent and 14 or 13,
-		Position = UDim2.new(0, 0, 0, y),
-		Size = UDim2.new(1, 0, 0, accent and 46 or 42),
+		Size = UDim2.new(1, 0, 0, accent and 44 or 40),
 		ClipsDescendants = true,
-		Parent = self.Card,
+		Parent = parent,
 	})
 	New("UICorner", { CornerRadius = UDim.new(0, 8), Parent = btn })
 
 	local stroke = New("UIStroke", {
-		Color = accent and C.Primary or C.Border,
+		Color = accent and C.Primary2 or C.Border,
 		Thickness = 1,
-		Transparency = accent and 1 or 0,
+		Transparency = accent and 0.35 or 0.15,
 		Parent = btn,
 	})
 
 	if accent then
 		New("UIGradient", {
 			Color = ColorSequence.new(C.Primary, C.Primary2),
-			Rotation = 90,
+			Rotation = 0,
 			Parent = btn,
 		})
 	end
@@ -315,7 +310,7 @@ function KeySystem:_Button(text, iconName, y, accent, callback)
 		Parent = btn,
 	})
 
-	local list = New("UIListLayout", {
+	New("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		VerticalAlignment = Enum.VerticalAlignment.Center,
@@ -351,7 +346,7 @@ function KeySystem:_Button(text, iconName, y, accent, callback)
 	end
 
 	local function resize()
-		local width = label.TextBounds.X + 4
+		local width = label.TextBounds.X + 6
 		if icon then width += cfg.IconSize + cfg.IconGap end
 		center.Size = UDim2.fromOffset(width, btn.Size.Y.Offset)
 	end
@@ -359,37 +354,21 @@ function KeySystem:_Button(text, iconName, y, accent, callback)
 	label:GetPropertyChangedSignal("TextBounds"):Connect(resize)
 
 	btn.MouseEnter:Connect(function()
-		Tween(btn, self.FastTween, {
-			BackgroundColor3 = accent and C.Primary or Brighten(C.Card2, 10),
-			Size = UDim2.new(1, 0, 0, (accent and 46 or 42) + 1),
-		})
-		Tween(stroke, self.FastTween, {
-			Color = accent and C.Primary2 or C.Primary,
-			Transparency = accent and 0.35 or 0,
-		})
+		Tween(btn, self.FastTween, { BackgroundColor3 = accent and Add(C.Primary, 10) or Add(C.Input, 12) })
+		Tween(stroke, self.FastTween, { Color = C.Primary2, Transparency = 0 })
 	end)
 
 	btn.MouseLeave:Connect(function()
-		Tween(btn, self.FastTween, {
-			BackgroundColor3 = accent and C.Primary or C.Card2,
-			Size = UDim2.new(1, 0, 0, accent and 46 or 42),
-		})
-		Tween(stroke, self.FastTween, {
-			Color = accent and C.Primary or C.Border,
-			Transparency = accent and 1 or 0,
-		})
+		Tween(btn, self.FastTween, { BackgroundColor3 = accent and C.Primary or C.Input })
+		Tween(stroke, self.FastTween, { Color = accent and C.Primary2 or C.Border, Transparency = accent and 0.35 or 0.15 })
 	end)
 
 	btn.MouseButton1Down:Connect(function()
-		Tween(btn, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(1, 0, 0, (accent and 46 or 42) - 1),
-		})
+		Tween(btn, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = btn.Position + UDim2.fromOffset(0, 1) })
 	end)
 
 	btn.MouseButton1Up:Connect(function()
-		Tween(btn, self.FastTween, {
-			Size = UDim2.new(1, 0, 0, accent and 46 or 42),
-		})
+		Tween(btn, self.FastTween, { Position = UDim2.fromOffset(0, btn.Position.Y.Offset - 1) })
 	end)
 
 	btn.MouseButton1Click:Connect(function()
@@ -397,6 +376,93 @@ function KeySystem:_Button(text, iconName, y, accent, callback)
 	end)
 
 	return btn
+end
+
+function KeySystem:_ApplyFocusAudio()
+	if not self.Config.FocusAudio or self.AudioFocused then return end
+	self.AudioFocused = true
+	self.AudioRestore = { Sounds = {}, VoiceObjects = {} }
+
+	local cfg = self.Config
+
+	local group = Instance.new("SoundGroup")
+	group.Name = "KeySystem_UnfocusedAudio"
+	group.Volume = cfg.FocusAudioVolume
+	group.Parent = SoundService
+	self.FocusSoundGroup = group
+
+	if cfg.FocusAudioMuffle then
+		local eq = Instance.new("EqualizerSoundEffect")
+		eq.Name = "Muffle"
+		eq.LowGain = cfg.FocusAudioLowGain
+		eq.MidGain = cfg.FocusAudioMidGain
+		eq.HighGain = cfg.FocusAudioHighGain
+		eq.Parent = group
+	end
+
+	local function hookSound(sound)
+		if not sound:IsA("Sound") or self.AudioRestore.Sounds[sound] then return end
+		self.AudioRestore.Sounds[sound] = { SoundGroup = sound.SoundGroup, Volume = sound.Volume }
+		pcall(function() sound.SoundGroup = group end)
+	end
+
+	for _, obj in ipairs(game:GetDescendants()) do
+		hookSound(obj)
+	end
+
+	self.AudioAddedConn = game.DescendantAdded:Connect(function(obj)
+		task.defer(function()
+			if self.AudioFocused then hookSound(obj) end
+		end)
+	end)
+
+	if cfg.FocusAudioVoiceChat then
+		for _, obj in ipairs(game:GetDescendants()) do
+			if obj.ClassName == "AudioDeviceOutput" or obj.ClassName == "AudioEmitter" or obj.ClassName == "AudioListener" then
+				local props = {}
+				pcall(function()
+					props.Volume = obj.Volume
+					obj.Volume = cfg.FocusAudioVolume
+				end)
+				if next(props) then self.AudioRestore.VoiceObjects[obj] = props end
+			end
+		end
+	end
+end
+
+function KeySystem:_RestoreFocusAudio()
+	if not self.AudioFocused then return end
+	self.AudioFocused = false
+
+	if self.AudioAddedConn then
+		self.AudioAddedConn:Disconnect()
+		self.AudioAddedConn = nil
+	end
+
+	if self.AudioRestore then
+		for sound, data in pairs(self.AudioRestore.Sounds or {}) do
+			if sound and sound.Parent then
+				pcall(function()
+					sound.SoundGroup = data.SoundGroup
+					sound.Volume = data.Volume
+				end)
+			end
+		end
+
+		for obj, props in pairs(self.AudioRestore.VoiceObjects or {}) do
+			if obj and obj.Parent then
+				for prop, value in pairs(props) do
+					pcall(function() obj[prop] = value end)
+				end
+			end
+		end
+	end
+
+	if self.FocusSoundGroup then
+		pcall(function() self.FocusSoundGroup:Destroy() end)
+		self.FocusSoundGroup = nil
+	end
+	self.AudioRestore = nil
 end
 
 function KeySystem:_Verify(key, fromSaved)
@@ -415,17 +481,13 @@ function KeySystem:_Verify(key, fromSaved)
 
 	if valid then
 		self.ValidatedKey = key
-		if self.Config.SaveKey then
-			SaveFile(self.Config.KeyFile, key)
-		end
+		if self.Config.SaveKey then SaveFile(self.Config.KeyFile, key) end
 
 		self.VerifyLabel.Text = self.Config.MainButtonText
 		self:_SetStatus(message or self.Config.StatusSuccess, self.Config.Theme.Success)
 		Tween(self.CardStroke, self.FastTween, { Color = self.Config.Theme.Success })
 		task.delay(0.35, function()
-			if self.CardStroke then
-				Tween(self.CardStroke, self.FastTween, { Color = self.Config.Theme.Border })
-			end
+			if self.CardStroke then Tween(self.CardStroke, self.FastTween, { Color = self.Config.Theme.Border }) end
 		end)
 
 		self.Config.OnSuccess(key, self)
@@ -434,20 +496,13 @@ function KeySystem:_Verify(key, fromSaved)
 
 	self.VerifyLabel.Text = self.Config.MainButtonText
 
-	if self.Config.DeleteInvalidKey then
-		DeleteFile(self.Config.KeyFile)
-	end
-
-	if self.Config.ClearInputWhenInvalid and not fromSaved then
-		self.Input.Text = ""
-	end
+	if self.Config.DeleteInvalidKey then DeleteFile(self.Config.KeyFile) end
+	if self.Config.ClearInputWhenInvalid and not fromSaved then self.Input.Text = "" end
 
 	self:_SetStatus(message or self.Config.StatusInvalid, self.Config.Theme.Error)
 	Tween(self.CardStroke, self.FastTween, { Color = self.Config.Theme.Error })
 	task.delay(0.35, function()
-		if self.CardStroke then
-			Tween(self.CardStroke, self.FastTween, { Color = self.Config.Theme.Border })
-		end
+		if self.CardStroke then Tween(self.CardStroke, self.FastTween, { Color = self.Config.Theme.Border }) end
 	end)
 
 	self.Config.OnInvalid(key, self)
@@ -467,95 +522,72 @@ function KeySystem:Close()
 
 	local camera = Workspace.CurrentCamera
 	if self.Config.FOVTween and camera and self.OriginalFOV then
-		Tween(camera, TweenInfo.new(self.Config.FOVTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-			FieldOfView = self.OriginalFOV,
-		})
+		Tween(camera, TweenInfo.new(self.Config.FOVTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { FieldOfView = self.OriginalFOV })
 	end
 
-	Tween(self.CardScale, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-		Scale = 0.94,
+	Tween(self.HolderScale, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { Scale = 0.94 })
+	Tween(self.Holder, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+		Position = self.StartPosition + UDim2.fromOffset(0, 18),
 	})
+	Tween(self.Card, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { BackgroundTransparency = 1 })
+	Tween(self.Topbar, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { BackgroundTransparency = 1 })
+	Tween(self.Panel, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { BackgroundTransparency = 1 })
+	Tween(self.Overlay, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 1 })
 
-	Tween(self.Card, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-		BackgroundTransparency = 1,
-		Position = UDim2.new(0.5, -self.Config.Size.X.Offset / 2, 0.5, -self.Config.Size.Y.Offset / 2 + 16),
-	})
-
-	if self.Shadow then
-		Tween(self.Shadow, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-			BackgroundTransparency = 1,
-		})
-	end
-
-	if self.Overlay then
-		Tween(self.Overlay, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-			BackgroundTransparency = 1,
-		})
-	end
+	if self.Shadow then Tween(self.Shadow, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { BackgroundTransparency = 1 }) end
+	if self.CardStroke then Tween(self.CardStroke, TweenInfo.new(self.Config.CloseTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { Transparency = 1 }) end
 
 	for _, obj in ipairs(self.FadeObjects) do
 		if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-			Tween(obj, TweenInfo.new(self.Config.CloseTweenTime * 0.85, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-				TextTransparency = 1,
-				BackgroundTransparency = obj.BackgroundTransparency == 1 and 1 or 1,
-			})
+			Tween(obj, TweenInfo.new(self.Config.CloseTweenTime * 0.85, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { TextTransparency = 1 })
 		elseif obj:IsA("ImageLabel") then
-			Tween(obj, TweenInfo.new(self.Config.CloseTweenTime * 0.85, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-				ImageTransparency = 1,
-			})
+			Tween(obj, TweenInfo.new(self.Config.CloseTweenTime * 0.85, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { ImageTransparency = 1 })
 		elseif obj:IsA("Frame") then
-			Tween(obj, TweenInfo.new(self.Config.CloseTweenTime * 0.85, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-				BackgroundTransparency = 1,
-			})
+			Tween(obj, TweenInfo.new(self.Config.CloseTweenTime * 0.85, Enum.EasingStyle.Quint, Enum.EasingDirection.In), { BackgroundTransparency = 1 })
 		end
 	end
 
 	task.delay(self.Config.CloseTweenTime + 0.04, function()
-		if self.ScreenGui then
-			self.ScreenGui:Destroy()
-		end
+		self:_RestoreFocusAudio()
+		if self.ScreenGui then self.ScreenGui:Destroy() end
 	end)
 end
 
 function KeySystem:Show()
+	self:_ApplyFocusAudio()
+
 	local camera = Workspace.CurrentCamera
 	if self.Config.FOVTween and camera then
 		self.OriginalFOV = camera.FieldOfView
-		Tween(camera, TweenInfo.new(self.Config.FOVTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-			FieldOfView = self.Config.FocusedFOV,
-		})
+		Tween(camera, TweenInfo.new(self.Config.FOVTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { FieldOfView = self.Config.FocusedFOV })
 	end
 
-	self.Card.Visible = true
+	self.Holder.Visible = true
+	self.HolderScale.Scale = 0.94
+	self.Holder.Position = self.StartPosition + UDim2.fromOffset(0, 22)
 	self.Card.BackgroundTransparency = 1
-	self.Card.Position = UDim2.new(0.5, -self.Config.Size.X.Offset / 2, 0.5, -self.Config.Size.Y.Offset / 2 + 20)
-	self.CardScale.Scale = 0.94
+	self.Topbar.BackgroundTransparency = 1
+	self.Panel.BackgroundTransparency = 1
+	self.CardStroke.Transparency = 1
 
-	if self.Overlay then
-		self.Overlay.BackgroundTransparency = 1
-		Tween(self.Overlay, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-			BackgroundTransparency = 1 - self.Config.FocusDarkness,
-		})
-	end
+	if self.Shadow then self.Shadow.BackgroundTransparency = 1 end
+
+	Tween(self.Overlay, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+		BackgroundTransparency = self.Config.FocusDarken and (1 - self.Config.FocusDarkness) or 1,
+	})
+	Tween(self.HolderScale, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
+	Tween(self.Holder, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = self.StartPosition })
+	Tween(self.Card, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 0 })
+	Tween(self.Topbar, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 0 })
+	Tween(self.Panel, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = 0.02 })
+	Tween(self.CardStroke, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Transparency = 0 })
 
 	if self.Shadow then
-		self.Shadow.BackgroundTransparency = 1
-		Tween(self.Shadow, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-			BackgroundTransparency = self.Config.ShadowTransparency,
-		})
+		Tween(self.Shadow, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { BackgroundTransparency = self.Config.ShadowTransparency })
 	end
 
-	Tween(self.CardScale, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Scale = 1,
-	})
-
-	Tween(self.Card, TweenInfo.new(self.Config.OpenTweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-		BackgroundTransparency = 0,
-		Position = UDim2.new(0.5, -self.Config.Size.X.Offset / 2, 0.5, -self.Config.Size.Y.Offset / 2),
-	})
-
 	for i, obj in ipairs(self.FadeObjects) do
-		task.delay(i * 0.018, function()
+		task.delay(i * 0.012, function()
 			if not obj or not obj.Parent then return end
 			if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
 				Tween(obj, self.FastTween, { TextTransparency = 0 })
@@ -583,52 +615,39 @@ function KeySystem.new(config)
 	})
 	pcall(protectgui, gui)
 
-	local ok = pcall(function()
-		gui.Parent = cfg.Parent or gethui()
-	end)
-	if not ok or not gui.Parent then
-		gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-	end
-
+	local ok = pcall(function() gui.Parent = cfg.Parent or gethui() end)
+	if not ok or not gui.Parent then gui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 	self.ScreenGui = gui
-
-	local root = New("Frame", {
-		Name = "Root",
-		BackgroundTransparency = 1,
-		Size = UDim2.fromScale(1, 1),
-		Parent = gui,
-	})
-	self.Root = root
 
 	local overlay = New("Frame", {
 		Name = "FocusOverlay",
 		BackgroundColor3 = C.Background,
-		BackgroundTransparency = cfg.FocusDarken and 1 or 0.2,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1),
-		Parent = root,
+		ZIndex = 1,
+		Parent = gui,
 	})
 	self.Overlay = overlay
 
 	if cfg.CustomBackground and cfg.BackgroundImage and cfg.BackgroundImage ~= "" then
-		local bg = New("ImageLabel", {
+		New("ImageLabel", {
 			Name = "CustomBackground",
 			BackgroundTransparency = 1,
 			Image = ToAsset(cfg.BackgroundImage) or cfg.BackgroundImage,
 			ImageTransparency = cfg.BackgroundImageTransparency,
 			ScaleType = cfg.BackgroundScaleType,
 			Size = UDim2.fromScale(1, 1),
-			ZIndex = 0,
+			ZIndex = 1,
 			Parent = overlay,
 		})
-
 		New("Frame", {
 			Name = "BackgroundDim",
 			BackgroundColor3 = C.Background,
 			BackgroundTransparency = 1 - cfg.BackgroundDim,
 			BorderSizePixel = 0,
 			Size = UDim2.fromScale(1, 1),
-			ZIndex = 1,
+			ZIndex = 2,
 			Parent = overlay,
 		})
 	end
@@ -639,9 +658,13 @@ function KeySystem.new(config)
 		BackgroundTransparency = 1,
 		Position = cfg.Center and UDim2.fromScale(0.5, 0.5) or cfg.Position,
 		Size = cfg.Size,
-		Parent = root,
+		Visible = false,
+		ZIndex = 10,
+		Parent = gui,
 	})
 	self.Holder = holder
+	self.StartPosition = holder.Position
+	self.HolderScale = New("UIScale", { Scale = 0.94, Parent = holder })
 
 	if cfg.Shadow then
 		local shadow = New("Frame", {
@@ -651,13 +674,10 @@ function KeySystem.new(config)
 			BorderSizePixel = 0,
 			Position = UDim2.fromOffset(-cfg.ShadowSize, -cfg.ShadowSize),
 			Size = UDim2.new(1, cfg.ShadowSize * 2, 1, cfg.ShadowSize * 2),
-			ZIndex = 1,
+			ZIndex = 10,
 			Parent = holder,
 		})
-		New("UICorner", {
-			CornerRadius = UDim.new(0, cfg.ShadowCornerRadius),
-			Parent = shadow,
-		})
+		New("UICorner", { CornerRadius = UDim.new(0, cfg.CornerRadius + 4), Parent = shadow })
 		self.Shadow = shadow
 	end
 
@@ -666,75 +686,77 @@ function KeySystem.new(config)
 		BackgroundColor3 = C.Card,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(0, 0),
 		Size = UDim2.fromScale(1, 1),
-		ZIndex = 2,
+		ZIndex = 12,
 		ClipsDescendants = true,
 		Parent = holder,
 	})
 	self.Card = card
-	self.CardScale = New("UIScale", { Scale = 0.94, Parent = card })
+	New("UICorner", { CornerRadius = UDim.new(0, cfg.CornerRadius), Parent = card })
+	self.CardStroke = New("UIStroke", { Color = C.Border, Thickness = 1, Transparency = 1, Parent = card })
 
-	New("UICorner", {
-		CornerRadius = UDim.new(0, cfg.CornerRadius),
-		Parent = card,
-	})
-
-	self.CardStroke = New("UIStroke", {
-		Color = C.Border,
-		Thickness = 1,
-		Transparency = 0,
-		Parent = card,
-	})
-
-	local pad = New("UIPadding", {
-		PaddingLeft = UDim.new(0, 28),
-		PaddingRight = UDim.new(0, 28),
-		PaddingTop = UDim.new(0, 26),
-		PaddingBottom = UDim.new(0, 22),
-		Parent = card,
-	})
-
-	local badge = New("Frame", {
-		BackgroundColor3 = Color3.fromRGB(30, 27, 75),
-		BorderSizePixel = 0,
-		Size = UDim2.fromOffset(148, 24),
-		Position = UDim2.fromOffset(0, 0),
-		ZIndex = 5,
-		Parent = card,
-	})
-	New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = badge })
-	New("UIStroke", {
-		Color = C.Primary,
-		Thickness = 1,
-		Transparency = 0.62,
-		Parent = badge,
-	})
-	table.insert(self.FadeObjects, badge)
-
-	local dot = New("Frame", {
-		BackgroundColor3 = C.Primary2,
-		BorderSizePixel = 0,
-		Size = UDim2.fromOffset(6, 6),
-		Position = UDim2.new(0, 12, 0.5, -3),
-		ZIndex = 6,
-		Parent = badge,
-	})
-	New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = dot })
-
-	local badgeText = New("TextLabel", {
+	local topbar = New("Frame", {
+		Name = "Topbar",
+		BackgroundColor3 = C.CardTop,
 		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 62),
+		ZIndex = 13,
+		Parent = card,
+	})
+	self.Topbar = topbar
+	New("UICorner", { CornerRadius = UDim.new(0, cfg.CornerRadius), Parent = topbar })
+	New("Frame", {
+		BackgroundColor3 = C.CardTop,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 0, 1, -cfg.CornerRadius),
+		Size = UDim2.new(1, 0, 0, cfg.CornerRadius),
+		ZIndex = 13,
+		Parent = topbar,
+	})
+
+	local accentBar = New("Frame", {
+		BackgroundColor3 = C.Primary,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 2),
+		ZIndex = 16,
+		Parent = topbar,
+	})
+	New("UIGradient", {
+		Color = ColorSequence.new(C.Primary, C.Primary2),
+		Rotation = 0,
+		Parent = accentBar,
+	})
+
+	local title = New("TextLabel", {
+		BackgroundTransparency = 1,
+		Font = C.BoldFont,
+		Text = cfg.Title,
+		TextColor3 = C.Text,
+		TextSize = 18,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(20, 6),
+		Size = UDim2.new(1, -72, 0, 34),
+		ZIndex = 15,
+		Parent = topbar,
+	})
+	table.insert(self.FadeObjects, title)
+
+	local badge = New("TextLabel", {
+		BackgroundColor3 = C.PrimaryDark,
+		BorderSizePixel = 0,
 		Font = C.MediumFont,
 		Text = cfg.BadgeText,
 		TextColor3 = C.Muted,
 		TextSize = 10,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(24, 0),
-		Size = UDim2.new(1, -32, 1, 0),
-		ZIndex = 6,
-		Parent = badge,
+		Position = UDim2.fromOffset(20, 36),
+		Size = UDim2.fromOffset(122, 18),
+		ZIndex = 15,
+		Parent = topbar,
 	})
-	table.insert(self.FadeObjects, badgeText)
+	New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = badge })
+	New("UIStroke", { Color = C.Primary, Transparency = 0.55, Thickness = 1, Parent = badge })
+	table.insert(self.FadeObjects, badge)
 
 	if cfg.ShowCloseButton then
 		local close = New("TextButton", {
@@ -743,150 +765,127 @@ function KeySystem.new(config)
 			Font = C.MediumFont,
 			Text = "×",
 			TextColor3 = C.Muted,
-			TextSize = 18,
-			Position = UDim2.new(1, -22, 0, 0),
-			Size = UDim2.fromOffset(22, 22),
-			ZIndex = 6,
-			Parent = card,
+			TextSize = 20,
+			Position = UDim2.new(1, -42, 0, 13),
+			Size = UDim2.fromOffset(28, 28),
+			ZIndex = 15,
+			Parent = topbar,
 		})
 		table.insert(self.FadeObjects, close)
-		close.MouseEnter:Connect(function()
-			Tween(close, self.FastTween, { TextColor3 = C.Text })
-		end)
-		close.MouseLeave:Connect(function()
-			Tween(close, self.FastTween, { TextColor3 = C.Muted })
-		end)
-		close.MouseButton1Click:Connect(function()
-			self:Close()
-		end)
+		close.MouseEnter:Connect(function() Tween(close, self.FastTween, { TextColor3 = C.Text }) end)
+		close.MouseLeave:Connect(function() Tween(close, self.FastTween, { TextColor3 = C.Muted }) end)
+		close.MouseButton1Click:Connect(function() self:Close() end)
 	end
 
-	local title = New("TextLabel", {
+	local panel = New("Frame", {
+		Name = "Panel",
+		BackgroundColor3 = C.Panel,
 		BackgroundTransparency = 1,
-		Font = C.BoldFont,
-		Text = cfg.Title,
-		TextColor3 = C.Text,
-		TextSize = 22,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Center,
-		Position = UDim2.fromOffset(0, 42),
-		Size = UDim2.new(1, 0, 0, 32),
-		ZIndex = 5,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(16, 78),
+		Size = UDim2.new(1, -32, 1, -96),
+		ZIndex = 13,
 		Parent = card,
 	})
-	table.insert(self.FadeObjects, title)
+	self.Panel = panel
+	New("UICorner", { CornerRadius = UDim.new(0, 10), Parent = panel })
+	New("UIStroke", { Color = C.SoftBorder, Thickness = 1, Transparency = 0.1, Parent = panel })
+	New("UIPadding", {
+		PaddingLeft = UDim.new(0, 22),
+		PaddingRight = UDim.new(0, 22),
+		PaddingTop = UDim.new(0, 20),
+		PaddingBottom = UDim.new(0, 18),
+		Parent = panel,
+	})
+
+	local list = New("UIListLayout", {
+		FillDirection = Enum.FillDirection.Vertical,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 10),
+		Parent = panel,
+	})
 
 	local sub = New("TextLabel", {
+		LayoutOrder = 1,
 		BackgroundTransparency = 1,
 		Font = C.Font,
 		Text = cfg.Subtitle,
 		TextColor3 = C.Muted,
-		TextSize = 12,
+		TextSize = 13,
+		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		Position = UDim2.fromOffset(0, 77),
-		Size = UDim2.new(1, 0, 0, 32),
-		ZIndex = 5,
-		Parent = card,
+		Size = UDim2.new(1, 0, 0, 34),
+		ZIndex = 15,
+		Parent = panel,
 	})
 	table.insert(self.FadeObjects, sub)
 
-	local label = New("TextLabel", {
+	local keyLabel = New("TextLabel", {
+		LayoutOrder = 2,
 		BackgroundTransparency = 1,
 		Font = C.MediumFont,
 		Text = "ACCESS KEY",
 		TextColor3 = C.Muted,
 		TextSize = 10,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(0, 118),
 		Size = UDim2.new(1, 0, 0, 14),
-		ZIndex = 5,
-		Parent = card,
+		ZIndex = 15,
+		Parent = panel,
 	})
-	table.insert(self.FadeObjects, label)
+	table.insert(self.FadeObjects, keyLabel)
 
 	local input = New("TextBox", {
-		BackgroundColor3 = C.Card2,
+		LayoutOrder = 3,
+		BackgroundColor3 = C.Input,
 		BorderSizePixel = 0,
-		ClearTextOnFocus = cfg.KeyBoxClearTextOnFocus,
+		ClearTextOnFocus = false,
 		Font = C.CodeFont,
 		PlaceholderText = cfg.KeyPlaceholder,
-		PlaceholderColor3 = Color3.fromRGB(71, 85, 105),
+		PlaceholderColor3 = Color3.fromRGB(92, 77, 116),
 		Text = "",
 		TextColor3 = C.Text,
 		TextSize = 14,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.fromOffset(0, 137),
 		Size = UDim2.new(1, 0, 0, 44),
-		ZIndex = 5,
-		Parent = card,
+		ZIndex = 15,
+		Parent = panel,
 	})
 	input.TextTransparency = cfg.HideKeyText and 1 or 0
 	self.Input = input
 	table.insert(self.FadeObjects, input)
-
 	New("UICorner", { CornerRadius = UDim.new(0, 8), Parent = input })
-	self.InputStroke = New("UIStroke", {
-		Color = C.Border,
-		Thickness = 1,
-		Parent = input,
-	})
-	New("UIPadding", {
-		PaddingLeft = UDim.new(0, 14),
-		PaddingRight = UDim.new(0, 14),
-		Parent = input,
-	})
+	self.InputStroke = New("UIStroke", { Color = C.Border, Thickness = 1, Transparency = 0.05, Parent = input })
+	New("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), Parent = input })
 
-	input.Focused:Connect(function()
-		Tween(self.InputStroke, self.FastTween, { Color = C.Primary, Thickness = 2 })
-	end)
+	input.Focused:Connect(function() Tween(self.InputStroke, self.FastTween, { Color = C.Primary2, Thickness = 2 }) end)
 	input.FocusLost:Connect(function(enter)
 		Tween(self.InputStroke, self.FastTween, { Color = C.Border, Thickness = 1 })
-		if enter then
-			self:_Verify(input.Text, false)
-		end
+		if enter then self:_Verify(input.Text, false) end
 	end)
 
-	local verify = self:_Button(cfg.MainButtonText, cfg.MainButtonIcon, 196, true, function(_, lbl)
+	local verify = self:_Button(cfg.MainButtonText, cfg.MainButtonIcon, panel, true, function(_, lbl)
 		self.VerifyLabel = lbl
 		self:_Verify(input.Text, false)
 	end)
+	verify.LayoutOrder = 4
 	self.VerifyLabel = verify.Center.Label
 
-	local y = 262
-	if cfg.ShowGetKeyButton then
-		local left = New("Frame", {
-			BackgroundColor3 = C.Border,
-			BorderSizePixel = 0,
-			Position = UDim2.new(0, 0, 0, 244),
-			Size = UDim2.new(0.42, 0, 0, 1),
-			ZIndex = 5,
-			Parent = card,
-		})
-		local orText = New("TextLabel", {
-			BackgroundTransparency = 1,
-			Font = C.Font,
-			Text = "OR",
-			TextColor3 = C.Muted,
-			TextSize = 10,
-			Position = UDim2.new(0.42, 0, 0, 238),
-			Size = UDim2.new(0.16, 0, 0, 14),
-			ZIndex = 5,
-			Parent = card,
-		})
-		local right = New("Frame", {
-			BackgroundColor3 = C.Border,
-			BorderSizePixel = 0,
-			Position = UDim2.new(0.58, 0, 0, 244),
-			Size = UDim2.new(0.42, 0, 0, 1),
-			ZIndex = 5,
-			Parent = card,
-		})
-		table.insert(self.FadeObjects, left)
-		table.insert(self.FadeObjects, orText)
-		table.insert(self.FadeObjects, right)
+	local divider = New("Frame", {
+		LayoutOrder = 5,
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, 18),
+		ZIndex = 15,
+		Parent = panel,
+	})
+	local line1 = New("Frame", { BackgroundColor3 = C.Border, BorderSizePixel = 0, Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.new(0.42, 0, 0, 1), ZIndex = 15, Parent = divider })
+	local orText = New("TextLabel", { BackgroundTransparency = 1, Font = C.Font, Text = "OR", TextColor3 = C.Muted, TextSize = 10, Position = UDim2.new(0.42, 0, 0, 0), Size = UDim2.new(0.16, 0, 1, 0), ZIndex = 15, Parent = divider })
+	local line2 = New("Frame", { BackgroundColor3 = C.Border, BorderSizePixel = 0, Position = UDim2.new(0.58, 0, 0.5, 0), Size = UDim2.new(0.42, 0, 0, 1), ZIndex = 15, Parent = divider })
+	table.insert(self.FadeObjects, line1)
+	table.insert(self.FadeObjects, orText)
+	table.insert(self.FadeObjects, line2)
 
-		self:_Button(cfg.GetKeyButtonText, cfg.GetKeyButtonIcon, y, false, function()
+	if cfg.ShowGetKeyButton then
+		local get = self:_Button(cfg.GetKeyButtonText, cfg.GetKeyButtonIcon, panel, false, function()
 			if cfg.KeyLink ~= "" and setclipboard then
 				setclipboard(cfg.KeyLink)
 				self:_SetStatus(cfg.StatusCopied, C.Success)
@@ -896,11 +895,11 @@ function KeySystem.new(config)
 				self:_SetStatus("No key link configured.", C.Warning)
 			end
 		end)
-		y += 50
+		get.LayoutOrder = 6
 	end
 
 	if cfg.ShowDiscordButton then
-		self:_Button(cfg.DiscordButtonText, cfg.DiscordButtonIcon, y, false, function()
+		local discord = self:_Button(cfg.DiscordButtonText, cfg.DiscordButtonIcon, panel, false, function()
 			if cfg.Discord ~= "" and setclipboard then
 				setclipboard(cfg.Discord)
 				self:_SetStatus(cfg.StatusCopied, C.Success)
@@ -910,26 +909,27 @@ function KeySystem.new(config)
 				self:_SetStatus(cfg.StatusCopyFail, C.Error)
 			end
 		end)
-		y += 50
+		discord.LayoutOrder = 7
 	end
 
 	if cfg.ShowDeleteKeyButton then
-		self:_Button(cfg.DeleteKeyButtonText, cfg.DeleteKeyButtonIcon, y, false, function()
+		local del = self:_Button(cfg.DeleteKeyButtonText, cfg.DeleteKeyButtonIcon, panel, false, function()
 			self:DeleteSavedKey()
 		end)
+		del.LayoutOrder = 8
 	end
 
 	local status = New("TextLabel", {
+		LayoutOrder = 9,
 		BackgroundTransparency = 1,
 		Font = C.Font,
 		Text = cfg.StatusReady,
 		TextColor3 = C.Muted,
 		TextSize = 11,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0, 0, 1, -18),
-		Size = UDim2.new(1, 0, 0, 14),
-		ZIndex = 5,
-		Parent = card,
+		Size = UDim2.new(1, 0, 0, 16),
+		ZIndex = 15,
+		Parent = panel,
 	})
 	self.Status = status
 	table.insert(self.FadeObjects, status)
@@ -940,37 +940,22 @@ function KeySystem.new(config)
 		local startFrame
 		local dragInput
 
-		card.InputBegan:Connect(function(inputObject)
-			if inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 and inputObject.UserInputType ~= Enum.UserInputType.Touch then
-				return
-			end
-
-			local localY = inputObject.Position.Y - card.AbsolutePosition.Y
-			if localY > 110 then return end
-
+		topbar.InputBegan:Connect(function(inputObject)
+			if inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 and inputObject.UserInputType ~= Enum.UserInputType.Touch then return end
 			dragging = true
 			startPos = inputObject.Position
 			startFrame = holder.Position
-
 			inputObject.Changed:Connect(function()
-				if inputObject.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
+				if inputObject.UserInputState == Enum.UserInputState.End then dragging = false end
 			end)
 		end)
 
 		UserInputService.InputChanged:Connect(function(inputObject)
-			if inputObject.UserInputType == Enum.UserInputType.MouseMovement or inputObject.UserInputType == Enum.UserInputType.Touch then
-				dragInput = inputObject
-			end
+			if inputObject.UserInputType == Enum.UserInputType.MouseMovement or inputObject.UserInputType == Enum.UserInputType.Touch then dragInput = inputObject end
 			if dragging and inputObject == dragInput then
 				local delta = inputObject.Position - startPos
-				holder.Position = UDim2.new(
-					startFrame.X.Scale,
-					startFrame.X.Offset + delta.X,
-					startFrame.Y.Scale,
-					startFrame.Y.Offset + delta.Y
-				)
+				holder.Position = UDim2.new(startFrame.X.Scale, startFrame.X.Offset + delta.X, startFrame.Y.Scale, startFrame.Y.Offset + delta.Y)
+				self.StartPosition = holder.Position
 			end
 		end)
 	end
@@ -980,6 +965,8 @@ function KeySystem.new(config)
 			obj.TextTransparency = 1
 		elseif obj:IsA("ImageLabel") then
 			obj.ImageTransparency = 1
+		elseif obj:IsA("Frame") then
+			obj.BackgroundTransparency = 1
 		end
 	end
 
@@ -988,9 +975,7 @@ function KeySystem.new(config)
 		input.Text = saved:gsub("^%s*(.-)%s*$", "%1")
 		self:_SetStatus(cfg.StatusLoaded, C.Muted)
 		if cfg.AutoCheckSavedKey then
-			task.defer(function()
-				self:_Verify(input.Text, true)
-			end)
+			task.defer(function() self:_Verify(input.Text, true) end)
 		end
 	end
 
