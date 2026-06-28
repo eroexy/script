@@ -9,7 +9,6 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
-local Players = game:GetService("Players")
 local Mouse = LocalPlayer:GetMouse()
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
@@ -74,10 +73,60 @@ local OrionLib = {
 	ScriptFolder = "BetterOrion",
 	GameName = tostring(game.PlaceId),
 	Window = nil,
-	ToggleUIKey = Enum.KeyCode.Tab,
-	PlayerDropdowns = {}
+	ToggleUIKey = Enum.KeyCode.Tab
 }
 OrionLib.SectionLabels = {}
+
+OrionLib.ConfigData = {}
+OrionLib.LoadQueue = {}
+OrionLib.LoadingConfig = false
+
+OrionLib.ConfigFolder = "BetterOrion/Configs"
+
+if makefolder and not isfolder("BetterOrion") then
+	makefolder("BetterOrion")
+end
+
+if makefolder and not isfolder(OrionLib.ConfigFolder) then
+	makefolder(OrionLib.ConfigFolder)
+end
+
+local ConfigFile = OrionLib.ConfigFolder .. "/" .. game.GameId .. ".json"
+
+function OrionLib:SaveConfig()
+	if not writefile then
+		return
+	end
+
+	pcall(function()
+		writefile(ConfigFile, HttpService:JSONEncode(self.ConfigData))
+	end)
+end
+
+function OrionLib:Init()
+    local Data = {}
+
+    if readfile and isfile and isfile(ConfigFile) then
+        local Success, Result = pcall(function()
+            return HttpService:JSONDecode(readfile(ConfigFile))
+        end)
+
+        if Success and type(Result) == "table" then
+            Data = Result
+        end
+    end
+
+    for _, Item in ipairs(self.LoadQueue) do
+        local Value = Data[Item.Flag]
+
+        if Value == nil then
+            Value = Item.Default
+        end
+
+        self.ConfigData[Item.Flag] = Value
+        Item.SetValue(Value)
+    end
+end
 
 -- Icons
 	local Icons = {}
@@ -2039,7 +2088,8 @@ function OrionLib:MakeWindow(WindowConfig)
 						ToggleConfig.Default = ToggleConfig.Default or false
 						ToggleConfig.Callback = ToggleConfig.Callback or function() end
 						ToggleConfig.Color = ToggleConfig.Color or Color3.fromRGB(50, 50, 50)
-						ToggleConfig.Flag = ToggleConfig.Flag or nil
+						ToggleConfig.Flag = ToggleConfig.Flag or ToggleConfig.Name
+						ToggleConfig.Save = ToggleConfig.Save or false
 						ToggleConfig.Binded = ToggleConfig.Binded or false
 						ToggleConfig.DefaultBind = ToggleConfig.DefaultBind or ""
 						ToggleConfig.Settings = ToggleConfig.Settings or false
@@ -2297,6 +2347,15 @@ function OrionLib:MakeWindow(WindowConfig)
 							TweenService:Create(ToggleBox.Ico, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
 								ImageTransparency = Toggle.Value and 0 or 1, Size = Toggle.Value and UDim2.new(0, 20, 0, 20) or UDim2.new(0, 8, 0, 8)
 							}):Play()
+
+							if ToggleConfig.Save then
+								OrionLib.ConfigData[ToggleConfig.Flag] = Toggle.Value
+
+								if not OrionLib.LoadingConfig then
+									OrionLib:SaveConfig()
+								end
+							end
+								
 							ToggleConfig.Callback(Toggle.Value)
 						end    
 
@@ -2891,541 +2950,6 @@ function OrionLib:MakeWindow(WindowConfig)
 						return Dropdown
 					end
 
-					-- NEW: AddPlayerDropdown function
-					function ItemParent2:AddPlayerDropdown(PlayerDropdownConfig)
-						PlayerDropdownConfig = PlayerDropdownConfig or {}
-						PlayerDropdownConfig.Name = PlayerDropdownConfig.Name or "Player Selector"
-						PlayerDropdownConfig.Multi = PlayerDropdownConfig.Multi or false
-						PlayerDropdownConfig.Default = PlayerDropdownConfig.Default or (PlayerDropdownConfig.Multi and {} or "")
-						PlayerDropdownConfig.Callback = PlayerDropdownConfig.Callback or function() end
-						PlayerDropdownConfig.Flag = PlayerDropdownConfig.Flag or nil
-						PlayerDropdownConfig.MaxSize = PlayerDropdownConfig.MaxSize or 5
-						PlayerDropdownConfig.Search = PlayerDropdownConfig.Search or false
-
-						local PlayerDropdown = {
-							Buttons = {},
-							Value = PlayerDropdownConfig.Default,
-							LastOption = "",
-							Options = {},
-							Toggled = false,
-							Type = "PlayerDropdown",
-							Name = PlayerDropdownConfig.Name,
-							PlayerStatus = {}
-						}
-
-						local MaxElements = PlayerDropdownConfig.MaxSize
-
-						if not table.find(PlayerDropdown.Options, PlayerDropdown.Value) then
-							PlayerDropdown.Value = {}
-						end
-
-						local DropdownList = SetProps(MakeElement("List"), {
-							HorizontalAlignment = Enum.HorizontalAlignment.Center
-						})
-
-						local DropdownContainer = AddThemeObject(SetProps(SetChildren(MakeElement("ScrollFrame", Color3.fromRGB(40, 40, 40)), {
-							DropdownList
-						}), {
-							Parent = ItemParent,
-							Position = UDim2.new(0, 0, 0, 38),
-							Size = UDim2.new(1, 0, 1, -38),
-							ClipsDescendants = true
-						}), "Divider")
-
-						local Click = SetProps(MakeElement("Button"), {
-							Size = UDim2.new(1, 0, 1, 0)
-						})
-
-						local DropdownFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, WindowConfig.NewUI and 10 or 5), {
-							Size = UDim2.new(1, 0, 0, 38),
-							Parent = ItemParent,
-							ClipsDescendants = true,
-							BackgroundTransparency = WindowConfig.ElementsTransparency,
-							Name = "PlayerDropdown",
-						}), {
-							DropdownContainer,
-							SetProps(SetChildren(MakeElement("TFrame"), {
-								AddThemeObject(SetProps(MakeElement("Label", PlayerDropdownConfig.Name, 14), {
-									Size = UDim2.new(1, -12, 1, 0),
-									Position = UDim2.new(0, 12, 0, 0),
-									Font = Enum.Font.GothamBold,
-									Name = "Content"
-								}), "Text"),
-								AddThemeObject(SetProps(MakeElement("Image", "rbxassetid://7072706796"), {
-									Size = UDim2.new(0, 20, 0, 20),
-									AnchorPoint = Vector2.new(0, 0.5),
-									Position = UDim2.new(1, -30, 0.5, 0),
-									ImageColor3 = Color3.fromRGB(240, 240, 240),
-									Name = "Ico"
-								}), "TextDark"),
-								AddThemeObject(SetProps(MakeElement("Frame"), {
-									Size = UDim2.new(1, 0, 0, 1),
-									Position = UDim2.new(0, 0, 1, -1),
-									Name = "Line",
-									Visible = false
-								}), "Stroke"), 
-								Click
-							}), {
-								Size = UDim2.new(1, 0, 0, 38),
-								ClipsDescendants = true,
-								Name = "F"
-							}),
-							AddThemeObject(MakeElement("Stroke"), "Stroke"),
-							MakeElement("Corner")
-						}), "Elements")
-
-						-- Player status tracking
-						local function GetPlayerDisplayName(player)
-							if player and player.DisplayName then
-								return player.DisplayName
-							elseif player and player.Name then
-								return player.Name
-							end
-							return "Unknown"
-						end
-
-						local function GetPlayerUsername(player)
-							if player and player.Name then
-								return player.Name
-							end
-							return ""
-						end
-
-						local function UpdatePlayerStatus(player, isOnline)
-							local userId = player and player.UserId or tostring(player)
-							if userId then
-								PlayerDropdown.PlayerStatus[userId] = isOnline
-								
-								-- Update button appearance if it exists
-								local btn = PlayerDropdown.Buttons[userId]
-								if btn then
-									if isOnline then
-										btn.BackgroundColor3 = DropdownFrame.BackgroundColor3
-										TweenService:Create(btn, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-											BackgroundTransparency = 0
-										}):Play()
-										btn.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-									else
-										TweenService:Create(btn, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-											BackgroundTransparency = 0.3
-										}):Play()
-										btn.Title.TextColor3 = Color3.fromRGB(255, 0, 0)
-									end
-								end
-							end
-						end
-
-						-- Get current players list
-						local function GetCurrentPlayers()
-							local players = {}
-							for _, player in ipairs(Players:GetPlayers()) do
-								table.insert(players, player)
-							end
-							return players
-						end
-
-						-- Refresh the player list
-						local function RefreshPlayerList()
-							local currentPlayers = GetCurrentPlayers()
-							local options = {}
-							
-							for _, player in ipairs(currentPlayers) do
-								local displayName = GetPlayerDisplayName(player)
-								local username = GetPlayerUsername(player)
-								local optionText = displayName .. " (" .. username .. ")"
-								table.insert(options, {
-									UserId = player.UserId,
-									DisplayName = displayName,
-									Username = username,
-									Text = optionText,
-									Player = player
-								})
-							end
-							
-							-- Sort players by display name
-							table.sort(options, function(a, b)
-								return a.DisplayName < b.DisplayName
-							end)
-							
-							PlayerDropdown.Options = options
-							
-							-- Clear existing buttons
-							for _, btn in pairs(PlayerDropdown.Buttons) do
-								btn:Destroy()
-							end
-							PlayerDropdown.Buttons = {}
-							
-							-- Add new buttons
-							for _, optionData in ipairs(options) do
-								local userId = optionData.UserId
-								local player = optionData.Player
-								local isOnline = player ~= nil
-								
-								local OptionBtn = AddThemeObject(SetProps(SetChildren(MakeElement("Button", Color3.fromRGB(40, 40, 40)), {
-									MakeElement("Corner", 0, 6),
-									AddThemeObject(SetProps(MakeElement("Label", optionData.Text, 13, 0.4), {
-										Position = UDim2.new(0, 4, 0, 0),
-										Size = UDim2.new(1, -8, 1, 0),
-										Name = "Title"
-									}), "Text")
-								}), {
-									Parent = DropdownContainer,
-									Size = UDim2.new(1, 0, 0, 28),
-									BackgroundTransparency = 1,
-									ClipsDescendants = true
-								}), "Divider")
-
-								-- Check if player is currently selected
-								local isSelected = false
-								if PlayerDropdownConfig.Multi then
-									for _, v in ipairs(PlayerDropdown.Value) do
-										if v == userId then isSelected = true break end
-									end
-								else
-									isSelected = (PlayerDropdown.Value == userId)
-								end
-
-								if isSelected and isOnline then
-									OptionBtn.BackgroundTransparency = 0
-									OptionBtn.Title.TextTransparency = 0
-								elseif not isOnline then
-									OptionBtn.BackgroundTransparency = 0.3
-									OptionBtn.Title.TextColor3 = Color3.fromRGB(255, 0, 0)
-								end
-
-								AddConnection(OptionBtn.MouseButton1Click, function()
-									if isOnline then
-										PlayerDropdown.LastOption = userId
-										PlayerDropdown:Set(userId)
-									end
-								end)
-
-								PlayerDropdown.Buttons[userId] = OptionBtn
-								PlayerDropdown.PlayerStatus[userId] = isOnline
-							end
-							
-							-- Update canvas size
-							DropdownContainer.CanvasSize = UDim2.new(0, 0, 0, DropdownList.AbsoluteContentSize.Y)
-						end
-
-						-- Handle player added
-						local function OnPlayerAdded(player)
-							RefreshPlayerList()
-						end
-
-						-- Handle player removed
-						local function OnPlayerRemoved(player)
-							local userId = player.UserId
-							PlayerDropdown.PlayerStatus[userId] = false
-							
-							-- Check if this player is selected
-							local wasSelected = false
-							if PlayerDropdownConfig.Multi then
-								for i, v in ipairs(PlayerDropdown.Value) do
-									if v == userId then
-										wasSelected = true
-										break
-									end
-								end
-							else
-								wasSelected = (PlayerDropdown.Value == userId)
-							end
-							
-							-- Update the button to show red
-							local btn = PlayerDropdown.Buttons[userId]
-							if btn then
-								TweenService:Create(btn, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-									BackgroundTransparency = 0.3
-								}):Play()
-								btn.Title.TextColor3 = Color3.fromRGB(255, 0, 0)
-							end
-							
-							-- Refresh the list after a delay to remove the player if not selected
-							task.delay(2, function()
-								-- Only remove if the player hasn't rejoined
-								if PlayerDropdown.PlayerStatus[userId] == false then
-									RefreshPlayerList()
-								end
-							end)
-						end
-
-						-- Handle player rejoining
-						local function OnPlayerRejoined(player)
-							local userId = player.UserId
-							PlayerDropdown.PlayerStatus[userId] = true
-							
-							-- Check if this player was selected
-							local wasSelected = false
-							if PlayerDropdownConfig.Multi then
-								for i, v in ipairs(PlayerDropdown.Value) do
-									if v == userId then
-										wasSelected = true
-										break
-									end
-								end
-							else
-								wasSelected = (PlayerDropdown.Value == userId)
-							end
-							
-							-- Refresh to update the button
-							RefreshPlayerList()
-							
-							-- If it was selected, restore normal color
-							if wasSelected then
-								local btn = PlayerDropdown.Buttons[userId]
-								if btn then
-									TweenService:Create(btn, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-										BackgroundTransparency = 0
-									}):Play()
-									btn.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-								end
-							end
-						end
-
-						-- Set up player connections
-						local playerAddedConn = Players.PlayerAdded:Connect(OnPlayerAdded)
-						local playerRemovedConn = Players.PlayerRemoving:Connect(OnPlayerRemoved)
-
-						-- Store connections for cleanup
-						table.insert(OrionLib.Connections, playerAddedConn)
-						table.insert(OrionLib.Connections, playerRemovedConn)
-
-						if DropdownConfig.Search then 
-							local SearchBox = Create("TextBox", {
-								Size = UDim2.new(1, 0, 1, -10),
-								Position = UDim2.new(0, 0, 0, 5.5),
-								BackgroundTransparency = 1,
-								TextColor3 = Color3.fromRGB(255, 255, 255),
-								PlaceholderColor3 = Color3.fromRGB(210,210,210),
-								PlaceholderText = "Search players...", 
-								Font = Enum.Font.GothamBold,
-								TextWrapped = true,
-								Text = '',
-								TextXAlignment = Enum.TextXAlignment.Center,
-								TextSize = 13,
-								ClearTextOnFocus = true
-							})
-
-							local TextboxActual = AddThemeObject(SearchBox, "Text")
-							local SearchBar = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 1, 6), {
-								Parent = DropdownContainer,
-								Size = UDim2.new(1, -10, 0, 35),
-								Position = UDim2.new(1, 0, 0, 25), 
-								AnchorPoint = Vector2.new(1, 0.5),
-								BackgroundTransparency = 1,
-								Name = "SearchBar",
-							}), {
-								TextboxActual,
-							}), "Main")
-
-							local function SearchHandle()
-								pcall(function()
-									local Text = string.lower(SearchBox.Text)
-									for userId, btn in pairs(PlayerDropdown.Buttons) do
-										if btn and btn:IsA("TextButton") then
-											if Text == "" or string.find(string.lower(btn.Title.Text), Text) then
-												btn.Visible = true
-											else
-												btn.Visible = false
-											end
-										end
-									end
-								end)
-							end
-
-							SearchBar.UICorner.CornerRadius = UDim.new(0, 6)
-							AddConnection(TextboxActual:GetPropertyChangedSignal("Text"), SearchHandle)
-						end
-
-						AddConnection(DropdownList:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-							DropdownContainer.CanvasSize = UDim2.new(0, 0, 0, DropdownList.AbsoluteContentSize.Y)
-						end)  
-
-						function PlayerDropdown:ChangeVisibility(Bool)
-							DropdownFrame.Visible = Bool
-						end
-
-						function PlayerDropdown:Refresh()
-							RefreshPlayerList()
-						end  
-
-						function PlayerDropdown:Set(Value)
-							local userId = Value
-							local player = Players:GetPlayerByUserId(userId)
-							local isOnline = player ~= nil
-							
-							if not isOnline and PlayerDropdown.PlayerStatus[userId] == false then
-								-- Player is offline but keep them in the list
-								if not PlayerDropdownConfig.Multi then
-									PlayerDropdown.Value = userId
-									for _, v in pairs(PlayerDropdown.Buttons) do
-										if v ~= PlayerDropdown.Buttons[userId] then
-											v.BackgroundColor3 = DropdownFrame.BackgroundColor3
-											TweenService:Create(v,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 1}):Play()
-											TweenService:Create(v.Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0.4}):Play()
-										end
-									end
-								else
-									if not table.find(PlayerDropdown.Value, userId) then
-										table.insert(PlayerDropdown.Value, userId)
-									end
-								end
-								
-								local btn = PlayerDropdown.Buttons[userId]
-								if btn then
-									TweenService:Create(btn,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 0.3}):Play()
-									TweenService:Create(btn.Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0}):Play()
-									btn.Title.TextColor3 = Color3.fromRGB(255, 0, 0)
-								end
-								return PlayerDropdownConfig.Callback(userId, false)
-							end
-
-							if PlayerDropdownConfig.Multi and not table.find(PlayerDropdown.Value, userId) or not PlayerDropdownConfig.Multi and PlayerDropdown.Value ~= userId then
-								if not PlayerDropdownConfig.Multi then
-									PlayerDropdown.Value = userId
-
-									for _, v in pairs(PlayerDropdown.Buttons) do
-										if v ~= PlayerDropdown.Buttons[userId] then
-											v.BackgroundColor3 = DropdownFrame.BackgroundColor3
-											TweenService:Create(v,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 1}):Play()
-											TweenService:Create(v.Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0.4}):Play()
-											v.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-										end
-									end	
-								else
-									table.insert(PlayerDropdown.Value, userId)
-								end
-
-								local btn = PlayerDropdown.Buttons[userId]
-								if btn then
-									TweenService:Create(btn,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 0}):Play()
-									TweenService:Create(btn.Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0}):Play()
-									btn.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-								end
-							else
-								if not PlayerDropdownConfig.Multi then
-									PlayerDropdown.Value = ""
-									
-									for _, v in pairs(PlayerDropdown.Buttons) do
-										v.BackgroundColor3 = DropdownFrame.BackgroundColor3
-										TweenService:Create(v,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 1}):Play()
-										TweenService:Create(v.Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0.4}):Play()
-										v.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-									end	
-								else
-									for i, v in pairs(PlayerDropdown.Value) do 
-										if v == userId then 
-											table.remove(PlayerDropdown.Value, i) 
-										end 
-									end
-								end
-
-								local btn = PlayerDropdown.Buttons[userId]
-								if btn then
-									if PlayerDropdown.PlayerStatus[userId] == false then
-										TweenService:Create(btn,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 0.3}):Play()
-										btn.Title.TextColor3 = Color3.fromRGB(255, 0, 0)
-									else
-										TweenService:Create(btn,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 1}):Play()
-										btn.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-									end
-									TweenService:Create(btn.Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0.4}):Play()
-								end
-							end
-							
-							local selectedPlayer = Players:GetPlayerByUserId(userId)
-							return PlayerDropdownConfig.Callback(userId, selectedPlayer ~= nil)
-						end
-
-						function PlayerDropdown:SetColor(Color)
-							DropdownFrame.BackgroundColor3 = Color
-
-							for _, Btn in pairs(PlayerDropdown.Buttons) do
-								if PlayerDropdown.PlayerStatus[Btn.UserId] ~= false then
-									Btn.BackgroundColor3 = Color
-								end
-							end
-						end
-
-						function PlayerDropdown:SetTextColor(Color)
-							DropdownFrame.F.Content.TextColor3 = Color
-							for _, Btn in pairs(PlayerDropdown.Buttons) do
-								if PlayerDropdown.PlayerStatus[Btn.UserId] ~= false then
-									Btn.Title.TextColor3 = Color
-								end
-							end
-						end
-
-						function PlayerDropdown:SetTextTransparency(Transparency)
-							DropdownFrame.F.Content.TextTransparency = Transparency
-							for _, Btn in pairs(PlayerDropdown.Buttons) do
-								Btn.Title.TextTransparency = Transparency
-							end
-						end
-
-						function PlayerDropdown:SetStrokeColor(Color)
-							DropdownFrame.Stroke.Color = Color
-							DropdownFrame.F.Line.BackgroundColor3 = Color
-							if PlayerDropdownConfig.Search then
-								DropdownContainer.SearchBar.TextBox.Frame.Stroke.Color = Color
-							end
-						end	
-
-						function PlayerDropdown:SetStrokeTransparency(Transparency)
-							DropdownFrame.Stroke.Transparency = Transparency
-							DropdownFrame.F.Line.BackgroundTransparency = Transparency
-							if PlayerDropdownConfig.Search then
-								DropdownContainer.SearchBar.TextBox.Frame.Stroke.Transparency = Transparency
-							end
-						end
-
-						function PlayerDropdown:SetTransparency(Transparency)
-							DropdownFrame.BackgroundTransparency = Transparency
-						end
-
-						local OldSize = 0
-						AddConnection(Click.MouseButton1Click, function()
-							PlayerDropdown.Toggled = not PlayerDropdown.Toggled
-							DropdownFrame.F.Line.Visible = PlayerDropdown.Toggled
-							TweenService:Create(DropdownFrame.F.Ico,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-								Rotation = PlayerDropdown.Toggled and 180 or 0
-							}):Play()
-							local NextSize = #PlayerDropdown.Options > MaxElements and (PlayerDropdown.Toggled and UDim2.new(1, 0, 0, 38 + (MaxElements * 28)) or UDim2.new(1, 0, 0, 38)) or (PlayerDropdown.Toggled and UDim2.new(1, 0, 0, DropdownList.AbsoluteContentSize.Y + 38) or UDim2.new(1, 0, 0, 38))
-							TweenService:Create(DropdownFrame,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Size = NextSize}):Play()
-							if PlayerDropdown.Toggled then
-								OldSize = DropdownFrame.Parent.Parent.Parent.Size.Y.Offset
-							end
-							if DropdownFrame.Parent.Name == "SettingsScroll" then
-								TweenService:Create(DropdownFrame.Parent.Parent.Parent, TweenInfo.new(.15), {
-									Size = UDim2.new(
-										1, 0, 0, 
-										PlayerDropdown.Toggled and (#PlayerDropdown.Options > MaxElements and 154 + (MaxElements * 28) or (DropdownList.AbsoluteContentSize.Y + 84)) or OldSize
-									)
-								}):Play()
-							end
-						end)
-
-						-- Initial refresh
-						RefreshPlayerList()
-
-						-- Handle default selection
-						if PlayerDropdownConfig.Default then
-							if type(PlayerDropdownConfig.Default) == "number" or type(PlayerDropdownConfig.Default) == "string" then
-								local userId = tonumber(PlayerDropdownConfig.Default)
-								if userId then
-									PlayerDropdown:Set(userId)
-								end
-							end
-						end
-
-						if PlayerDropdownConfig.Flag then				
-							OrionLib.Flags[PlayerDropdownConfig.Flag] = PlayerDropdown
-						end
-					
-						table.insert(OrionLib.UIElements, PlayerDropdown)
-						return PlayerDropdown
-					end
-
 					function ItemParent2:AddBind(BindConfig)
 						BindConfig = BindConfig or {}
 						BindConfig.Name = BindConfig.Name or "Bind"
@@ -3518,6 +3042,7 @@ function OrionLib:MakeWindow(WindowConfig)
 							CanBind = false
 
 							while Inputting do
+								print(TimeSec)
 								TimeSec += 1
 
 								if TimeSec >= 150 then
@@ -5078,7 +4603,7 @@ function OrionLib:LoadAutoloadConfigs()
 	end
 end
 
-function OrionLib:Init()
+function OrionLib:Init() -- ahh orionlib:init() :sob::skull:
 	local Window = game.CoreGui:WaitForChild("BetterOrion", 1):WaitForChild("MainWindow", 1)
 	Window.Visible = true
 end
