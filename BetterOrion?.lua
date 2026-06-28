@@ -2095,6 +2095,17 @@ function OrionLib:MakeWindow(WindowConfig)
 						ToggleConfig.Settings = ToggleConfig.Settings or false
 
 						local Toggle = {Value = ToggleConfig.Default, Name = ToggleConfig.Name, Type = "Toggle", Binding = false, BindValue = ""}
+
+						if ToggleConfig.Save then
+    						table.insert(OrionLib.LoadQueue, {
+        						Flag = ToggleConfig.Flag,
+        						Default = ToggleConfig.Default,
+        						SetValue = function(Value)
+            						Toggle:Set(Value)
+					        	end
+    						})
+						end
+							
 						ElementFunction.Type = "Toggle"
 						local Click = SetProps(MakeElement("Button"), {
 							Size = UDim2.new(1, 0, 0, 38)
