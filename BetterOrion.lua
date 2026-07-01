@@ -2895,18 +2895,19 @@ function OrionLib:MakeWindow(WindowConfig)
 					Config = Config or {}
 					Config.Name = Config.Name or "Players"
 					Config.Multi = Config.Multi or false
+					Config.Search = Config.Search or false
+					Config.Default = Config.Default or (Config.Multi and {} or "")
 					Config.Callback = Config.Callback or function() end
 
 					local Players = game:GetService("Players")
 
 					local Dropdown = {
+						Value = Config.Default,
 						Buttons = {},
-						Value = Config.Multi and {} or nil,
-						Type = "PlayerDropdown",
-						Name = Config.Name
+						Options = {},
+						Type = "PlayerDropdown"
 					}
 
-					-- UI container (SECTION FIX: uses ItemParent properly)
 					local DropdownList = SetProps(MakeElement("List"), {
 						HorizontalAlignment = Enum.HorizontalAlignment.Center
 					})
@@ -2915,13 +2916,13 @@ function OrionLib:MakeWindow(WindowConfig)
 						MakeElement("ScrollFrame", Color3.fromRGB(40,40,40)),
 						{ DropdownList }
 						), {
-							Parent = ItemParent, -- ✅ THIS IS YOUR SECTION
+							Parent = ItemParent,
 							Position = UDim2.new(0, 0, 0, 38),
 							Size = UDim2.new(1, 0, 1, -38),
 							ClipsDescendants = true
 						}), "Divider")
 
-					local function GetAvatar(plr)
+					local function Avatar(plr)
 						return Players:GetUserThumbnailAsync(
 							plr.UserId,
 							Enum.ThumbnailType.HeadShot,
@@ -2929,73 +2930,86 @@ function OrionLib:MakeWindow(WindowConfig)
 						)
 					end
 
-					local function Clear()
+					function Dropdown:Clear()
 						for _, v in pairs(Dropdown.Buttons) do
 							v:Destroy()
 						end
-						Dropdown.Buttons = {}
+						table.clear(Dropdown.Buttons)
 					end
 
-					local function Refresh()
-						Clear()
+					function Dropdown:GetValue()
+						return Dropdown.Value
+					end
+
+					function Dropdown:Set(val)
+						Dropdown.Value = val
+						Config.Callback(Dropdown.Value)
+					end
+
+					local function CreatePlayer(plr)
+
+						local btn = AddThemeObject(SetProps(SetChildren(
+							MakeElement("Button", Color3.fromRGB(40,40,40)), {
+								Size = UDim2.new(1, 0, 0, 30),
+								BackgroundTransparency = 1
+							}), {
+
+								SetProps(MakeElement("Image", Avatar(plr)), {
+									Size = UDim2.new(0, 26, 0, 26),
+									Position = UDim2.new(0, 6, 0.5, 0),
+									AnchorPoint = Vector2.new(0, 0.5),
+									BackgroundTransparency = 1
+								}),
+
+								AddThemeObject(SetProps(MakeElement("Label", plr.DisplayName, 13), {
+									Size = UDim2.new(1, -40, 1, 0),
+									Position = UDim2.new(0, 40, 0, 0),
+									TextXAlignment = Enum.TextXAlignment.Left
+								}), "Text")
+
+							}), "Divider")
+
+						btn.Parent = DropdownContainer
+
+						btn.MouseButton1Click:Connect(function()
+
+							if Config.Multi then
+								local i = table.find(Dropdown.Value, plr.Name)
+
+								if i then
+									table.remove(Dropdown.Value, i)
+								else
+									table.insert(Dropdown.Value, plr.Name)
+								end
+							else
+								Dropdown.Value = plr.Name
+							end
+
+							Config.Callback(Dropdown.Value)
+						end)
+
+						Dropdown.Buttons[plr.Name] = btn
+					end
+
+					function Dropdown:Refresh()
+						self:Clear()
 
 						for _, plr in ipairs(Players:GetPlayers()) do
-
-							local btn = AddThemeObject(SetProps(SetChildren(
-								MakeElement("Button", Color3.fromRGB(40,40,40)), {
-									Size = UDim2.new(1, 0, 0, 30),
-									BackgroundTransparency = 1
-								}), {
-
-									SetProps(MakeElement("Image", GetAvatar(plr)), {
-										Size = UDim2.new(0, 26, 0, 26),
-										Position = UDim2.new(0, 6, 0.5, 0),
-										AnchorPoint = Vector2.new(0, 0.5),
-										BackgroundTransparency = 1
-									}),
-
-									AddThemeObject(SetProps(MakeElement("Label", plr.DisplayName, 13), {
-										Size = UDim2.new(1, -40, 1, 0),
-										Position = UDim2.new(0, 40, 0, 0),
-										TextXAlignment = Enum.TextXAlignment.Left,
-									}), "Text")
-
-								}), "Divider")
-
-							btn.Parent = DropdownContainer
-
-							btn.MouseButton1Click:Connect(function()
-
-								if Config.Multi then
-									local i = table.find(Dropdown.Value, plr.Name)
-
-									if i then
-										table.remove(Dropdown.Value, i)
-									else
-										table.insert(Dropdown.Value, plr.Name)
-									end
-								else
-									Dropdown.Value = plr.Name
-								end
-
-								Config.Callback(Dropdown.Value)
-							end)
-
-							Dropdown.Buttons[plr.Name] = btn
+							CreatePlayer(plr)
 						end
 					end
 
 					Players.PlayerAdded:Connect(function()
 						task.wait(0.2)
-						Refresh()
+						Dropdown:Refresh()
 					end)
 
 					Players.PlayerRemoving:Connect(function()
 						task.wait(0.2)
-						Refresh()
+						Dropdown:Refresh()
 					end)
 
-					Refresh()
+					Dropdown:Refresh()
 
 					return Dropdown
 				end
