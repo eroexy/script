@@ -8,7 +8,6 @@ end
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
 local LocalPlayer = game:GetService("Players").LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local HttpService = game:GetService("HttpService")
@@ -2890,6 +2889,7 @@ function OrionLib:MakeWindow(WindowConfig)
 					return Dropdown
 				end
 				
+				-- Replace the existing AddPlayerDropdown function with this fixed version
 				function ItemParent2:AddPlayerDropdown(DropdownConfig)
 					DropdownConfig = DropdownConfig or {}
 					DropdownConfig.Name = DropdownConfig.Name or "Select Player"
@@ -2913,10 +2913,6 @@ function OrionLib:MakeWindow(WindowConfig)
 						if DropdownConfig.Default ~= "" and DropdownConfig.Default ~= nil then
 							SelectedPlayers = {DropdownConfig.Default}
 						end
-					end
-
-					local function GetPlayerDisplay(player)
-						return player.DisplayName or player.Name
 					end
 
 					local function GetPlayerAvatar(player)
@@ -3081,6 +3077,16 @@ function OrionLib:MakeWindow(WindowConfig)
 							else
 								DropdownConfig.Callback(SelectedPlayers[1] or "")
 							end
+
+							-- Keep dropdown open after selection for multi-select
+							if not DropdownConfig.Multi then
+								Dropdown.Toggled = false
+								DropdownFrame.F.Line.Visible = false
+								TweenService:Create(DropdownFrame.F.Ico,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+									Rotation = 0
+								}):Play()
+								TweenService:Create(DropdownFrame,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Size = UDim2.new(1, 0, 0, 38)}):Play()
+							end
 						end)
 					end
 
@@ -3108,11 +3114,8 @@ function OrionLib:MakeWindow(WindowConfig)
 						PlayerOptions = {}
 
 						for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-							if player ~= game:GetService("Players").LocalPlayer then
-								AddPlayer(player)
-							end
+							AddPlayer(player)
 						end
-						AddPlayer(game:GetService("Players").LocalPlayer)
 					end
 
 					local DropdownList = SetProps(MakeElement("List"), {
@@ -3248,7 +3251,6 @@ function OrionLib:MakeWindow(WindowConfig)
 						RemovePlayer(player.Name)
 					end)
 
-					local OldSize = 0
 					AddConnection(Click.MouseButton1Click, function()
 						Dropdown.Toggled = not Dropdown.Toggled
 						DropdownFrame.F.Line.Visible = Dropdown.Toggled
@@ -3265,7 +3267,7 @@ function OrionLib:MakeWindow(WindowConfig)
 
 						local displayCount = math.min(visibleCount, MaxElements)
 						local height = 38 + (displayCount * 42)
-						TweenService:Create(DropdownFrame,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Size = UDim2.new(1, 0, 0, height)}):Play()
+						TweenService:Create(DropdownFrame,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Size = UDim2.new(1, 0, 0, Dropdown.Toggled and height or 38)}):Play()
 					end)
 
 					RefreshPlayerList()
