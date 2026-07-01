@@ -2898,7 +2898,6 @@ function OrionLib:MakeWindow(WindowConfig)
 					DropdownConfig.Flag = DropdownConfig.Flag or nil
 					DropdownConfig.MaxSize = DropdownConfig.MaxSize or 5
 					DropdownConfig.Search = DropdownConfig.Search or false
-					DropdownConfig.Save = DropdownConfig.Save or false
 
 					local Dropdown = {Buttons = {}, Value = DropdownConfig.Default, Options = {}, Toggled = false, Type = "PlayerDropdown", Name = DropdownConfig.Name, Multi = DropdownConfig.Multi}
 					local MaxElements = DropdownConfig.MaxSize
@@ -2917,10 +2916,6 @@ function OrionLib:MakeWindow(WindowConfig)
 
 					local function GetPlayerDisplay(player)
 						return player.DisplayName or player.Name
-					end
-
-					local function GetPlayerUsername(player)
-						return player.Name
 					end
 
 					local function GetPlayerAvatar(player)
@@ -2947,7 +2942,9 @@ function OrionLib:MakeWindow(WindowConfig)
 							text = SelectedPlayers[1] or ""
 						end
 
-						DropdownFrame.F.Selected.Text = text
+						if DropdownFrame and DropdownFrame.F and DropdownFrame.F.Selected then
+							DropdownFrame.F.Selected.Text = text
+						end
 					end
 
 					local function AddPlayer(player)
@@ -3108,14 +3105,13 @@ function OrionLib:MakeWindow(WindowConfig)
 							end
 						end
 						PlayerOptions = {}
-						
+
 						for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-							if player ~= LocalPlayer then
+							if player ~= game:GetService("Players").LocalPlayer then
 								AddPlayer(player)
 							end
 						end
-
-						AddPlayer(LocalPlayer)
+						AddPlayer(game:GetService("Players").LocalPlayer)
 					end
 
 					local DropdownList = SetProps(MakeElement("List"), {
@@ -3179,7 +3175,6 @@ function OrionLib:MakeWindow(WindowConfig)
 						MakeElement("Corner")
 					}), "Elements")
 
-					-- Search functionality
 					if DropdownConfig.Search then 
 						local SearchBox = Create("TextBox", {
 							Size = UDim2.new(1, 0, 1, -10),
@@ -3244,18 +3239,14 @@ function OrionLib:MakeWindow(WindowConfig)
 						DropdownContainer.CanvasSize = UDim2.new(0, 0, 0, DropdownList.AbsoluteContentSize.Y)
 					end)
 
-					local function OnPlayerAdded(player)
+					game:GetService("Players").PlayerAdded:Connect(function(player)
 						AddPlayer(player)
-					end
+					end)
 
-					local function OnPlayerRemoving(player)
+					game:GetService("Players").PlayerRemoving:Connect(function(player)
 						RemovePlayer(player.Name)
-					end
+					end)
 
-					game:GetService("Players").PlayerAdded:Connect(OnPlayerAdded)
-					game:GetService("Players").PlayerRemoving:Connect(OnPlayerRemoving)
-
-					-- Dropdown toggle
 					local OldSize = 0
 					AddConnection(Click.MouseButton1Click, function()
 						Dropdown.Toggled = not Dropdown.Toggled
