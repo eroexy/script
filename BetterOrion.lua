@@ -2890,20 +2890,23 @@ function OrionLib:MakeWindow(WindowConfig)
 					return Dropdown
 				end
 				
-				function ItemParent2:AddPlayerDropdown(config)
+				function ItemParent2:AddPlayerDropdown(Config)
 
-					config = config or {}
-					config.Name = config.Name or "Players"
-					config.Multi = config.Multi or false
-					config.Callback = config.Callback or function() end
+					Config = Config or {}
+					Config.Name = Config.Name or "Players"
+					Config.Multi = Config.Multi or false
+					Config.Callback = Config.Callback or function() end
+
+					local Players = game:GetService("Players")
 
 					local Dropdown = {
-						Value = config.Multi and {} or nil,
 						Buttons = {},
-						Options = {},
-						Multi = config.Multi
+						Value = Config.Multi and {} or nil,
+						Type = "PlayerDropdown",
+						Name = Config.Name
 					}
 
+					-- UI container (SECTION FIX: uses ItemParent properly)
 					local DropdownList = SetProps(MakeElement("List"), {
 						HorizontalAlignment = Enum.HorizontalAlignment.Center
 					})
@@ -2912,43 +2915,50 @@ function OrionLib:MakeWindow(WindowConfig)
 						MakeElement("ScrollFrame", Color3.fromRGB(40,40,40)),
 						{ DropdownList }
 						), {
-							Parent = ItemParent,
-							Position = UDim2.new(0,0,0,38),
-							Size = UDim2.new(1,0,1,-38),
+							Parent = ItemParent, -- ✅ THIS IS YOUR SECTION
+							Position = UDim2.new(0, 0, 0, 38),
+							Size = UDim2.new(1, 0, 1, -38),
 							ClipsDescendants = true
 						}), "Divider")
 
-					local Click = SetProps(MakeElement("Button"), {
-						Size = UDim2.new(1,0,1,0)
-					})
-
-					local function GetAvatar(id)
-						return Players:GetUserThumbnailAsync(id, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+					local function GetAvatar(plr)
+						return Players:GetUserThumbnailAsync(
+							plr.UserId,
+							Enum.ThumbnailType.HeadShot,
+							Enum.ThumbnailSize.Size48x48
+						)
 					end
 
-					local function refresh()
-						for _,v in pairs(Dropdown.Buttons) do v:Destroy() end
+					local function Clear()
+						for _, v in pairs(Dropdown.Buttons) do
+							v:Destroy()
+						end
 						Dropdown.Buttons = {}
+					end
 
-						for _,plr in ipairs(Players:GetPlayers()) do
+					local function Refresh()
+						Clear()
+
+						for _, plr in ipairs(Players:GetPlayers()) do
 
 							local btn = AddThemeObject(SetProps(SetChildren(
 								MakeElement("Button", Color3.fromRGB(40,40,40)), {
-									Size = UDim2.new(1,0,0,32),
+									Size = UDim2.new(1, 0, 0, 30),
 									BackgroundTransparency = 1
 								}), {
 
-									SetProps(MakeElement("Image", GetAvatar(plr.UserId)), {
-										Size = UDim2.new(0,26,0,26),
-										Position = UDim2.new(0,6,0.5,0),
-										AnchorPoint = Vector2.new(0,0.5)
+									SetProps(MakeElement("Image", GetAvatar(plr)), {
+										Size = UDim2.new(0, 26, 0, 26),
+										Position = UDim2.new(0, 6, 0.5, 0),
+										AnchorPoint = Vector2.new(0, 0.5),
+										BackgroundTransparency = 1
 									}),
 
 									AddThemeObject(SetProps(MakeElement("Label", plr.DisplayName, 13), {
-										Size = UDim2.new(1,-40,1,0),
-										Position = UDim2.new(0,40,0,0),
-										TextXAlignment = Enum.TextXAlignment.Left
-									}), "Text"),
+										Size = UDim2.new(1, -40, 1, 0),
+										Position = UDim2.new(0, 40, 0, 0),
+										TextXAlignment = Enum.TextXAlignment.Left,
+									}), "Text")
 
 								}), "Divider")
 
@@ -2956,8 +2966,9 @@ function OrionLib:MakeWindow(WindowConfig)
 
 							btn.MouseButton1Click:Connect(function()
 
-								if config.Multi then
+								if Config.Multi then
 									local i = table.find(Dropdown.Value, plr.Name)
+
 									if i then
 										table.remove(Dropdown.Value, i)
 									else
@@ -2967,17 +2978,24 @@ function OrionLib:MakeWindow(WindowConfig)
 									Dropdown.Value = plr.Name
 								end
 
-								config.Callback(Dropdown.Value)
+								Config.Callback(Dropdown.Value)
 							end)
 
 							Dropdown.Buttons[plr.Name] = btn
 						end
 					end
 
-					Players.PlayerAdded:Connect(refresh)
-					Players.PlayerRemoving:Connect(refresh)
+					Players.PlayerAdded:Connect(function()
+						task.wait(0.2)
+						Refresh()
+					end)
 
-					refresh()
+					Players.PlayerRemoving:Connect(function()
+						task.wait(0.2)
+						Refresh()
+					end)
+
+					Refresh()
 
 					return Dropdown
 				end
