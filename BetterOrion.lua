@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
 local Mouse = LocalPlayer:GetMouse()
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
@@ -2889,458 +2890,95 @@ function OrionLib:MakeWindow(WindowConfig)
 					return Dropdown
 				end
 				
-				-- Replace the existing AddPlayerDropdown function with this fixed version
-				function ItemParent2:AddPlayerDropdown(DropdownConfig)
-					DropdownConfig = DropdownConfig or {}
-					DropdownConfig.Name = DropdownConfig.Name or "Select Player"
-					DropdownConfig.Multi = DropdownConfig.Multi or false
-					DropdownConfig.Default = DropdownConfig.Default or (DropdownConfig.Multi and {} or "")
-					DropdownConfig.Callback = DropdownConfig.Callback or function() end
-					DropdownConfig.Flag = DropdownConfig.Flag or nil
-					DropdownConfig.MaxSize = DropdownConfig.MaxSize or 5
-					DropdownConfig.Search = DropdownConfig.Search or false
+				function ItemParent2:AddPlayerDropdown(config)
 
-					local Dropdown = {Buttons = {}, Value = DropdownConfig.Default, Options = {}, Toggled = false, Type = "PlayerDropdown", Name = DropdownConfig.Name, Multi = DropdownConfig.Multi}
-					local MaxElements = DropdownConfig.MaxSize
-					local PlayerOptions = {}
-					local SelectedPlayers = {}
+					config = config or {}
+					config.Name = config.Name or "Players"
+					config.Multi = config.Multi or false
+					config.Callback = config.Callback or function() end
 
-					if DropdownConfig.Multi then
-						if type(DropdownConfig.Default) == "table" then
-							SelectedPlayers = DropdownConfig.Default
-						end
-					else
-						if DropdownConfig.Default ~= "" and DropdownConfig.Default ~= nil then
-							SelectedPlayers = {DropdownConfig.Default}
-						end
-					end
-
-					local function GetPlayerAvatar(player)
-						return "https://www.roblox.com/headshot-thumbnail/image?userId=".. player.UserId .."&width=420&height=420&format=png"
-					end
-
-					local function UpdateSelectedDisplay()
-						local text = ""
-						local count = 0
-
-						if DropdownConfig.Multi then
-							for i, playerName in ipairs(SelectedPlayers) do
-								count = count + 1
-								if count == 1 then
-									text = playerName
-								elseif count <= 3 then
-									text = text .. ", " .. playerName
-								else
-									text = text .. ", ..."
-									break
-								end
-							end
-						else
-							text = SelectedPlayers[1] or ""
-						end
-
-						if DropdownFrame and DropdownFrame.F and DropdownFrame.F.Selected then
-							DropdownFrame.F.Selected.Text = text
-						end
-					end
-
-					local function AddPlayer(player)
-						if not player or not player.Parent then return end
-
-						local playerName = player.Name
-						local displayName = player.DisplayName or playerName
-
-						if PlayerOptions[playerName] then return end
-
-						local OptionBtn = AddThemeObject(SetProps(SetChildren(MakeElement("Button", Color3.fromRGB(40, 40, 40)), {
-							MakeElement("Corner", 0, 6),
-							SetProps(MakeElement("Image", GetPlayerAvatar(player)), {
-								Size = UDim2.new(0, 32, 0, 32),
-								AnchorPoint = Vector2.new(0, 0.5),
-								Position = UDim2.new(0, 5, 0.5, 0),
-								BackgroundTransparency = 1,
-								Name = "Avatar",
-								ImageColor3 = Color3.fromRGB(240, 240, 240)
-							}),
-							AddThemeObject(SetProps(MakeElement("Label", displayName, 14), {
-								Position = UDim2.new(0, 42, 0, 2),
-								Size = UDim2.new(1, -50, 0.55, 0),
-								Name = "DisplayName",
-								TextXAlignment = Enum.TextXAlignment.Left,
-								Font = Enum.Font.GothamBold
-							}), "Text"),
-							AddThemeObject(SetProps(MakeElement("Label", "@" .. playerName, 12), {
-								Position = UDim2.new(0, 42, 0, 20),
-								Size = UDim2.new(1, -50, 0.45, 0),
-								Name = "Username",
-								TextXAlignment = Enum.TextXAlignment.Left,
-								Font = Enum.Font.GothamSemibold
-							}), "TextDark"),
-							SetProps(MakeElement("Image", "rbxassetid://3944680095"), {
-								Size = UDim2.new(0, 0, 0, 0),
-								AnchorPoint = Vector2.new(1, 0.5),
-								Position = UDim2.new(1, -10, 0.5, 0),
-								ImageColor3 = Color3.fromRGB(0, 255, 0),
-								BackgroundTransparency = 1,
-								Visible = false,
-								Name = "Checkmark"
-							})
-						}), {
-							Parent = DropdownContainer,
-							Size = UDim2.new(1, 0, 0, 40),
-							BackgroundTransparency = 1,
-							ClipsDescendants = true
-						}), "Divider")
-
-						PlayerOptions[playerName] = {
-							Button = OptionBtn,
-							Player = player,
-							DisplayName = displayName
-						}
-
-						local isSelected = false
-						for _, selected in ipairs(SelectedPlayers) do
-							if selected == playerName then
-								isSelected = true
-								break
-							end
-						end
-
-						if isSelected then
-							OptionBtn.Checkmark.Visible = true
-							OptionBtn.Checkmark.Size = UDim2.new(0, 18, 0, 18)
-							TweenService:Create(OptionBtn, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.15}):Play()
-							TweenService:Create(OptionBtn.DisplayName, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-						else
-							OptionBtn.Checkmark.Visible = false
-							OptionBtn.Checkmark.Size = UDim2.new(0, 0, 0, 0)
-							TweenService:Create(OptionBtn, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
-							TweenService:Create(OptionBtn.DisplayName, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0.4}):Play()
-						end
-
-						AddConnection(OptionBtn.MouseButton1Click, function()
-							local playerName = OptionBtn.Username.Text:gsub("@", "")
-							local isCurrentlySelected = false
-
-							for i, selected in ipairs(SelectedPlayers) do
-								if selected == playerName then
-									isCurrentlySelected = true
-									if DropdownConfig.Multi then
-										table.remove(SelectedPlayers, i)
-									end
-									break
-								end
-							end
-
-							if not isCurrentlySelected then
-								if DropdownConfig.Multi then
-									table.insert(SelectedPlayers, playerName)
-								else
-									for _, btn in pairs(PlayerOptions) do
-										if btn.Button and btn.Button.Checkmark then
-											btn.Button.Checkmark.Visible = false
-											btn.Button.Checkmark.Size = UDim2.new(0, 0, 0, 0)
-											TweenService:Create(btn.Button, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
-											TweenService:Create(btn.Button.DisplayName, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0.4}):Play()
-										end
-									end
-									SelectedPlayers = {playerName}
-								end
-							end
-
-							for name, data in pairs(PlayerOptions) do
-								local isSel = false
-								for _, selected in ipairs(SelectedPlayers) do
-									if selected == name then
-										isSel = true
-										break
-									end
-								end
-
-								if isSel then
-									data.Button.Checkmark.Visible = true
-									data.Button.Checkmark.Size = UDim2.new(0, 18, 0, 18)
-									TweenService:Create(data.Button, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.15}):Play()
-									TweenService:Create(data.Button.DisplayName, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-								else
-									data.Button.Checkmark.Visible = false
-									data.Button.Checkmark.Size = UDim2.new(0, 0, 0, 0)
-									TweenService:Create(data.Button, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
-									TweenService:Create(data.Button.DisplayName, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0.4}):Play()
-								end
-							end
-
-							UpdateSelectedDisplay()
-
-							if DropdownConfig.Multi then
-								DropdownConfig.Callback(SelectedPlayers)
-							else
-								DropdownConfig.Callback(SelectedPlayers[1] or "")
-							end
-
-							-- Keep dropdown open after selection for multi-select
-							if not DropdownConfig.Multi then
-								Dropdown.Toggled = false
-								DropdownFrame.F.Line.Visible = false
-								TweenService:Create(DropdownFrame.F.Ico,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-									Rotation = 0
-								}):Play()
-								TweenService:Create(DropdownFrame,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Size = UDim2.new(1, 0, 0, 38)}):Play()
-							end
-						end)
-					end
-
-					local function RemovePlayer(playerName)
-						if PlayerOptions[playerName] then
-							PlayerOptions[playerName].Button:Destroy()
-							PlayerOptions[playerName] = nil
-
-							for i, selected in ipairs(SelectedPlayers) do
-								if selected == playerName then
-									table.remove(SelectedPlayers, i)
-									break
-								end
-							end
-							UpdateSelectedDisplay()
-						end
-					end
-
-					local function RefreshPlayerList()
-						for name, data in pairs(PlayerOptions) do
-							if data.Button then
-								data.Button:Destroy()
-							end
-						end
-						PlayerOptions = {}
-
-						for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-							AddPlayer(player)
-						end
-					end
+					local Dropdown = {
+						Value = config.Multi and {} or nil,
+						Buttons = {},
+						Options = {},
+						Multi = config.Multi
+					}
 
 					local DropdownList = SetProps(MakeElement("List"), {
 						HorizontalAlignment = Enum.HorizontalAlignment.Center
 					})
 
-					local DropdownContainer = AddThemeObject(SetProps(SetChildren(MakeElement("ScrollFrame", Color3.fromRGB(40, 40, 40)), {
-						DropdownList
-					}), {
-						Parent = ItemParent,
-						Position = UDim2.new(0, 0, 0, 38),
-						Size = UDim2.new(1, 0, 1, -38),
-						ClipsDescendants = true
-					}), "Divider")
+					local DropdownContainer = AddThemeObject(SetProps(SetChildren(
+						MakeElement("ScrollFrame", Color3.fromRGB(40,40,40)),
+						{ DropdownList }
+						), {
+							Parent = ItemParent,
+							Position = UDim2.new(0,0,0,38),
+							Size = UDim2.new(1,0,1,-38),
+							ClipsDescendants = true
+						}), "Divider")
 
 					local Click = SetProps(MakeElement("Button"), {
-						Size = UDim2.new(1, 0, 1, 0)
+						Size = UDim2.new(1,0,1,0)
 					})
 
-					local DropdownFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, WindowConfig.NewUI and 10 or 5), {
-						Size = UDim2.new(1, 0, 0, 38),
-						Parent = ItemParent,
-						ClipsDescendants = true,
-						BackgroundTransparency = WindowConfig.ElementsTransparency,
-						Name = "PlayerDropdown",
-					}), {
-						DropdownContainer,
-						SetProps(SetChildren(MakeElement("TFrame"), {
-							AddThemeObject(SetProps(MakeElement("Label", DropdownConfig.Name, 14), {
-								Size = UDim2.new(1, -12, 1, 0),
-								Position = UDim2.new(0, 12, 0, 0),
-								Font = Enum.Font.GothamBold,
-								Name = "Content"
-							}), "Text"),
-							AddThemeObject(SetProps(MakeElement("Image", "rbxassetid://7072706796"), {
-								Size = UDim2.new(0, 20, 0, 20),
-								AnchorPoint = Vector2.new(0, 0.5),
-								Position = UDim2.new(1, -30, 0.5, 0),
-								ImageColor3 = Color3.fromRGB(240, 240, 240),
-								Name = "Ico"
-							}), "TextDark"),
-							AddThemeObject(SetProps(MakeElement("Label", "", 13), {
-								Size = UDim2.new(1, -45, 1, 0),
-								Font = Enum.Font.Gotham,
-								Name = "Selected",
-								TextXAlignment = Enum.TextXAlignment.Right
-							}), "TextDark"),
-							AddThemeObject(SetProps(MakeElement("Frame"), {
-								Size = UDim2.new(1, 0, 0, 1),
-								Position = UDim2.new(0, 0, 1, -1),
-								Name = "Line",
-								Visible = false
-							}), "Stroke"), 
-							Click
-						}), {
-							Size = UDim2.new(1, 0, 0, 38),
-							ClipsDescendants = true,
-							Name = "F"
-						}),
-						AddThemeObject(MakeElement("Stroke"), "Stroke"),
-						MakeElement("Corner")
-					}), "Elements")
+					local function GetAvatar(id)
+						return Players:GetUserThumbnailAsync(id, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+					end
 
-					if DropdownConfig.Search then 
-						local SearchBox = Create("TextBox", {
-							Size = UDim2.new(1, 0, 1, -10),
-							Position = UDim2.new(0, 0, 0, 5.5),
-							BackgroundTransparency = 1,
-							TextColor3 = Color3.fromRGB(255, 255, 255),
-							PlaceholderColor3 = Color3.fromRGB(210,210,210),
-							PlaceholderText = "Search players...", 
-							Font = Enum.Font.GothamBold,
-							TextWrapped = true,
-							Text = '',
-							TextXAlignment = Enum.TextXAlignment.Center,
-							TextSize = 13,
-							ClearTextOnFocus = true
-						})
+					local function refresh()
+						for _,v in pairs(Dropdown.Buttons) do v:Destroy() end
+						Dropdown.Buttons = {}
 
-						local FakeSearch = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 6), {
-							Size = UDim2.new(1, 0, 1, 0),
-							Position = UDim2.new(0, 0, 0, 0),
-							Parent = SearchBox,
-							BackgroundTransparency = 1,
-						}), {
-							SetProps(MakeElement("Stroke"), {
-								Color = Color3.fromRGB(100, 100, 100),
-								Name = "Stroke",
-								Transparency = 0
-							})
-						})
+						for _,plr in ipairs(Players:GetPlayers()) do
 
-						local TextboxActual = AddThemeObject(SearchBox, "Text")
-						local SearchBar = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 1, 6), {
-							Parent = DropdownContainer,
-							Size = UDim2.new(1, -10, 0, 35),
-							Position = UDim2.new(1, 0, 0, 25), 
-							AnchorPoint = Vector2.new(1, 0.5),
-							BackgroundTransparency = 1,
-							Name = "SearchBar",
-						}), {
-							TextboxActual,
-						}), "Main")
+							local btn = AddThemeObject(SetProps(SetChildren(
+								MakeElement("Button", Color3.fromRGB(40,40,40)), {
+									Size = UDim2.new(1,0,0,32),
+									BackgroundTransparency = 1
+								}), {
 
-						local function SearchHandle()
-							pcall(function()
-								local Text = string.lower(SearchBox.Text)
-								for _, data in pairs(PlayerOptions) do
-									local visible = true
-									if Text ~= "" then
-										local nameMatch = string.find(string.lower(data.Player.Name), Text, 1, true)
-										local displayMatch = string.find(string.lower(data.DisplayName), Text, 1, true)
-										visible = nameMatch or displayMatch
+									SetProps(MakeElement("Image", GetAvatar(plr.UserId)), {
+										Size = UDim2.new(0,26,0,26),
+										Position = UDim2.new(0,6,0.5,0),
+										AnchorPoint = Vector2.new(0,0.5)
+									}),
+
+									AddThemeObject(SetProps(MakeElement("Label", plr.DisplayName, 13), {
+										Size = UDim2.new(1,-40,1,0),
+										Position = UDim2.new(0,40,0,0),
+										TextXAlignment = Enum.TextXAlignment.Left
+									}), "Text"),
+
+								}), "Divider")
+
+							btn.Parent = DropdownContainer
+
+							btn.MouseButton1Click:Connect(function()
+
+								if config.Multi then
+									local i = table.find(Dropdown.Value, plr.Name)
+									if i then
+										table.remove(Dropdown.Value, i)
+									else
+										table.insert(Dropdown.Value, plr.Name)
 									end
-									data.Button.Visible = visible
+								else
+									Dropdown.Value = plr.Name
 								end
+
+								config.Callback(Dropdown.Value)
 							end)
-						end
 
-						SearchBar.UICorner.CornerRadius = UDim.new(0, 6)
-						AddConnection(TextboxActual:GetPropertyChangedSignal("Text"), SearchHandle)
-					end
-
-					AddConnection(DropdownList:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-						DropdownContainer.CanvasSize = UDim2.new(0, 0, 0, DropdownList.AbsoluteContentSize.Y)
-					end)
-
-					game:GetService("Players").PlayerAdded:Connect(function(player)
-						AddPlayer(player)
-					end)
-
-					game:GetService("Players").PlayerRemoving:Connect(function(player)
-						RemovePlayer(player.Name)
-					end)
-
-					AddConnection(Click.MouseButton1Click, function()
-						Dropdown.Toggled = not Dropdown.Toggled
-						DropdownFrame.F.Line.Visible = Dropdown.Toggled
-						TweenService:Create(DropdownFrame.F.Ico,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-							Rotation = Dropdown.Toggled and 180 or 0
-						}):Play()
-
-						local visibleCount = 0
-						for _, data in pairs(PlayerOptions) do
-							if data.Button.Visible then
-								visibleCount = visibleCount + 1
-							end
-						end
-
-						local displayCount = math.min(visibleCount, MaxElements)
-						local height = 38 + (displayCount * 42)
-						TweenService:Create(DropdownFrame,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Size = UDim2.new(1, 0, 0, Dropdown.Toggled and height or 38)}):Play()
-					end)
-
-					RefreshPlayerList()
-					UpdateSelectedDisplay()
-
-					function Dropdown:Refresh()
-						RefreshPlayerList()
-					end
-
-					function Dropdown:Set(value)
-						if DropdownConfig.Multi then
-							if type(value) == "table" then
-								SelectedPlayers = value
-							end
-						else
-							SelectedPlayers = {value}
-						end
-
-						for name, data in pairs(PlayerOptions) do
-							local isSel = false
-							for _, selected in ipairs(SelectedPlayers) do
-								if selected == name then
-									isSel = true
-									break
-								end
-							end
-
-							if isSel then
-								data.Button.Checkmark.Visible = true
-								data.Button.Checkmark.Size = UDim2.new(0, 18, 0, 18)
-								TweenService:Create(data.Button, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.15}):Play()
-								TweenService:Create(data.Button.DisplayName, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-							else
-								data.Button.Checkmark.Visible = false
-								data.Button.Checkmark.Size = UDim2.new(0, 0, 0, 0)
-								TweenService:Create(data.Button, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
-								TweenService:Create(data.Button.DisplayName, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0.4}):Play()
-							end
-						end
-
-						UpdateSelectedDisplay()
-
-						if DropdownConfig.Multi then
-							DropdownConfig.Callback(SelectedPlayers)
-						else
-							DropdownConfig.Callback(SelectedPlayers[1] or "")
+							Dropdown.Buttons[plr.Name] = btn
 						end
 					end
 
-					function Dropdown:GetValue()
-						if DropdownConfig.Multi then
-							return SelectedPlayers
-						else
-							return SelectedPlayers[1] or ""
-						end
-					end
+					Players.PlayerAdded:Connect(refresh)
+					Players.PlayerRemoving:Connect(refresh)
 
-					function Dropdown:Clear()
-						SelectedPlayers = {}
-						for _, data in pairs(PlayerOptions) do
-							data.Button.Checkmark.Visible = false
-							data.Button.Checkmark.Size = UDim2.new(0, 0, 0, 0)
-							TweenService:Create(data.Button, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
-							TweenService:Create(data.Button.DisplayName, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0.4}):Play()
-						end
-						UpdateSelectedDisplay()
-					end
+					refresh()
 
-					if DropdownConfig.Flag then
-						OrionLib.Flags[DropdownConfig.Flag] = Dropdown
-					end
-
-					table.insert(OrionLib.UIElements, Dropdown)
 					return Dropdown
 				end
 
