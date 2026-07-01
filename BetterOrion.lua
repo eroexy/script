@@ -2891,21 +2891,22 @@ function OrionLib:MakeWindow(WindowConfig)
 				end
 				
 				function ItemParent2:AddPlayerDropdown(Config)
-
 					Config = Config or {}
 					Config.Name = Config.Name or "Players"
 					Config.Multi = Config.Multi or false
 					Config.Search = Config.Search or false
 					Config.Default = Config.Default or (Config.Multi and {} or "")
 					Config.Callback = Config.Callback or function() end
+					Config.MaxSize = Config.MaxSize or 5
 
 					local Players = game:GetService("Players")
-
 					local Dropdown = {
 						Value = Config.Default,
 						Buttons = {},
 						Options = {},
-						Type = "PlayerDropdown"
+						Type = "PlayerDropdown",
+						Name = Config.Name,
+						Toggled = false
 					}
 
 					local DropdownList = SetProps(MakeElement("List"), {
@@ -2922,13 +2923,51 @@ function OrionLib:MakeWindow(WindowConfig)
 							ClipsDescendants = true
 						}), "Divider")
 
-					local function Avatar(plr)
-						return Players:GetUserThumbnailAsync(
-							plr.UserId,
-							Enum.ThumbnailType.HeadShot,
-							Enum.ThumbnailSize.Size48x48
-						)
-					end
+					local Click = SetProps(MakeElement("Button"), {
+						Size = UDim2.new(1, 0, 1, 0)
+					})
+
+					local DropdownFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, WindowConfig.NewUI and 10 or 5), {
+						Size = UDim2.new(1, 0, 0, 38),
+						Parent = ItemParent,
+						ClipsDescendants = true,
+						BackgroundTransparency = WindowConfig.ElementsTransparency,
+						Name = "Dropdown",
+					}), {
+						DropdownContainer,
+						SetProps(SetChildren(MakeElement("TFrame"), {
+							AddThemeObject(SetProps(MakeElement("Label", Config.Name, 14), {
+								Size = UDim2.new(1, -12, 1, 0),
+								Position = UDim2.new(0, 12, 0, 0),
+								Font = Enum.Font.GothamBold,
+								Name = "Content"
+							}), "Text"),
+							AddThemeObject(SetProps(MakeElement("Image", "rbxassetid://7072706796"), {
+								Size = UDim2.new(0, 20, 0, 20),
+								AnchorPoint = Vector2.new(0, 0.5),
+								Position = UDim2.new(1, -30, 0.5, 0),
+								ImageColor3 = Color3.fromRGB(240, 240, 240),
+								Name = "Ico"
+							}), "TextDark"),
+							AddThemeObject(SetProps(MakeElement("Frame"), {
+								Size = UDim2.new(1, 0, 0, 1),
+								Position = UDim2.new(0, 0, 1, -1),
+								Name = "Line",
+								Visible = false
+							}), "Stroke"),
+							Click
+						}), {
+							Size = UDim2.new(1, 0, 0, 38),
+							ClipsDescendants = true,
+							Name = "F"
+						}),
+						AddThemeObject(MakeElement("Stroke"), "Stroke"),
+						MakeElement("Corner")
+					}), "Elements")
+
+					AddConnection(DropdownList:GetPropertyChangedSignal("AbsoluteContentSize"), function()
+						DropdownContainer.CanvasSize = UDim2.new(0, 0, 0, DropdownList.AbsoluteContentSize.Y)
+					end)
 
 					function Dropdown:Clear()
 						for _, v in pairs(Dropdown.Buttons) do
@@ -2944,72 +2983,146 @@ function OrionLib:MakeWindow(WindowConfig)
 					function Dropdown:Set(val)
 						Dropdown.Value = val
 						Config.Callback(Dropdown.Value)
-					end
-
-					local function CreatePlayer(plr)
-
-						local btn = AddThemeObject(SetProps(SetChildren(
-							MakeElement("Button", Color3.fromRGB(40,40,40)), {
-								Size = UDim2.new(1, 0, 0, 30),
-								BackgroundTransparency = 1
-							}), {
-
-								SetProps(MakeElement("Image", Avatar(plr)), {
-									Size = UDim2.new(0, 26, 0, 26),
-									Position = UDim2.new(0, 6, 0.5, 0),
-									AnchorPoint = Vector2.new(0, 0.5),
-									BackgroundTransparency = 1
-								}),
-
-								AddThemeObject(SetProps(MakeElement("Label", plr.DisplayName, 13), {
-									Size = UDim2.new(1, -40, 1, 0),
-									Position = UDim2.new(0, 40, 0, 0),
-									TextXAlignment = Enum.TextXAlignment.Left
-								}), "Text")
-
-							}), "Divider")
-
-						btn.Parent = DropdownContainer
-
-						btn.MouseButton1Click:Connect(function()
-
-							if Config.Multi then
-								local i = table.find(Dropdown.Value, plr.Name)
-
-								if i then
-									table.remove(Dropdown.Value, i)
-								else
-									table.insert(Dropdown.Value, plr.Name)
-								end
-							else
-								Dropdown.Value = plr.Name
-							end
-
-							Config.Callback(Dropdown.Value)
-						end)
-
-						Dropdown.Buttons[plr.Name] = btn
+						-- Update display text
+						local displayText = Config.Multi and table.concat(val, ", ") or val
+						if displayText == "" then displayText = Config.Name end
+						DropdownFrame.F.Content.Text = displayText
 					end
 
 					function Dropdown:Refresh()
 						self:Clear()
-
 						for _, plr in ipairs(Players:GetPlayers()) do
-							CreatePlayer(plr)
+							local btn = AddThemeObject(SetProps(SetChildren(
+								MakeElement("Button", Color3.fromRGB(40,40,40)), {
+									Size = UDim2.new(1, 0, 0, 30),
+									BackgroundTransparency = 1
+								}), {
+									SetProps(MakeElement("Image", Players:GetUserThumbnailAsync(plr.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)), {
+										Size = UDim2.new(0, 26, 0, 26),
+										Position = UDim2.new(0, 6, 0.5, 0),
+										AnchorPoint = Vector2.new(0, 0.5),
+										BackgroundTransparency = 1
+									}),
+									AddThemeObject(SetProps(MakeElement("Label", plr.DisplayName, 13), {
+										Size = UDim2.new(1, -40, 1, 0),
+										Position = UDim2.new(0, 40, 0, 0),
+										TextXAlignment = Enum.TextXAlignment.Left
+									}), "Text")
+								}), "Divider")
+
+							btn.Parent = DropdownContainer
+
+							btn.MouseButton1Click:Connect(function()
+								if Config.Multi then
+									local i = table.find(Dropdown.Value, plr.Name)
+									if i then
+										table.remove(Dropdown.Value, i)
+									else
+										table.insert(Dropdown.Value, plr.Name)
+									end
+								else
+									Dropdown.Value = plr.Name
+									-- Close dropdown when selecting single option
+									Dropdown.Toggled = false
+									DropdownFrame.F.Line.Visible = false
+									TweenService:Create(DropdownFrame.F.Ico, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+										Rotation = 0
+									}):Play()
+									TweenService:Create(DropdownFrame, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+										Size = UDim2.new(1, 0, 0, 38)
+									}):Play()
+								end
+								Config.Callback(Dropdown.Value)
+								local displayText = Config.Multi and table.concat(Dropdown.Value, ", ") or Dropdown.Value
+								if displayText == "" then displayText = Config.Name end
+								DropdownFrame.F.Content.Text = displayText
+							end)
+
+							Dropdown.Buttons[plr.Name] = btn
 						end
 					end
 
+					-- Toggle dropdown on click
+					local OldSize = 0
+					AddConnection(Click.MouseButton1Click, function()
+						Dropdown.Toggled = not Dropdown.Toggled
+						DropdownFrame.F.Line.Visible = Dropdown.Toggled
+						TweenService:Create(DropdownFrame.F.Ico, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+							Rotation = Dropdown.Toggled and 180 or 0
+						}):Play()
+						local optionCount = #Players:GetPlayers()
+						local MaxElements = Config.MaxSize or 5
+						local NextSize = optionCount > MaxElements and (Dropdown.Toggled and UDim2.new(1, 0, 0, 38 + (MaxElements * 28)) or UDim2.new(1, 0, 0, 38)) or (Dropdown.Toggled and UDim2.new(1, 0, 0, math.min(DropdownList.AbsoluteContentSize.Y + 38, 38 + (MaxElements * 28))) or UDim2.new(1, 0, 0, 38))
+						TweenService:Create(DropdownFrame, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = NextSize}):Play()
+						if Dropdown.Toggled then
+							OldSize = DropdownFrame.Parent.Parent.Parent.Size.Y.Offset
+						end
+						if DropdownFrame.Parent.Name == "SettingsScroll" then
+							TweenService:Create(DropdownFrame.Parent.Parent.Parent, TweenInfo.new(.15), {
+								Size = UDim2.new(
+									1, 0, 0,
+									Dropdown.Toggled and (optionCount > MaxElements and 154 + (MaxElements * 28) or (DropdownList.AbsoluteContentSize.Y + 84)) or OldSize
+								)
+							}):Play()
+						end
+					end)
+
+					-- Auto-refresh when players join/leave
 					Players.PlayerAdded:Connect(function()
 						task.wait(0.2)
 						Dropdown:Refresh()
+						-- Update display
+						local displayText = Config.Multi and table.concat(Dropdown.Value, ", ") or Dropdown.Value
+						if displayText == "" then displayText = Config.Name end
+						DropdownFrame.F.Content.Text = displayText
 					end)
 
 					Players.PlayerRemoving:Connect(function()
 						task.wait(0.2)
 						Dropdown:Refresh()
+						local displayText = Config.Multi and table.concat(Dropdown.Value, ", ") or Dropdown.Value
+						if displayText == "" then displayText = Config.Name end
+						DropdownFrame.F.Content.Text = displayText
 					end)
 
 					Dropdown:Refresh()
+					Dropdown:Set(Config.Default)
+
+					-- Add theme color methods
+					function Dropdown:SetColor(Color)
+						DropdownFrame.BackgroundColor3 = Color
+						for _, Btn in pairs(Dropdown.Buttons) do
+							Btn.BackgroundColor3 = Color
+						end
+					end
+
+					function Dropdown:SetTextColor(Color)
+						DropdownFrame.F.Content.TextColor3 = Color
+						for _, Btn in pairs(Dropdown.Buttons) do
+							Btn.Title.TextColor3 = Color
+						end
+					end
+
+					function Dropdown:SetTextTransparency(Transparency)
+						DropdownFrame.F.Content.TextTransparency = Transparency
+						for _, Btn in pairs(Dropdown.Buttons) do
+							Btn.Title.TextTransparency = Transparency
+						end
+					end
+
+					function Dropdown:SetStrokeColor(Color)
+						DropdownFrame.Stroke.Color = Color
+						DropdownFrame.F.Line.BackgroundColor3 = Color
+					end
+
+					function Dropdown:SetStrokeTransparency(Transparency)
+						DropdownFrame.Stroke.Transparency = Transparency
+						DropdownFrame.F.Line.BackgroundTransparency = Transparency
+					end
+
+					function Dropdown:SetTransparency(Transparency)
+						DropdownFrame.BackgroundTransparency = Transparency
+					end
 
 					return Dropdown
 				end
