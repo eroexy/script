@@ -2890,7 +2890,7 @@ function OrionLib:MakeWindow(WindowConfig)
 					return Dropdown
 				end
 				
-				function ElementFunction:AddPlayerDropdown(Config)
+				function ItemParent2:AddPlayerDropdown(Config)
 					Config = Config or {}
 					Config.Name = Config.Name or "Select Player"
 					Config.Multi = Config.Multi or false
@@ -2912,33 +2912,37 @@ function OrionLib:MakeWindow(WindowConfig)
 						Multi = Config.Multi
 					}
 
-					-- Create dropdown list
-					local DropdownList = MakeElement("List")
+					-- Create dropdown list container
+					local DropdownList = SetProps(MakeElement("List"), {
+						HorizontalAlignment = Enum.HorizontalAlignment.Center
+					})
 
-					local DropdownContainer = AddThemeObject(SetProps(SetChildren(MakeElement("ScrollFrame", Color3.fromRGB(40, 40, 40), 4), {
+					local DropdownContainer = AddThemeObject(SetProps(SetChildren(MakeElement("ScrollFrame", Color3.fromRGB(40, 40, 40)), {
 						DropdownList
 					}), {
 						Parent = ItemParent,
 						Position = UDim2.new(0, 0, 0, 38),
 						Size = UDim2.new(1, 0, 1, -38),
 						ClipsDescendants = true,
-						BackgroundTransparency = 0.95
+						BackgroundTransparency = 1
 					}), "Divider")
 
-					-- Main dropdown frame
+					-- Main clickable area
 					local Click = SetProps(MakeElement("Button"), {
 						Size = UDim2.new(1, 0, 1, 0)
 					})
 
-					local DropdownFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
+					-- Main dropdown frame
+					local DropdownFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, WindowConfig.NewUI and 10 or 5), {
 						Size = UDim2.new(1, 0, 0, 38),
 						Parent = ItemParent,
 						ClipsDescendants = true,
-						BackgroundTransparency = 0.95
+						BackgroundTransparency = WindowConfig.ElementsTransparency,
+						Name = "PlayerDropdown",
 					}), {
 						DropdownContainer,
 						SetProps(SetChildren(MakeElement("TFrame"), {
-							AddThemeObject(SetProps(MakeElement("Label", Config.Name, 15), {
+							AddThemeObject(SetProps(MakeElement("Label", Config.Name, 14), {
 								Size = UDim2.new(1, -12, 1, 0),
 								Position = UDim2.new(0, 12, 0, 0),
 								Font = Enum.Font.GothamBold,
@@ -2950,12 +2954,6 @@ function OrionLib:MakeWindow(WindowConfig)
 								Position = UDim2.new(1, -30, 0.5, 0),
 								ImageColor3 = Color3.fromRGB(240, 240, 240),
 								Name = "Ico"
-							}), "TextDark"),
-							AddThemeObject(SetProps(MakeElement("Label", "", 13), {
-								Size = UDim2.new(1, -40, 1, 0),
-								Font = Enum.Font.Gotham,
-								Name = "Selected",
-								TextXAlignment = Enum.TextXAlignment.Right
 							}), "TextDark"),
 							AddThemeObject(SetProps(MakeElement("Frame"), {
 								Size = UDim2.new(1, 0, 0, 1),
@@ -2971,7 +2969,7 @@ function OrionLib:MakeWindow(WindowConfig)
 						}),
 						AddThemeObject(MakeElement("Stroke"), "Stroke"),
 						MakeElement("Corner")
-					}), "Second")
+					}), "Elements")
 
 					-- Update canvas size
 					AddConnection(DropdownList:GetPropertyChangedSignal("AbsoluteContentSize"), function()
@@ -3020,7 +3018,6 @@ function OrionLib:MakeWindow(WindowConfig)
 						else
 							Dropdown.Value = ""
 						end
-						DropdownFrame.F.Selected.Text = ""
 						DropdownFrame.F.Content.Text = Config.Name
 					end
 
@@ -3096,10 +3093,7 @@ function OrionLib:MakeWindow(WindowConfig)
 							)
 
 							local btn = AddThemeObject(SetProps(SetChildren(MakeElement("Button", Color3.fromRGB(40, 40, 40)), {
-								Size = UDim2.new(1, 0, 0, 38),
-								BackgroundTransparency = 1,
-								ClipsDescendants = true
-							}), {
+								MakeElement("Corner", 0, 6),
 								SetProps(MakeElement("Image", thumb), {
 									Size = UDim2.new(0, 30, 0, 30),
 									Position = UDim2.new(0, 6, 0.5, 0),
@@ -3107,23 +3101,17 @@ function OrionLib:MakeWindow(WindowConfig)
 									BackgroundTransparency = 1,
 									Name = "Avatar"
 								}),
-								AddThemeObject(SetProps(MakeElement("Label", plr.DisplayName, 14), {
-									Size = UDim2.new(1, -45, 0, 16),
-									Position = UDim2.new(0, 42, 0, 4),
-									TextXAlignment = Enum.TextXAlignment.Left,
-									Name = "DisplayName"
-								}), "Text"),
-								AddThemeObject(SetProps(MakeElement("Label", "@" .. plr.Name, 11), {
-									Size = UDim2.new(1, -45, 0, 14),
-									Position = UDim2.new(0, 42, 0, 20),
-									TextXAlignment = Enum.TextXAlignment.Left,
-									Name = "Username",
-									TextTransparency = 0.3
-								}), "TextDark"),
-								MakeElement("Corner", 0, 4)
+								AddThemeObject(SetProps(MakeElement("Label", plr.DisplayName, 14, 0.4), {
+									Position = UDim2.new(0, 42, 0, 0),
+									Size = UDim2.new(1, -50, 1, 0),
+									Name = "Title"
+								}), "Text")
+							}), {
+								Parent = DropdownContainer,
+								Size = UDim2.new(1, 0, 0, 38),
+								BackgroundTransparency = 1,
+								ClipsDescendants = true
 							}), "Divider")
-
-							btn.Parent = DropdownContainer
 
 							-- Click handler
 							AddConnection(btn.MouseButton1Click, function()
@@ -3159,8 +3147,8 @@ function OrionLib:MakeWindow(WindowConfig)
 						text = string.lower(text or "")
 						for name, btn in pairs(Dropdown.Buttons) do
 							local visible = string.find(string.lower(name), text, 1, true) or false
-							if btn:FindFirstChild("DisplayName") then
-								visible = visible or string.find(string.lower(btn.DisplayName.Text), text, 1, true) or false
+							if btn:FindFirstChild("Title") then
+								visible = visible or string.find(string.lower(btn.Title.Text), text, 1, true) or false
 							end
 							btn.Visible = visible
 						end
@@ -3205,49 +3193,46 @@ function OrionLib:MakeWindow(WindowConfig)
 						AddConnection(SearchBox:GetPropertyChangedSignal("Text"), function()
 							FilterOptions(SearchBox.Text)
 						end)
+					end
 
-						-- Update canvas height when search is toggled
-						local function UpdateSearchVisibility()
-							SearchContainer.Visible = Dropdown.Toggled
+					-- Toggle dropdown with proper sizing
+					local OldSize = 0
+					AddConnection(Click.MouseButton1Click, function()
+						Dropdown.Toggled = not Dropdown.Toggled
+						DropdownFrame.F.Line.Visible = Dropdown.Toggled
+						TweenService:Create(DropdownFrame.F.Ico, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+							Rotation = Dropdown.Toggled and 180 or 0
+						}):Play()
+
+						-- Calculate height based on visible items
+						local visibleCount = 0
+						for _, btn in pairs(Dropdown.Buttons) do
+							if btn.Visible then
+								visibleCount = visibleCount + 1
+							end
 						end
 
-						-- Override toggle to handle search visibility
-						local originalToggle = Click.MouseButton1Click
-						AddConnection(Click.MouseButton1Click, function()
-							Dropdown.Toggled = not Dropdown.Toggled
-							DropdownFrame.F.Line.Visible = Dropdown.Toggled
-							TweenService:Create(DropdownFrame.F.Ico, TweenInfo.new(.15), {
-								Rotation = Dropdown.Toggled and 180 or 0
-							}):Play()
+						local maxVisible = Config.MaxSize or 5
+						local displayCount = math.min(visibleCount, maxVisible)
+						local height = 38
+						if Dropdown.Toggled then
+							height = 38 + (displayCount * 38) + 38 -- Add extra for search bar
+						end
 
-							UpdateSearchVisibility()
+						TweenService:Create(DropdownFrame, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+							Size = UDim2.new(1, 0, 0, height)
+						}):Play()
 
-							local visibleCount = 0
-							for _, btn in pairs(Dropdown.Buttons) do
-								if btn.Visible then
-									visibleCount = visibleCount + 1
-								end
+						-- Handle settings scroll
+						if DropdownFrame.Parent and DropdownFrame.Parent.Name == "SettingsScroll" then
+							local parent = DropdownFrame.Parent.Parent.Parent
+							if parent then
+								TweenService:Create(parent, TweenInfo.new(.15), {
+									Size = UDim2.new(1, 0, 0, Dropdown.Toggled and (height + 46) or OldSize)
+								}):Play()
 							end
-
-							local maxVisible = Config.MaxSize or 5
-							local displayCount = math.min(visibleCount, maxVisible)
-							local height = 38 + (Dropdown.Toggled and (displayCount * 38 + 38) or 0)
-
-							TweenService:Create(DropdownFrame, TweenInfo.new(.15), {
-								Size = UDim2.new(1, 0, 0, height)
-							}):Play()
-						end)
-
-						-- Add search toggling to existing click
-						local oldClick = Click.MouseButton1Click
-						AddConnection(Click.MouseButton1Click, function()
-							if Dropdown.Toggled then
-								SearchBox:CaptureFocus()
-							else
-								SearchBox:ReleaseFocus()
-							end
-						end)
-					end
+						end
+					end)
 
 					-- Auto-refresh when players join/leave
 					Players.PlayerAdded:Connect(function()
@@ -3275,11 +3260,8 @@ function OrionLib:MakeWindow(WindowConfig)
 					function Dropdown:SetTextColor(Color)
 						DropdownFrame.F.Content.TextColor3 = Color
 						for _, Btn in pairs(Dropdown.Buttons) do
-							if Btn.DisplayName then
-								Btn.DisplayName.TextColor3 = Color
-							end
-							if Btn.Username then
-								Btn.Username.TextColor3 = Color
+							if Btn.Title then
+								Btn.Title.TextColor3 = Color
 							end
 						end
 					end
@@ -3287,11 +3269,8 @@ function OrionLib:MakeWindow(WindowConfig)
 					function Dropdown:SetTextTransparency(Transparency)
 						DropdownFrame.F.Content.TextTransparency = Transparency
 						for _, Btn in pairs(Dropdown.Buttons) do
-							if Btn.DisplayName then
-								Btn.DisplayName.TextTransparency = Transparency
-							end
-							if Btn.Username then
-								Btn.Username.TextTransparency = Transparency
+							if Btn.Title then
+								Btn.Title.TextTransparency = Transparency
 							end
 						end
 					end
