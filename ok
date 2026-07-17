@@ -12165,9 +12165,18 @@ for _, Obj in pairs(Options) do
 end
 
 task.spawn(function()
-    task.wait(0.5)
-    if isfile(Config.SaveFolder .. "/Default.json") then
+    task.wait(2) -- Increase wait time
+    print("Attempting to load config...")
+    local path = Config.SaveFolder .. "/Default.json"
+    print("Path:", path)
+    print("File exists:", isfile(path))
+    if isfile(path) then
+        print("Loading config...")
         Library:LoadConfig("Default")
+        print("Config loaded!")
+    else
+        print("No config file found, creating default...")
+        Library:SaveConfig("Default")
     end
 end)
 
