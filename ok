@@ -12097,19 +12097,28 @@ function Library:SaveConfig(Name)
     pcall(function()
         writefile(Config.SaveFolder .. "/" .. Name .. ".json", game:GetService("HttpService"):JSONEncode(Data))
     end)
+    print("Saved config: " .. Name) -- Debug
 end
 
 function Library:LoadConfig(Name)
     if not isfile then return end
     Name = Name or Config.CurrentConfig or "Default"
     local Path = Config.SaveFolder .. "/" .. Name .. ".json"
-    if not isfile(Path) then return end
+    if not isfile(Path) then 
+        print("Config file not found: " .. Path) -- Debug
+        return 
+    end
     
     local Data = pcall(function()
         return game:GetService("HttpService"):JSONDecode(readfile(Path))
     end)
     
-    if not Data then return end
+    if not Data then 
+        print("Failed to load config") -- Debug
+        return 
+    end
+    
+    print("Loading config: " .. Name) -- Debug
     
     if Data.Toggles then
         for Idx, V in pairs(Data.Toggles) do
@@ -12140,16 +12149,18 @@ function Library:LoadConfig(Name)
             end
         end
     end
+    print("Config loaded!") -- Debug
 end
 
--- Replace your hooks with this debug version:
+-- Hook all existing elements
+print("Hooking " .. #Toggles .. " toggles and " .. #Options .. " options") -- Debug
+
 for _, Obj in pairs(Toggles) do
     if Obj and Obj.SetValue and not Obj._Hooked then
         Obj._Hooked = true
         local Old = Obj.SetValue
         Obj.SetValue = function(self, ...)
             Old(self, ...)
-            print("Toggle changed, saving...") -- Debug
             task.spawn(function() Library:SaveConfig() end)
         end
     end
@@ -12161,24 +12172,19 @@ for _, Obj in pairs(Options) do
         local Old = Obj.SetValue
         Obj.SetValue = function(self, ...)
             Old(self, ...)
-            print("Option changed, saving...") -- Debug
             task.spawn(function() Library:SaveConfig() end)
         end
     end
 end
 
+-- Auto-load on startup
 task.spawn(function()
-    task.wait(2) -- Increase wait time
-    print("Attempting to load config...")
-    local path = Config.SaveFolder .. "/Default.json"
-    print("Path:", path)
-    print("File exists:", isfile(path))
-    if isfile(path) then
-        print("Loading config...")
+    task.wait(2)
+    print("Auto-loading config...") -- Debug
+    if isfile(Config.SaveFolder .. "/Default.json") then
         Library:LoadConfig("Default")
-        print("Config loaded!")
     else
-        print("No config file found, creating default...")
+        print("No default config found, creating one...")
         Library:SaveConfig("Default")
     end
 end)
