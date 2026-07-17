@@ -12142,12 +12142,14 @@ function Library:LoadConfig(Name)
     end
 end
 
+-- Replace your hooks with this debug version:
 for _, Obj in pairs(Toggles) do
     if Obj and Obj.SetValue and not Obj._Hooked then
         Obj._Hooked = true
         local Old = Obj.SetValue
         Obj.SetValue = function(self, ...)
             Old(self, ...)
+            print("Toggle changed, saving...") -- Debug
             task.spawn(function() Library:SaveConfig() end)
         end
     end
@@ -12159,6 +12161,7 @@ for _, Obj in pairs(Options) do
         local Old = Obj.SetValue
         Obj.SetValue = function(self, ...)
             Old(self, ...)
+            print("Option changed, saving...") -- Debug
             task.spawn(function() Library:SaveConfig() end)
         end
     end
