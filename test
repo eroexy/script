@@ -1221,10 +1221,6 @@ function Library:Validate(Table: { [string]: any }, Template: { [string]: any })
     return Table
 end
 
-function Library:OnChanged(Callback)
-    table.insert(Library.Signals, game:GetService("RunService").Heartbeat:Connect(Callback))
-end
-
 --// Creator Functions \\--
 local function FillInstance(Table: { [string]: any }, Instance: GuiObject)
     local ThemeProperties = Library.Registry[Instance] or {}
@@ -11989,22 +11985,28 @@ Library:GiveSignal(Teams.ChildRemoved:Connect(OnTeamChange))
 function Library:Unload()
     Library.Unloaded = true
 
+    --// Disconnect connections
     for Index = #Library.Signals, 1, -1 do
         local Connection = table.remove(Library.Signals, Index)
+
         if Connection and Connection.Connected then
             Connection:Disconnect()
         end
     end
 
+    --// Run Unload Callbacks
     for _ = 1, #Library.UnloadSignals do
         local Callback = table.remove(Library.UnloadSignals, 1)
+
         if Callback then
             Library:SafeCallback(Callback)
         end
     end
 
+    --// Destroy elements
     for Index = #Library.Tabs, 1, -1 do
         local Tab = table.remove(Library.Tabs, Index)
+
         if Tab and Tab.Destroy then
             Library:SafeCallback(Tab.Destroy, Tab)
         end
@@ -12012,6 +12014,7 @@ function Library:Unload()
 
     for Index = #Tooltips, 1, -1 do
         local Tooltip = table.remove(Tooltips, Index)
+
         if Tooltip and Tooltip.Destroy then
             Library:SafeCallback(Tooltip.Destroy, Tooltip)
         end
@@ -12025,26 +12028,33 @@ function Library:Unload()
         ScreenGui:Destroy()
     end
 
+    --// Clear tables
     table.clear(Library.Registry)
+
     table.clear(Options)
     table.clear(Toggles)
     table.clear(Buttons)
     table.clear(Labels)
     table.clear(Tooltips)
+
     table.clear(Library.Tabs)
     table.clear(Library.TabButtons)
+
     table.clear(Library.Scales)
     table.clear(Library.ScalesOffset)
+
     table.clear(Library.Corners)
     table.clear(Library.SpecificCorners)
+
     table.clear(Library.Notifications)
     table.clear(Library.Dialogues)
     table.clear(Library.DraggableElements)
     table.clear(Library.KeybindToggles)
     table.clear(Library.DependencyBoxes)
+
     table.clear(TransparencyCache)
     table.clear(ActiveTabTweens)
-
+    
     Library.Toggle = function(...) end
     Library.ScreenGui = nil
     Library.WindowContainer = nil
@@ -12053,82 +12063,6 @@ function Library:Unload()
 
     getgenv().Library = nil
 end
-
--- ==================== AUTO SAVE (Built-in) ====================
-
-local SaveFolder = "FallenConfig"
-local SaveFile = SaveFolder .. "/config.json"
-
-local function EnsureFolder()
-    if not isfolder then return end
-    if not isfolder(SaveFolder) then
-        makefolder(SaveFolder)
-    end
-end
-
-local function SaveConfig()
-    EnsureFolder()
-    if not writefile then return end
-
-    local Config = {}
-    for Idx, Option in pairs(Library.Options) do
-        if Option.Type == "Toggle" then
-            Config[Idx] = Option.Value
-        elseif Option.Type == "Slider" then
-            Config[Idx] = Option.Value
-        elseif Option.Type == "Dropdown" then
-            Config[Idx] = Option.Value
-        elseif Option.Type == "ColorPicker" then
-            Config[Idx] = { Option.Value.R, Option.Value.G, Option.Value.B }
-        elseif Option.Type == "KeyPicker" then
-            Config[Idx] = { Option.Value, Option.Mode, Option.Modifiers }
-        elseif Option.Type == "Input" then
-            Config[Idx] = Option.Value
-        end
-    end
-
-    pcall(function()
-        writefile(SaveFile, game:GetService("HttpService"):JSONEncode(Config))
-    end)
-end
-
-local function LoadConfig()
-    if not isfile or not isfile(SaveFile) then return end
-
-    local Success, Data = pcall(function()
-        return game:GetService("HttpService"):JSONDecode(readfile(SaveFile))
-    end)
-
-    if not Success then return end
-
-    for Idx, Value in pairs(Data) do
-        local Option = Library.Options[Idx]
-        if not Option then continue end
-
-        if Option.Type == "Toggle" or Option.Type == "Slider" then
-            Option:SetValue(Value)
-        elseif Option.Type == "Dropdown" then
-            Option:SetValue(Value)
-        elseif Option.Type == "ColorPicker" then
-            Option:SetValue(Color3.new(Value[1], Value[2], Value[3]))
-        elseif Option.Type == "KeyPicker" then
-            Option:SetValue(Value)
-        elseif Option.Type == "Input" then
-            Option:SetValue(Value)
-        end
-    end
-end
-
--- Auto-save when any option changes + on unload
-Library:OnChanged(function()
-    SaveConfig()
-end)
-
-task.spawn(LoadConfig)
-
-Library:OnUnload(function()
-    SaveConfig()
-end)
 
 getgenv().Library = Library
 return Library
