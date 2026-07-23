@@ -11989,28 +11989,22 @@ Library:GiveSignal(Teams.ChildRemoved:Connect(OnTeamChange))
 function Library:Unload()
     Library.Unloaded = true
 
-    --// Disconnect connections
     for Index = #Library.Signals, 1, -1 do
         local Connection = table.remove(Library.Signals, Index)
-
         if Connection and Connection.Connected then
             Connection:Disconnect()
         end
     end
 
-    --// Run Unload Callbacks
     for _ = 1, #Library.UnloadSignals do
         local Callback = table.remove(Library.UnloadSignals, 1)
-
         if Callback then
             Library:SafeCallback(Callback)
         end
     end
 
-    --// Destroy elements
     for Index = #Library.Tabs, 1, -1 do
         local Tab = table.remove(Library.Tabs, Index)
-
         if Tab and Tab.Destroy then
             Library:SafeCallback(Tab.Destroy, Tab)
         end
@@ -12018,7 +12012,6 @@ function Library:Unload()
 
     for Index = #Tooltips, 1, -1 do
         local Tooltip = table.remove(Tooltips, Index)
-
         if Tooltip and Tooltip.Destroy then
             Library:SafeCallback(Tooltip.Destroy, Tooltip)
         end
@@ -12032,33 +12025,26 @@ function Library:Unload()
         ScreenGui:Destroy()
     end
 
-    --// Clear tables
     table.clear(Library.Registry)
-
     table.clear(Options)
     table.clear(Toggles)
     table.clear(Buttons)
     table.clear(Labels)
     table.clear(Tooltips)
-
     table.clear(Library.Tabs)
     table.clear(Library.TabButtons)
-
     table.clear(Library.Scales)
     table.clear(Library.ScalesOffset)
-
     table.clear(Library.Corners)
     table.clear(Library.SpecificCorners)
-
     table.clear(Library.Notifications)
     table.clear(Library.Dialogues)
     table.clear(Library.DraggableElements)
     table.clear(Library.KeybindToggles)
     table.clear(Library.DependencyBoxes)
-
     table.clear(TransparencyCache)
     table.clear(ActiveTabTweens)
-    
+
     Library.Toggle = function(...) end
     Library.ScreenGui = nil
     Library.WindowContainer = nil
@@ -12067,6 +12053,8 @@ function Library:Unload()
 
     getgenv().Library = nil
 end
+
+-- ==================== AUTO SAVE (Built-in) ====================
 
 local SaveFolder = "FallenConfig"
 local SaveFile = SaveFolder .. "/config.json"
@@ -12083,7 +12071,6 @@ local function SaveConfig()
     if not writefile then return end
 
     local Config = {}
-
     for Idx, Option in pairs(Library.Options) do
         if Option.Type == "Toggle" then
             Config[Idx] = Option.Value
@@ -12100,13 +12087,9 @@ local function SaveConfig()
         end
     end
 
-    local Success, Error = pcall(function()
+    pcall(function()
         writefile(SaveFile, game:GetService("HttpService"):JSONEncode(Config))
     end)
-
-    if not Success then
-        warn("Failed to save config:", Error)
-    end
 end
 
 local function LoadConfig()
@@ -12136,13 +12119,14 @@ local function LoadConfig()
     end
 end
 
-Lib:OnChanged(function()
+-- Auto-save when any option changes + on unload
+Library:OnChanged(function()
     SaveConfig()
 end)
 
 task.spawn(LoadConfig)
 
-Lib:OnUnload(function()
+Library:OnUnload(function()
     SaveConfig()
 end)
 
