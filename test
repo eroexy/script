@@ -12136,5 +12136,15 @@ local function LoadConfig()
     end
 end
 
+Lib:OnChanged(function()
+    SaveConfig()
+end)
+
+task.spawn(LoadConfig)
+
+Lib:OnUnload(function()
+    SaveConfig()
+end)
+
 getgenv().Library = Library
 return Library
