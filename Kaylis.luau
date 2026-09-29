@@ -348,6 +348,9 @@ local v2 = {
 		sbSurfaceColor = Color3.fromRGB(124, 42, 195),
 		sbColor = Color3.fromRGB(213, 206, 4),
 
+        GucciWarn = nil,
+        Guccis = {},
+
         AntiKickWarn = nil,
         AntiKickWarnFC = Color3.fromRGB(255, 0, 25),
         AntiKickWarnOC = Color3.fromRGB(215, 0, 25),
@@ -5039,6 +5042,41 @@ PCLD:AddColorPicker("sbColor", {
 	end
 })
 -------------------------->> [Warning] <<--------------------------
+GP.Warning:AddDivider("Gucci")
+GucciWarning = GP.Warning:AddToggle("GucciWarn", {
+    Text = "Gucci Warn",
+    Default = false,
+    Callback = function(v)
+        if v then
+            v2.Visual.GucciWarn = gs.Rs.Heartbeat:Connect(function()
+                for _, plr in ipairs(gs.Players:GetPlayers()) do
+                    local tchar, thrp, thum = Function.GetParts(plr)
+                    if not tchar or not thrp or not thum then continue end
+                    local seat = thum.SeatPart
+                    if seat and not seat.Occupant and not v2.Visual.Guccis[plr] then
+                        local Gucci = seat.Parent
+                        v2.Visual.Guccis[plr] = Gucci
+                        Function.Notify("Display: " .. plr.DisplayName .. " | Username: " .. plr.Name .. " | has Gucci", 5)
+                        local WatchThum
+                        local OldSeat = seat
+                        WatchThum = thum:GetPropertyChangedSignal("SeatPart"):Connect(function()
+                            if thum.SeatPart ~= OldSeat then
+                                WatchThum:Disconnect()
+                                WatchThum = nil
+                                v2.Visual.Guccis[plr] = nil
+                            end
+                        end)
+                    end
+                end
+            end)
+        else
+            if v2.Visual.GucciWarn then
+                v2.Visual.GucciWarn:Disconnect()
+                v2.Visual.GucciWarn = nil
+            end
+        end
+    end
+})
 GP.Warning:AddDivider("Anti-Kick")
 AntiKickWarning = GP.Warning:AddToggle("AntiKickWarn", {
     Text = "Anti-Kick Warn",
