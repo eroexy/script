@@ -4080,6 +4080,7 @@ function ApplyMethodSelected(Method, sno)
                     local Tgucci = seat.Parent
                     if Tgucci then
                         seat:Sit(hum)
+                        task.wait()
                         hum.Sit = false
                     end
                 end
