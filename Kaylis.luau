@@ -3987,7 +3987,7 @@ BlobmanTargetDropdown = ObjectBoxTabs.BlobmanTarget:AddDropdown("BlobmanTargets"
 ObjectBoxTabs.Target:AddDivider()
 ObjectBoxTabs.Target:AddDropdown("TargetMethod", {
     Text = "Select Method",
-    Values = {"Kick", "Kill", "Void", "Delete Seatables", "Bring"},
+    Values = {"Kick", "Kill", "Void", "Bring", "Delete Seatables", "Remove Gucci",},
     Default = nil,
     Multi = true,
     AllowNull = true,
@@ -4282,6 +4282,8 @@ ObjectBoxTabs.Target:AddButton({
             ApplyMethodSelected("Bring", true)
         elseif v2.Target.TargetMethod["Delete Seatables"] then
             ApplyMethodSelected("Delete Seatables", false)
+        elseif v2.Target.TargetMethod["Remove Gucci"] then
+            ApplyMethodSelected("Remove Gucci", false)
         end
     end
 })
